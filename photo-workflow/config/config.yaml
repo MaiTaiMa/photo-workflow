@@ -1,0 +1,117 @@
+paths:
+  base_dir: ../../NAS_EXAMPLE/
+  temp_sd: ../../NAS_EXAMPLE/01_TEMP_SD
+  temp_images: ../../NAS_EXAMPLE/02_TEMP_IMAGES
+  temp_done: ../../NAS_EXAMPLE/03_TEMP_DONE
+  log_file: ../../NAS_EXAMPLE/WORKFLOW_DATA/process.log
+  error_log: ../../NAS_EXAMPLE/WORKFLOW_DATA/error.log
+  lock_file: ../../NAS_EXAMPLE/WORKFLOW_DATA/.script.lock
+  personal_model: ../../NAS_EXAMPLE/WORKFLOW_DATA/models/personal/user_taste_model.json
+workflow:
+  wait_time_seconds: 60
+  stale_lock_seconds: 43200
+  merge_strategy: merge_then_fallback
+  create_done_marker_before_move: true
+  date_reconstruction:
+    mode: legacy_bash
+    decade_prefix: '202'
+    year_digit_index: 3
+culling:
+  enabled: true
+  move_files: true
+  create_review_folder: true
+  create_rejected_folder: true
+  keep_threshold: 0.65
+  reject_threshold: 0.35
+  weights:
+    generic: 0.55
+    personal: 0.45
+  component_weights:
+    base_score: 0.55
+    eye_score: 0.1
+    personal_score: 0.2
+    family_score: 0.15
+  base_weights:
+    sharp: 0.36
+    aesth: 0.36
+    exposure: 0.18
+    reference: 0.1
+  eye_detection:
+    enabled: true
+  reference_scoring:
+    enabled: true
+    folder: ../../NAS_EXAMPLE/WORKFLOW_DATA/samples
+    recursive: false
+    preview_size: 32
+    cache_enabled: true
+    cache_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/models/reference_scoring
+    force_cache_rebuild: false
+  star_rating_bands:
+    5: 0.9
+    4: 0.75
+    3: 0.6
+    2: 0.4
+    1: 0.2
+    0: 0.0
+training:
+  sample_images_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/samples
+  exported_labels_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/training/exported_labels
+  runs_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/training/runs
+  min_labeled_images: 20
+safety:
+  require_paths_within_base_dir: true
+  follow_symlinks: false
+  never_delete_outside_arw_dir: true
+reporting:
+  write_json_summary: true
+  json_summary_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/run_summaries
+  stdout_mode: scheduler_mail
+family_recognition:
+  enabled: true
+  reference_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/faces
+  protect_detected_family: true
+  score_boost_weight: 0.2
+  write_native_tags: true
+  write_face_regions: true
+  exiftool_path: exiftool
+  match_tolerance: 0.6
+  default_person_weight: 0.35
+  max_reference_images_per_person: 200
+  person_weights:
+    Vater: 0.35
+    Mutter: 0.35
+    Kind1: 0.55
+    Kind2: 0.55
+    Oma: 0.3
+    Opa: 0.3
+  cache_enabled: true
+  cache_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
+  cache_rebuild_mode: incremental
+  force_cache_rebuild: false
+  min_reference_images_per_person: 3
+series_detection:
+  enabled: true
+  cluster_eps: 0.18
+  min_samples: 2
+  preview_size: 32
+  review_margin: 0.03
+  demote_non_best_to: review
+metadata_culling:
+  enabled: true
+  write_rating: true
+  write_keywords: true
+  keep_backup: false
+  exiftool_path: exiftool
+  keyword_schema: namespaced_v1
+  write_score_bands: true
+  write_raw_scores_to_keywords: true
+personal_scoring:
+  source_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/samples
+  model_path: ../../NAS_EXAMPLE/WORKFLOW_DATA/models/personal/user_taste_model.json
+  cache_dir: ../../NAS_EXAMPLE/WORKFLOW_DATA/models/personal
+  enabled: true
+  cache_enabled: true
+  cache_rebuild_mode: incremental
+  auto_train_on_change: true
+  recursive: false
+  min_reference_images: 5
