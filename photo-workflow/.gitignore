@@ -5,10 +5,11 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 WORKFLOW_DATA/
-TEMP_SD/
-TEMP_IMAGES/
-TEMP_DONE/
-TEMP_ERROR/
+00_TEMP_ERROR/
+01_TEMP_SD/
+02_TEMP_IMAGES/
+03_TEMP_DONE/
+04_TEMP_FINAL/
 MANUAL_KEEP/
 NAS_EXAMPLE/
 *.zip
@@ -30,5 +31,3 @@ faces/
 *.pt
 *.pth
 *.bin
-models/
-**/models/
