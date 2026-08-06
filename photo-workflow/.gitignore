@@ -25,6 +25,12 @@ NAS_EXAMPLE/
 faces/
 **/faces/
 
+reference/
+**/reference/
+
+newrefs/
+**/newrefs/
+
 # Modell-Gewichte und safetensors
 *.safetensors
 *.onnx
