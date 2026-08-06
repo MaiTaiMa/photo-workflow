@@ -1098,8 +1098,6 @@ Ein Batch gilt als abgeschlossen, wenn Phase 1 erfolgreich nach `TEMP_IMAGES/` v
 
 ---
 
-### Anhang D — Referenzpool-Vertrag
-
 ### Anhang D — Referenzpool-Feldreferenz
 
 Die normative Referenzpool-Logik steht ausschließlich in Abschnitt 5. Dieser Anhang enthält keine zweite Regelquelle.
