@@ -1,0 +1,5 @@
+numpy==2.1.1
+Pillow==10.4.0
+PyYAML==6.0.2
+face-recognition
+setuptools<81

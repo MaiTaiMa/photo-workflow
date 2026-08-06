@@ -1,0 +1,10 @@
+services:
+  photo_workflow:
+    build: .
+    container_name: synology_photo_workflow
+    volumes:
+      - /volume1/TEMP:/volume1/TEMP
+      - ./config:/app/config
+    working_dir: /app
+    command: ["--config", "/app/config/config.yaml", "phase1"]
+    restart: "no"

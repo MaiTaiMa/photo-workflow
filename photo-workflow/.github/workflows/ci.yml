@@ -1,0 +1,94 @@
+# Projekt: Synology Photo Workflow
+# Datei: .github/workflows/ci.yml
+# Mitentwickler: MaiTai
+# Erstellt: 2026-07-29
+# Projektversion: 7.7.0
+# Funktion: Prüft Header, Syntax, Lint, Tests und Referenzkonfiguration bei jedem Push und PR.
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+defaults:
+  run:
+    working-directory: synology-photo-workflow
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements-dev.txt
+
+      - name: NAS-Beispiel-Fixtures anlegen (README.md-Platzhalter)
+        run: |
+          python - <<'EOF'
+          from pathlib import Path
+          dirs = [
+            "MANUAL_KEEP/inbox", "MANUAL_KEEP/used",
+            "TEMP_DONE", "TEMP_ERROR", "TEMP_IMAGES", "TEMP_SD",
+            "WORKFLOW_DATA/faces",
+            "WORKFLOW_DATA/models/face", "WORKFLOW_DATA/models/taste",
+            "WORKFLOW_DATA/runtime/calibration/batches",
+            "WORKFLOW_DATA/runtime/locks", "WORKFLOW_DATA/runtime/logs",
+            "WORKFLOW_DATA/runtime/quarantine",
+            "WORKFLOW_DATA/runtime/runsummaries", "WORKFLOW_DATA/runtime/state",
+            "WORKFLOW_DATA/samples/newrefs",
+            "WORKFLOW_DATA/samples/notused", "WORKFLOW_DATA/samples/reference",
+          ]
+          base = Path("../NAS_EXAMPLE/TEMP")
+          for d in dirs:
+            target = base / d
+            target.mkdir(parents=True, exist_ok=True)
+            readme = target / "README.md"
+            if not readme.exists():
+              readme.write_text(f"# {target.name}\n", encoding="utf-8")
+          print(f"Fixture: {len(dirs)} Verzeichnisse bereit.")
+          EOF
+
+      - name: Syntax prüfen (compileall)
+        run: python -m compileall app
+
+      - name: Lint (ruff)
+        run: ruff check app tests
+
+      - name: Unit-Tests ausführen
+        run: pytest -q --tb=short -v
+
+      - name: Referenzkonfiguration validieren
+        run: python -m app.photoworkflow --config config/config.example.yaml validate_config
+
+      - name: Projekt-Header-Vollständigkeit prüfen
+        run: |
+          python - <<'EOF'
+          from pathlib import Path
+          failures = []
+          for p in list(Path('app').glob('*.py')) + list(Path('tests').glob('*.py')):
+            text = p.read_text(encoding='utf-8')[:600]
+            if 'Projekt:' not in text:
+              failures.append(str(p))
+          if failures:
+            print('FEHLER: Fehlende Projekt-Header in:')
+            for f in failures: print(' ', f)
+            raise SystemExit(1)
+          print(f'OK: Alle {len(list(Path("app").glob("*.py")) + list(Path("tests").glob("*.py")))} Python-Dateien haben Projekt-Header.')
+          EOF
+
+      - name: CI-Zusammenfassung schreiben
+        if: always()
+        run: |
+          echo "## CI-Ergebnis" >> $GITHUB_STEP_SUMMARY
+          echo "- Python 3.11" >> $GITHUB_STEP_SUMMARY
+          echo "- Projektversion: 7.7.0" >> $GITHUB_STEP_SUMMARY
+          echo "- Schritte: compileall, ruff, pytest, validate_config, header-check" >> $GITHUB_STEP_SUMMARY
