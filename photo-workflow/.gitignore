@@ -1,7 +1,6 @@
 # Synology Photo Workflow | .gitignore
 # Mitentwickler: MaiTai | Erstellt: 2026-07-29 | Projektversion: 7.7.0
 # Funktion: Schuetzt private Medien, Laufzeitdaten und lokale Konfigurationen.
-config/config.yaml
 __pycache__/
 .pytest_cache/
 *.py[cod]
