@@ -42,13 +42,13 @@ Die Schluesselwoerter **MUSS**, **DARF NICHT**, **SOLL** und **KANN** sind norma
 
 Bei Zielkonflikten gilt **zuerst** und **vorrangig vor allen anderen Regeln** folgende Abwaegungslogik:
 
-1. **Sicherheit:** Keine unkontrollierten Datei aenderungen, Datenverluste, Modell-Downloads oder Daten uebertragungen. Bilddaten, Crops, Embeddings und Referenzbilder verlassen nie die erlaubten NAS-Datenbereiche.
-2. **Stabilitaet:** Ein einzelnes fehlerhaftes Foto, ein Modellfehler oder ein defekter Ordner stoppt nicht den ueblichen Lauf.
+1. **Sicherheit:** Keine unkontrollierten Datei aenderungen, Datenverluste oder unzulaessigen Datenuebertragungen. Geschuetzte Bilddaten, Face-Crops, Embeddings und Referenzbilder verlassen nie die erlaubten NAS-Datenbereiche. Lokale, ausdruecklich aktivierte Metadatenaufrufe an Synology Photos sind zulaessig, sofern keine Bilddaten oder Geheimnisse uebertragen werden.
+2. **Stabilitaet:** Ein einzelnes fehlerhaftes Foto, ein Modellfehler oder ein defekter Ordner stoppt nicht den uebrigen sicheren Lauf.
 3. **Nutzen:** Jede Funktion muss Fotos besser vorsortieren, Nachvollziehbarkeit oder Betriebssicherheit erhoehen.
 4. **Einfachheit:** Wenige verstaendliche Optionen; keine technische Doppelstruktur ohne nachgewiesenen Nutzen.
 5. **Performance:** Ein langsamer, begrenzter und ueber mehrere Tage fortsetzbarer Betrieb ist akzeptabel.
 
-**Richtwert Performance:** Auf einer typischen NAS (z. B. 2–4 Kerne, 4–8 GB RAM) sind ca. 500–1000 Bilder pro Tag realistisch. Bei groesseren Batches ist der Betrieb ueber mehrere Tage fortsetzbar.
+**Nichtnormativer Performance-Richtwert:** Auf einer typischen NAS (z. B. 2–4 Kerne, 4–8 GB RAM) sind ca. 500–1000 Bilder pro Tag realistisch. Embeddings werden nicht persistent gespeichert. Referenz-Embeddings werden nach einer Aenderung des aktiven Referenzpools oder nach einem Container-Neustart neu aufgebaut. Innerhalb eines laufenden Container-Laufs duerfen sie nur im RAM gecacht werden.
 
 Diese Reihenfolge ist **verbindlich** und darf durch keine andere Regel, keine Konfiguration und keine Implementierungsentscheidung ueberstimmt werden. Sie gilt projektweit, fuer Fachlogik, Architektur, Konfiguration, Betrieb und Tests.
 
@@ -91,20 +91,27 @@ Folgende Datenklassen unterliegen unterschiedlichen Schutzregeln:
 
 **Wichtig:** Bilddaten, Face-Crops, Embeddings und Referenzbilder werden nicht persistent ausserhalb der erlaubten Datenbereiche gespeichert. Modellartefakte und Konfigurationsdaten duerfen extern verwaltet werden, solange keine geschuetzten Bildinhalte uebertragen oder persistiert werden.
 
+Automatisch erzeugte Face-Crops duerfen ausschliesslich in `WORKFLOW_DATA/faces/<slug>/new_faces/` persistent gespeichert werden. Die Verschiebung von `new_faces/` nach `reference/` erfolgt ausschliesslich manuell durch den Menschen. Erst danach gilt der Face-Crop als aktive Referenz und darf in `reference/` persistent liegen.
+
+Bildbytes und Embeddings duerfen nie in JSON, Cache, Log, Manifest, CSV, Report, eingebetteten Metadaten oder API-Aufrufen persistiert werden. Embeddings sind ausschliesslich waehrend des aktiven Container-Laufs im RAM zulaessig.
+
 ### 1.3 Sicherheits- und Compliance-Grenzen
 
-- Alle produktiven Pfade muessen innerhalb von `paths.basedir` liegen.
-- Phase 2 benoetigt valide Freigabe, Locks, konsistenten Batch-State und ein verifiziertes Archiv.
+- Alle produktiven Arbeits-, Daten-, Archiv- und Referenzpfade muessen innerhalb von `paths.basedir` liegen.
+- Ausschliesslich `finalization.publish_to_synology_photos.target_folder` darf innerhalb der separat validierten Wurzel `paths.publish_root` liegen.
+- `paths.publish_root` MUSS ein lokaler NAS-Pfad sein, der von Synology Photos indexiert werden kann, fuer den Workflow schreibbar ist und keine Symlink-Aufloesung ausserhalb der erlaubten Wurzel zulaesst.
+- `target_folder` MUSS innerhalb von `paths.publish_root` liegen.
+- Die Pfadpruefung MUSS kanonische Pfade vergleichen und `..`-Traversal, unerlaubte Symlinks und unerlaubte Mountwechsel blockieren.
+- Phase 2 benoetigt valide Freigabe, Locks, konsistenten Batch-State und verifizierte Archive.
 - Archive werden nicht ueberschrieben; unsichere Kollisionen erzeugen neue Namen.
 - Persistente Daten liegen ausserhalb des Container-Images.
 - Private Bilder, Laufzeitdaten, lokale Secrets und Caches gehoeren nicht in Git.
-- Die zentrale `config.yaml` ist eine bewusste Projektabweichung von einer separaten Beispielvorlage und muss daher secrets-frei bleiben.
-- PHASE3 darf nur Quell- und Zielpfade verwenden, die innerhalb von `paths.basedir` liegen und die bestehende Pfadvalidierung bestehen.
-- Ein aktivierter Transfer muss vollstaendig, nachvollziehbar und wiederaufnehmbar sein. Teiluebertragene Batches duerfen nicht als erfolgreich veroeffentlicht gelten.
+- Die zentrale `config.yaml` bleibt secrets-frei.
+- API-Credentials und Session-Token werden ausschliesslich ueber Container-Umgebungsvariablen bereitgestellt. Sie duerfen weder in Dateien noch in Batch-Manifests, CSVs, Logs, Reports oder Run-Summaries gespeichert werden.
+- PHASE3 darf Quellpfade nur innerhalb von `paths.basedir` und Veroeffentlichungszielpfade nur innerhalb von `paths.publish_root` verwenden.
 - Bei deaktiviertem Transfer darf PHASE3 keine Bilddatei aus `03_TEMP_DONE` verschieben, kopieren, loeschen oder umbenennen.
-- API-Credentials, Session-Token und vergleichbare Geheimnisse duerfen weder in Git noch in Batch-Manifests, CSVs, Logs oder Run-Summaries gespeichert werden.
-- Die API-Schicht darf nur bereits vorhandene lokale Workflow-Metadaten uebertragen. Bildbytes, Face-Crops, Embeddings und Referenzbilder duerfen nicht an die API uebermittelt werden.
-- API-Fehler duerfen niemals eine Loeschung, ein Ueberschreiben, einen Ruecktransfer oder eine sonstige unkontrollierte Datei aenderung ausloesen.
+- Die API darf nur bereits vorhandene lokale Workflow-Metadaten uebertragen. Bildbytes, Face-Crops, Embeddings und Referenzbilder duerfen nicht an die API uebermittelt werden.
+- API-Fehler duerfen niemals eine Loeschung, ein Ueberschreiben, einen Ruecktransfer oder eine sonstige unkontrollierte Dateiaenderung ausloesen.
 
 ---
 
@@ -121,7 +128,8 @@ Das Projekt trennt Betriebsschnittstelle, CLI, Fachmodule und den persistenten N
   - `01_TEMP_SD/`: Neue Eingangsbatches.
   - `02_TEMP_IMAGES/`: Phase-1-Review-Ausgabe.
   - `03_TEMP_DONE/`: Menschlich freigegebene Uebergabe.
-  - `04_TEMP_FINAL/` (optional): Lokaler Finalisierungsbereich, falls der veroeffentlichte Zielpfad nicht direkt verwendet wird.
+  - `04_TEMP_FINAL/` (optional): Kontrollierter lokaler Finalisierungsbereich fuer erfolgreich durch PHASE2 verarbeitete Batches, wenn vor der Veroeffentlichung eine lokale Zwischenpruefung erforderlich ist.
+  - `finalization.publish_to_synology_photos.target_folder`: Separat validierter Veroeffentlichungszielpfad innerhalb von `paths.publish_root`.
   - `WORKFLOW_DATA/`: States, Logs, Summaries, Caches, Referenzen, Modelle.
   - `MANUAL_KEEP/inbox/`: Manuelle Keep-Eingaenge.
   - `MANUAL_KEEP/used/`: Bereits zugeordnete Keep-Dateien.
@@ -146,9 +154,9 @@ Das Projekt trennt Betriebsschnittstelle, CLI, Fachmodule und den persistenten N
 | `MANUAL_KEEP` | Vorab ausgewaehlte, extern erhaltene JPGs (inbox, used). |
 | `finalization.publish_to_synology_photos.target_folder` | Optionaler Veroeffentlichungszielpfad. Er wird von Synology Photos indexiert. |
 
-Die tatsaechlichen Pfade sind konfigurierbar, muessen aber innerhalb eines erlaubten Basisverzeichnisses liegen mit ausnahme von `target_folder`. 
+Die tatsaechlichen Arbeits-, Daten-, Archiv- und Referenzpfade muessen innerhalb von `paths.basedir` liegen. Der Veroeffentlichungszielpfad `target_folder` ist die einzige Ausnahme und muss innerhalb von `paths.publish_root` liegen. Beide Wurzeln und alle darunterliegenden Pfade werden kanonisch validiert.
 
-`03_TEMP_DONE` bleibt der Arbeits- und Uebergabebereich nach manueller Freigabe und waehrend PHASE2. Ein Batch bleibt dort, wenn die optionale Veroeffentlichung deaktiviert ist. `target_folder` ist der Zielpfad der tatsaechlichen Veroeffentlichung, nicht lediglich ein Parameter fuer API-Aufrufe.
+`03_TEMP_DONE` bleibt der Arbeits- und Uebergabebereich nach manueller Freigabe und waehrend PHASE2. `04_TEMP_FINAL` kann als optionaler lokaler Finalisierungsbereich verwendet werden. Bei direktem Transfer wird der Batch nach `target_folder` uebertragen. Bei deaktivierter Veroeffentlichung bleibt der Batch in `03_TEMP_DONE` oder im kontrollierten `04_TEMP_FINAL` unveraendert.
 
 ### 2.4 Batch-Struktur und Benennung
 
@@ -178,11 +186,11 @@ Detaillierte Logik: Siehe Abschnitt 4.6.
 
 ### 3.1 Batch-ID und Zustandsdatei
 
-Die unveraenderliche `batchid` lautet `source-folder-name+fingerprint(8)` und bleibt beim Wechsel zwischen allen Arbeitsordnern gleich. Pro Batch gibt es genau eine zentrale Zustandsdatei `WORKFLOW_DATA/runtime/state/{batchid}.json`; globale Zustandsdateien sind unzulaessig.
+Die unveraenderliche `batch_id` lautet `source-folder-name+fingerprint(8)` und bleibt beim Wechsel zwischen allen Arbeitsordnern gleich. Pro Batch gibt es genau eine zentrale Zustandsdatei `WORKFLOW_DATA/runtime/state/{batch_id}.json`; globale Zustandsdateien sind unzulaessig.
 
-**Batch-ID-Bildung:** Die `batchid` wird bei Erstkontakt mit dem Batch aus dem Ordnernamen und einem 8-stelligen Fingerprint (SHA256, gekuerzt) gebildet. Sie bleibt ueber alle Ordnerwechsel hinweg unveraendert.
+**Batch-ID-Bildung:** Die `batch_id` wird bei Erstkontakt mit dem Batch aus dem Ordnernamen und einem 8-stelligen Fingerprint (SHA256, gekuerzt) gebildet. Sie bleibt ueber alle Ordnerwechsel hinweg unveraendert.
 
-**Beispiel:** Ein Ordner `2024-08-15_Geburtstag` erhaelt die `batchid` `2024-08-15_Geburtstag+a3f7c2e1`.
+**Beispiel:** Ein Ordner `2024-08-15_Geburtstag` erhaelt die `batch_id` `2024-08-15_Geburtstag+a3f7c2e1`.
 
 ### 3.2 PHASE1 Aufbereitung, Bewertung und Ablage
 
@@ -193,7 +201,7 @@ Die unveraenderliche `batchid` lautet `source-folder-name+fingerprint(8)` und bl
   1. Stabilitaets-, Namens-, Lock- und Symlink-Pruefung. Der Batch MUSS groessen- und hashstabil sein; aktive Locks oder unsichere Symlinks blockieren die Verarbeitung.
   2. Datumsnormalisierung. Aufnahmedaten werden aus Metadaten ermittelt, konsistent normalisiert und in Dateinamen und Batch-Metadaten uebernommen.
   3. ARW-Ablage nach `ARW`. Alle ARW-Dateien werden vollstaendig und hashgeprueft in den Unterordner `ARW` verschoben; die Zuordnung zu ihren JPGs wird dokumentiert.
-  4. Validiertes JPG-Archiv. JPGs werden auf Lesbarkeit, Integritaet und Dekodierbarkeit geprueft; fehlerhafte Dateien werden als Analysefehler gemeldet und blockieren stilles Scoring.
+  4. Validiertes JPG-Archiv. JPGs werden auf Lesbarkeit, Integritaet und Dekodierbarkeit geprueft; fehlerhafte Dateien werden als Analysefehler gemeldet. Eine Bewertung oder Endentscheidung ohne sichtbar dokumentierten Fehlerstatus ist stilles Scoring und DARF NICHT stattfinden.
   5. Feature- und Score-Ermittlung einschliesslich Manual Keep und Serienlogik. Pro JPG werden technische Scores, persoenlicher Geschmack, Eye-Score und Family-Score berechnet. Serienlogik gruppiert aehnliche Bilder, Manual Keep erzwingt `keep` fuer erfolgreich zugeordnete extern ausgewaehlte Bilder.
   6. Eingebettete Metadaten, CSV und Phase-1-Manifest. Ratings, Tags und Status werden in die Bilder geschrieben, anschliessend rueckgelesen und geprueft; zusaetzlich entsteht `SAVE/culling_scores.csv` und ein JSON-Manifest mit Dateiliste, Countern, Hashes und Phase-1-Status.
   7. Sichtbare Ablage in Hauptordner, `Review` oder `Rejected`. Jedes Bild wird entsprechend seiner Endentscheidung im Batch-Hauptordner, in `Review` oder in `Rejected` abgelegt; nur JPGs im Hauptordner gelten als aktiv und schuetzen ihr ARW.
@@ -201,9 +209,9 @@ Die unveraenderliche `batchid` lautet `source-folder-name+fingerprint(8)` und bl
 
 **PHASE1-Vertrag:**
 
-- Phase 1 MUSS genau einen zentralen Zustandsrecord pro `batchid` in `WORKFLOW_DATA/runtime/state/{batchid}.json` fuehren.
+- Phase 1 MUSS genau einen zentralen Zustandsrecord pro `batch_id` in `WORKFLOW_DATA/runtime/state/{batch_id}.json` fuehren.
 - Jeder Zustandsrecord MUSS mindestens `state`, `timestamp`, `hash` (SHA256 des vorherigen Zustands) und `producer_version` enthalten; `reason` ist optional bei Fehler oder Quarantaene.
-- Phase-1-Ergebnisse MUESSEN mindestens `batchid`, Pfade, Bildzaehler, ARW-Zaehler, Hash des `culling_scores.csv`, einen `manifest_hash` und den aktuellen Phase-/Review-/Kalibrierungsstatus enthalten.
+- Phase-1-Ergebnisse MUESSEN mindestens `batch_id`, Pfade, Bildzaehler, ARW-Zaehler, Hash des `culling_scores.csv`, einen `manifest_hash` und den aktuellen Phase-/Review-/Kalibrierungsstatus enthalten.
 - Das CSV MUSS pro Bild Scores, Serienmerkmale, Family-Match, Manual-Keep-Status und Metadatenstatus enthalten.
 - Die sichtbare Ablage MUSS im Batch-Unterordner die kanonischen Ordner `ARW`, `SAVE`, `Review` und `Rejected` verwenden; sie DARF keine ARWs still ueberschreiben oder loeschen.
 
@@ -212,17 +220,18 @@ Die unveraenderliche `batchid` lautet `source-folder-name+fingerprint(8)` und bl
 Fuer einen Batch in Phase 1 lautet der Kern-Zustandszweig:
 
 ```text
-phase1_started → phase1_completed
+phase1_started → phase1_moving → phase1_completed
 ```
 
 - `phase1_started` dokumentiert den Beginn der Phase-1-Verarbeitung fuer einen neu erkannten Batch.
+- `phase1_moving` dokumentiert, dass die sichtbare Batch-Uebergabe begonnen hat. Der Zustand wird vor dem sichtbaren Dateimove atomar geschrieben.
 - `phase1_completed` dokumentiert, dass alle acht Schritte der Phase 1 erfolgreich abgeschlossen und die Ergebnisse atomar nach `02_TEMP_IMAGES` uebergeben wurden.
 
 Zwischenzustand und Fehlerdetails werden ueber die allgemeine Zustandsdatei und Quarantaene abgebildet. Rueckwaerts-Uebergaenge sind nur bei Quarantaene zulaessig.
 
 **Beispiel:**
 
-Ein Ordner `2024-08-15_Geburtstag` wird nach `01_TEMP_SD` kopiert und erhaelt die `batchid` `2024-08-15_Geburtstag+a3f7c2e1`. Phase 1 prueft Stabilitaet und Symlinks, normalisiert Datum und Namen, lagert alle ARWs nach `ARW` aus, berechnet Scoring, Serien und Manual Keep, schreibt Metadaten und Manifest und legt die Bilder in Hauptordner, `Review` und `Rejected` ab. Anschliessend wird der Batch atomar nach `02_TEMP_IMAGES` verschoben und der Zustand `phase1_completed` geschrieben.
+Ein Ordner `2024-08-15_Geburtstag` wird nach `01_TEMP_SD` kopiert und erhaelt die `batch_id` `2024-08-15_Geburtstag+a3f7c2e1`. Phase 1 prueft Stabilitaet und Symlinks, normalisiert Datum und Namen, lagert alle ARWs nach `ARW` aus, berechnet Scoring, Serien und Manual Keep, schreibt Metadaten und Manifest und legt die Bilder in Hauptordner, `Review` und `Rejected` ab. Anschliessend wird der Batch atomar nach `02_TEMP_IMAGES` verschoben und der Zustand `phase1_completed` geschrieben.
 
 ---
 
@@ -232,18 +241,18 @@ Ein Ordner `2024-08-15_Geburtstag` wird nach `01_TEMP_SD` kopiert und erhaelt di
 - **Zweck:** Phase 2 archiviert einen nach Phase 1 fertig sortierten und vom Menschen gesichteten Batch und bereinigt kontrolliert die ARW-Dateien. Sie MUSS zuerst Phase-1-Manifest und Endentscheidungen validieren, bei manueller Freigabe einen unveraenderlichen Review-Record schreiben und erst danach archivieren. Ein ARW DARF nur geloescht werden, nachdem ein vollstaendiges Archiv erzeugt, geprueft, auf demselben Dateisystem atomar aktiviert und mit Hash protokolliert wurde. Bei jedem Fehler bleibt das ARW erhalten.
 
 - **Ablauf:**
-  1. Phase-2-Start. Phase 2 beginnt erst nach manueller Freigabe durch Move des gesamten Batches nach `03_TEMP_DONE` oder nach explizit zugelassener automatischer Uebergabe (`automatic_handoff`).
+  1. Phase-2-Start. Phase 2 beginnt erst nach manueller Freigabe durch Move des gesamten Batches nach `03_TEMP_DONE` oder nach explizit zugelassener automatischer Uebergabe (`automatic_handoff`). Die automatische Uebergabe ist nur zulaessig, wenn `phase2.automatic_handoff.enabled: true` gesetzt ist. Zusaetzlich duerfen keine JPGs in `Review` liegen und kein Bild darf `analysis_error` tragen. Bei deaktiviertem Flag ist ausschliesslich die manuelle Freigabe durch Verschieben des vollstaendigen Batches nach `03_TEMP_DONE` zulaessig.
   2. Validierung von Phase-1-Manifest und Endentscheidungen. Das Phase-1-Manifest, die sichtbare Ordnerstruktur und die Zuordnung ARW↔JPG werden geprueft.
   3. Blockierender Zustand `review_state_invalid`. Mehrdeutige Paarungen, mehrere wirksame JPG-Kopien, fehlende Quellhashes oder widerspruechliche Ordnerzustaende setzen `review_state_invalid`; der Batch wird nach `00_TEMP_ERROR` verschoben und als `blocking` gemeldet. Es DARF keine ARW-Aktion stattfinden.
   4. Review-Record und Kalibrierungsindex (manuelle Freigabe). Bei manueller Freigabe MUSS zuerst ein unveraenderlicher Review-Record mit menschlicher Endentscheidung geschrieben werden, danach ein Kalibrierungsindex fuer den Gewichtungsassistenten.
-  5. Archivierung. Phase 2 erzeugt ein Archiv gemaess Archivvertrag, prueft es vollstaendig per Dateiliste, Groesse und SHA256, behandelt Namenskollisionen durch neue Archivnamen und aktiviert das Archiv auf demselben Dateisystem atomar.
+  5. Archivierung. Phase 2 erzeugt ein Archiv gemaess Archivvertrag, prueft es vollstaendig per Dateiliste, Groesse und SHA256, behandelt Namenskollisionen durch neue Archivnamen und aktiviert das Archiv auf demselben Dateisystem atomar. Vor jeder ARW-Bereinigung MUSS Phase 2 ein vollstaendiges JPG-Sicherungs-ZIP mit allen JPGs aus dem Batch-Hauptordner, `Review` und `Rejected` erzeugen, vollstaendig pruefen und hashprotokollieren. Zusaetzlich MUSS ein ARW-Entscheidungs-ZIP nach der bisherigen Bash-Schutzlogik erzeugt werden. Es enthaelt die nach der finalen Sichtung noch durch aktive JPGs geschuetzten ARWs. Beide Archive werden per Dateiliste, Groesse und SHA256 geprueft und atomar aktiviert. Kollisionen duerfen nie ueberschrieben werden. Ein ARW darf erst nach erfolgreicher Archivaktivierung und vollstaendiger Dokumentation geloescht werden.
   6. ARW-Bereinigung. Erst nach erfolgreicher Archivaktivierung und protokolliertem Archiv-Hash werden die betroffenen ARW-Dateien geloescht; die Bereinigung wird mit Dateiliste und Hashes dokumentiert.
   7. Abschluss und Uebergabe an PHASE3. Nach vollstaendiger Archivierung und ARW-Bereinigung wird `phase2_completed` gesetzt. Der Batch verbleibt in `03_TEMP_DONE` und ist Kandidat fuer die optionale Phase 3.
 
 **PHASE2-Vertrag:**
 
 - Phase 2 MUSS nur fuer Batches mit `phase1_completed` und gueltiger Freigabe (`03_TEMP_DONE` oder `automatic_handoff`) starten.
-- Bei manueller Freigabe MUSS ein unveraenderlicher `review_decision_record.json` mit `batchid`, menschlicher Entscheidung, Vorhersage, Uebereinstimmung, Konfigurationsfingerprint und Producer-Version geschrieben werden.
+- Bei manueller Freigabe MUSS ein unveraenderlicher `review_decision_record.json` mit `batch_id`, menschlicher Entscheidung, Vorhersage, Uebereinstimmung, Konfigurationsfingerprint und Producer-Version geschrieben werden.
 - Archivplan und Archiv-Inhalt MUESSEN die im Archivvertrag definierten Pflichtfelder (relative Pfade, Groessen, Hashes, Zeitstempel, Pfad zur ZIP, Entry-Count, Total-Size, Konfigurationsfingerprint, Producer-Version) enthalten.
 - Ein ARW DARF erst geloescht werden, nachdem Archiv und Bereinigung vollstaendig dokumentiert sind; bei jedem Fehler bleibt das ARW erhalten.
 - Phase 2 MUSS jeden Zustandsuebergang atomar, mit Zeitstempel und Hash protokollieren; Rueckwaerts-Uebergaenge sind nur bei Quarantaene zulaessig.
@@ -296,16 +305,16 @@ Ein Batch in `02_TEMP_IMAGES` wird vom Menschen vollstaendig gesichtet. Anschlie
   2. `finalization.enabled: false` beendet PHASE3 ohne Datei- oder API-Aktion; der Batch bleibt unveraendert in `03_TEMP_DONE`.
   3. Bei `finalization.enabled: true` und `publish_to_synology_photos.enabled: false` validiert PHASE3 Konfiguration, State und Pfade und erzeugt nur Plan-/Reportartefakte; der Batch bleibt unveraendert in `03_TEMP_DONE`.
   4. Bei `publish_to_synology_photos.enabled: true` schreibt PHASE3 zuerst ein atomar validiertes `finalization_manifest.json` mit Quelle, Ziel, Modus, Dateiliste, Groessen und SHA256-Hashes.
-  5. `mode: move` verschiebt den Batch erst nach erfolgreichem Zielabgleich; `mode: copy` kopiert den Batch und erhaelt die Quelle in `03_TEMP_DONE`.
+  5. `mode: move` bedeutet zwingend `copy → verify → source removal`. Der vollständige Zielbestand wird zunächst aufgebaut und per Dateiliste, Größe und SHA256 verifiziert. Erst danach darf die Quelle entfernt werden. Diese Semantik gilt auch über unterschiedliche Dateisysteme hinweg und ist kein atomarer Dateisystem-Move; `mode: copy` kopiert den Batch und erhaelt die Quelle in `03_TEMP_DONE`.
   6. Nach dem Transfer prueft PHASE3 die Vollstaendigkeit aller Zieldateien per Dateiliste, Groesse und SHA256. Erst dann wird `phase3_transferred_to_target` gesetzt.
-  7. PHASE3 wartet mindestens `wait_for_index_seconds` und loest anschliessend jedes Zielbild als Synology-Photos-Item auf. Nicht aufgeloeste oder mehrdeutige Items werden nicht beschrieben.
+  7. PHASE3 wartet mindestens `wait_for_index_seconds` und höchstens `max_index_wait_seconds` auf die Indexierung. Wird das Ziel innerhalb der Maximalwartezeit nicht eindeutig aufgelöst, wird `phase3_indexing_timeout` gesetzt. Der Zustand ist resume-fähig und löst keine Dateiaktion aus.
   8. Nur bei `synology_api.enabled: true` und nach erfolgreicher Item-Aufloesung uebertraegt der API-Adapter die erlaubten Metadaten. Die Werte werden aus bereits vorhandenen Workflow-Metadaten uebernommen, nicht neu berechnet.
   9. Bei aktivierter Ruecklesepruefung liest PHASE3 die geschriebenen Werte erneut und bestaetigt Rating, Tags und optionale Beschreibung.
   10. Jeder Zustandsuebergang, Transfer und API-Versuch wird atomar mit Zeitstempel, Konfigurationsfingerprint und Ergebnis protokolliert.
 
 **PHASE3-Vertrag:**
 
-- PHASE3 MUSS `batchid`, `source_batch_path`, `target_batch_path` (falls Transfer aktiv), `publish_enabled`, `transfer_mode` (falls Transfer aktiv), `state`, `timestamp`, `config_fingerprint`, `producer_version` und `finalization_manifest_hash` enthalten.
+- PHASE3 MUSS `batch_id`, `source_batch_path`, `target_batch_path` (falls Transfer aktiv), `publish_enabled`, `transfer_mode` (falls Transfer aktiv), `state`, `timestamp`, `config_fingerprint`, `producer_version` und `finalization_manifest_hash` enthalten.
 - Bei API-Nutzung MUSS zusaetzlich pro Bild ein lokaler Korrelationsrecord mit `relative_path`, `resolved_item_status`, `metadata_status`, `attempt_count` und `last_error` (optional, secrets-frei) gefuehrt werden.
 
 **Beispiele:**
@@ -351,6 +360,8 @@ Fuer einen Batch mit aktiver PHASE3, aber deaktivierter Veroeffentlichung lautet
 ```text
 phase2_completed → phase3_finalization_planned → phase3_publish_disabled
 ```
+
+PHASE3 darf entweder direkt von `03_TEMP_DONE` nach `target_folder` übertragen oder den optionalen Bereich `04_TEMP_FINAL` als kontrollierte lokale Zwischenstufe verwenden. Teilübertragungen gelten nie als erfolgreich veröffentlicht.
 
 `phase3_publish_disabled` ist kein Fehlerzustand. Er dokumentiert, dass PHASE3 bewusst keine Datei- oder API-Aktion ausfuehren durfte.
 
@@ -405,10 +416,11 @@ Ein PHASE3-Fehler darf keinen automatischen Rueckwaerts-Move ausloesen. Ein bere
 
 ### 3.7 Fehler- und Recovery-Vertrag
 
-- **Fehlende oder ungueltige Steuerdaten:** Nach `WORKFLOW_DATA/runtime/quarantine` kopieren, mit Grund, Zeit, Hash melden; sichere Neuerstellung oder menschliche Pruefung erforderlich.
-- **Atomaritaet:** Inhalt erzeugen, validieren, temporaer auf gleichem Dateisystem schreiben, erneut validieren, atomar ersetzen; vorherige Version bis Aktivierung erhalten.
-- **Lock:** Globaler Lock verhindert parallele produktive Laeufe; Lock vor/nach Lauf pruefen.
-- **Quarantaene:** Fehlerhafte Artefakte nach `WORKFLOW_DATA/runtime/quarantine` mit Manifest blockierend melden; menschliche Pruefung erforderlich.
+- **Fehlende oder ungültige Steuerdaten:** Nach `WORKFLOW_DATA/runtime/quarantine` kopieren, mit Grund, Zeit und Hash melden; sichere Neuerstellung oder menschliche Prüfung erforderlich.
+- **Batch-Quarantäne:** Unsichere oder blockierte Batches nach `00_TEMP_ERROR` verschieben und als `blocking` melden.
+- **Atomarität:** Inhalt erzeugen, validieren, temporär auf demselben Dateisystem schreiben, erneut validieren und atomar ersetzen; die vorherige gültige Version bleibt bis zur Aktivierung erhalten.
+- **Lock:** Globaler Lock verhindert parallele produktive Läufe; Lock vor und nach dem Lauf prüfen.
+- **Recovery:** Ein Recovery darf Originale, Archive, Zustandsnachweise oder menschliche Entscheidungen nicht löschen.
 
 ---
 
@@ -462,21 +474,22 @@ Ein PHASE3-Fehler darf keinen automatischen Rueckwaerts-Move ausloesen. Ein bere
 
 **Score-Vertrag:** `eye_score` ist eine Fliesskommazahl im Bereich [0,0 bis 1,0] (Wahrscheinlichkeit fuer offene Augen) oder `None`.
 
-### 4.5 Bekannte Gesichtserkennung (Familie, family_score)
+### 4.5 Bekannte Gesichtserkennung (Familie, `family_score`)
 
-- **Status:** Pflicht.
-- **Zweck:** Liefert ein moderates positives Signal fuer bewusst gepflegte, bekannte Personen. Keine allgemeine Gesichtserkennung, kein Clustering unbekannter Gesichter.
+- **Status:** Pflicht, sobald der Face-Adapter aktiviert ist.
+- **Zweck:** Liefert ein moderates positives Signal für bewusst gepflegte, bekannte Personen. Keine allgemeine Gesichtserkennung, kein Clustering unbekannter Gesichter.
 - **Ablauf:**
-  1. Backend (Registry-basiert, Standard: `opencv_yunets_face_cpu`) erzeugt Embedding.
-  2. Vergleich gegen aktive Referenzen einer Person (`faces/<slug>/reference` mit `selection.json` Status `active`).
-  3. Nur bei eindeutigem Match (Schwelle + Sicherheitsmarge zum Zweitbesten) wird `family_score` gesetzt und ein Personentag vergeben.
-  4. Klare Treffer erzeugen Vorschlaege in `faces/<slug>/new_faces`, die ein Mensch durch Kopieren nach `reference` bestaetigt.
+  1. Das registrierte Backend erzeugt ein Embedding ausschließlich flüchtig im RAM.
+  2. Der Vergleich erfolgt gegen aktive Referenzen einer Person unter `faces/<slug>/reference` mit `selection.json` und Status `active`.
+  3. Nur bei eindeutigem Match mit Schwelle und Sicherheitsmarge zum Zweitbesten wird `family_score` gesetzt und ein Personentag vergeben.
+  4. Neue Face-Crop-Vorschläge werden ausschließlich unter `faces/<slug>/new_faces` persistent gespeichert.
+  5. Die Verschiebung eines Vorschlags von `new_faces` nach `reference` erfolgt ausschließlich manuell durch den Menschen. Automatische Aktivierung ist verboten.
 
-**Schutzgrenzen:** Bilder, Bildbytes, Face-Crops, Referenzbilder sowie Bild-Face-CLIP-Embeddings sind ausschliesslich fluechtig im RAM zulaessig und duerfen nie in JSON, Cache, Log, Manifest, CSV, Metadaten oder Report persistiert werden.
+**Schutzgrenzen:** Bildbytes und Embeddings dürfen nie in JSON, Cache, Log, Manifest, CSV, Metadaten oder Report persistiert werden. Automatisch erzeugte Face-Crops dürfen nur in `new_faces` geschrieben werden. Nach manueller Aktivierung dürfen sie als aktive Referenzen in `reference` liegen.
 
-**Face-Backend-Vertrag:** Jedes Backend MUSS eine Registry-ID, einen Adapter-Namen, einen Modellhash, einen Provider-Namen, eine Vorverarbeitungs-Pipeline, eine Metrik und einen Auswahlfingerprint bereitstellen.
+**Face-Backend-Vertrag:** Jedes Backend MUSS Registry-ID, Adaptername, Modellhash, Provider, Vorverarbeitung, Metrik und Auswahlfingerprint bereitstellen.
 
-**Score-Vertrag:** `family_score` ist eine Fliesskommazahl im Bereich [0,0 bis 1,0] oder `None`.
+**Score-Vertrag:** `family_score` ist eine Fließkommazahl im Bereich [0,0 bis 1,0] oder `None`.
 
 ### 4.6 Manual Keep (manual_keep, manual_keep_match)
 
@@ -518,7 +531,7 @@ Ein PHASE3-Fehler darf keinen automatischen Rueckwaerts-Move ausloesen. Ein bere
 ---
 
 ## 5. Referenzpool-Verwaltung, Rebuild und Nutzen-Ranking 
-- **Status:** Optional.
+- **Status:** Pflicht, sobald der Geschmacks- oder Face-Adapter aktiviert ist.
 ### 5.1 Ziel
 
 Die Referenzpool-Verwaltung ist die gemeinsame Regel fuer Geschmack und bekannte Gesichter. Sie stellt sicher, dass aktive Referenzen klein, qualitativ sinnvoll und divers bleiben. Sie trennt Vorschlagsdateien von aktiven Referenzen, erzwingt menschliche Freigabe, aktualisiert Wahrheitsdateien und baut bei jeder aktiven Aenderung die Referenzbasis neu auf.
@@ -545,6 +558,8 @@ pool_root/
 - Face: `pool_root = WORKFLOW_DATA/faces/<slug>`, `new = new_faces`, Dateien = Face-Crops.
 - Geschmack: `pool_root = WORKFLOW_DATA/samples`, `new = new_refs`, Dateien = Ganzbilder.
 
+Bei Face-Pools werden neue Face-Crops automatisch ausschließlich in `new_faces/` gespeichert. Die manuelle Verschiebung nach `reference/` ist der einzige Aktivierungsschritt. Bei Geschmackspools werden Vorschläge in `new_refs/` gespeichert und ebenfalls nur manuell nach `reference/` aktiviert.
+
 ### 5.4 Wahrheitsdatei (selection.json)
 
 Jeder Pool hat genau eine `selection.json` im Hauptordner. Sie ist die alleinige Wahrheit ueber aktive Referenzen, offene Vorschlaege, Kapazitaetsgrenzen, Auswahlfingerprint und Rangdetails.
@@ -568,7 +583,7 @@ Jeder Eintrag in `images` MUSS folgende Felder enthalten:
 - `source_id`
 - `batch_id`
 - `path` (oder `crop_source`)
-- `status` (`active` oder `new`)
+- `status` (`active`, `new` oder `unknown`)
 - `quality_score`
 - `pool_utility_score` (oder `candidate_utility_score`)
 - `pool_rank` (nur `active`)
@@ -577,6 +592,8 @@ Jeder Eintrag in `images` MUSS folgende Felder enthalten:
 **Face-spezifisch:** `bounding_box`, `face_confidence`, `original_path`.
 **Geschmack-spezifisch:** `base_score`.
 
+`unknown` darf ausschließlich durch Recovery entstehen. Ein Eintrag mit `unknown` darf weder für Matching noch für Training verwendet werden.
+
 ### 5.6 Kapazitaetsgrenzen
 
 | Grenze | Typ | Wirkung |
@@ -584,7 +601,7 @@ Jeder Eintrag in `images` MUSS folgende Felder enthalten:
 | `max_active` | Hard Limit | Darf nicht ueberschritten werden; weitere Aktivierungen blockiert. |
 | `max_new` | Hard Limit | Darf nicht ueberschritten werden; weitere Vorschlaege blockiert. |
 | `max_new_per_batch` | Hard Limit | Pro `batch_id` darf diese Grenze nicht ueberschritten werden. |
-| `min_active` | Soft Limit | Warnung, wenn darunter; Modell kann unzulaessig werden. |
+| `min_active` | Soft Limit | Wenn der Wert unterschritten wird, pausiert nur der betroffene Adapter. Sein Score wird `null`; der übrige Batch-Lauf wird fortgesetzt. Eine Reaktivierung erfolgt erst nach erfolgreichem Rebuild mit ausreichender aktiver Referenzmenge. |
 | `target_active` | Ziel | Angestrebter Bereich; System meldet, wenn deutlich darunter oder darueber. |
 
 ### 5.7 Konfiguration
@@ -655,6 +672,8 @@ Ein Rebuild ist zwingend, wenn sich der aktive Referenzbestand aendert:
 - Face: Referenz-Embeddings fuer die bekannte Person, Auswahl- und Cache-Fingerprint.
 - Geschmack: Aktiver Praeferenzindex bzw. lokales Geschmacksprofil, bei trainierbaren Adaptern auch das lokale Modell.
 - Base Score: separate, konfigurierbare Basis fuer technisches Culling.
+
+Embeddings dürfen nie persistent gespeichert werden. Referenz-Embeddings werden nur bei Änderung des aktiven Referenzpools oder nach Container-Neustart neu aufgebaut. Innerhalb eines laufenden Container-Laufs dürfen sie bis zur nächsten Pooländerung ausschließlich im RAM gehalten werden. `selection_fingerprint` und `pool_build_id` müssen zur Cache-Validierung verglichen werden
 
 **Schritte:**
 1. Anzahl aktiver Dateien zaehlen.
@@ -737,7 +756,7 @@ Scheitert ein Schritt, bleibt die vorherige Poolversion aktiv; der Fehler wird i
   "severity": "info",
   "type": "reference_pool_batch_limit_reached",
   "pool": "samples",
-  "batchid": "2024-08-15_Geburtstag+a3f7c2e1",
+  "batch_id": "2024-08-15_Geburtstag+a3f7c2e1",
   "message": "Die Hoechstzahl offener Vorschlaege pro Batch (max_new_per_batch=5) fuer Batch '2024-08-15_Geburtstag+a3f7c2e1' ist erreicht.",
   "action": "Bitte new_refs/ pruefen: relevante Bilder nach reference/ verschieben."
 }
@@ -778,9 +797,31 @@ Scheitert ein Schritt, bleibt die vorherige Poolversion aktiv; der Fehler wird i
 - **Zweck:** Macht jedem Lauf auf einen Blick klar, was passiert ist und was der Mensch tun muss.
 - **Ablauf:** JSON-Run-Summary, Scheduler-Ausgabe, CSV, Logs, `user_actions_required`.
 
+### 6.4 Abnahme
+
+Die Implementierung ist nur abnahmefähig, wenn mindestens folgende Prüfungen erfolgreich sind:
+
+- `batch_id` wird durchgängig verwendet; `batchid` kommt nicht mehr vor.
+- `paths.publish_root` und `target_folder` werden separat und kanonisch validiert.
+- `04_TEMP_FINAL` ist vorhanden und seine Rolle in PHASE3 ist eindeutig beschrieben.
+- `phase1_moving` ist im Zustandsweg enthalten.
+- Stilles Scoring ist definiert und verboten.
+- `review_state_invalid` verhindert jede ARW-Aktion.
+- Das JPG-Sicherungs-ZIP enthält alle JPGs aus Hauptordner, `Review` und `Rejected`.
+- Das ARW-Entscheidungs-ZIP wird vor jeder geschützten ARW-Löschung verifiziert.
+- Ein `move` setzt `copy → verify → source removal` um.
+- PHASE3 ist bei deaktivierter Veröffentlichung dateilos.
+- Index-Timeouts sind resume-fähig.
+- API-Secrets werden ausschließlich über Umgebungsvariablen bereitgestellt.
+- Unbekannte Gesichter und Embeddings werden nicht unzulässig persistent gespeichert.
+- Face-Crops werden automatisch nur in `new_faces` gespeichert und nur manuell nach `reference` aktiviert.
+- `unknown` ist ausschließlich im Recovery-Fall zulässig.
+- Bei `min_active` wird nur der betroffene Adapter pausiert; sein Score ist `null`.
+- Eine Referenzpooländerung invalidiert den RAM-Cache und löst einen Rebuild aus.
+
 ---
 
-#### 7.0 Stil- und Formatvereinheitlichung
+## 7. Stil- und Formatvereinheitlichung
 
 - Ueberschriften als Markdown-Header.
 - Listen mit Bindestrichen.
@@ -790,7 +831,7 @@ Scheitert ein Schritt, bleibt die vorherige Poolversion aktiv; der Fehler wird i
 
 ---
 
-#### 8.0 Wichtige Regeln
+## 8. Wichtige Regeln
 
 1. Git enthaelt nie Modellgewichte, private Bilder, Referenzen, Face-Crops, Embeddings, Laufzeitdaten, Caches, Logs oder Secrets.
 2. NAS enthaelt alle Workflow-Daten und Konfiguration mit Produktionspfaden.
@@ -853,30 +894,21 @@ if [ -z "$BATCH_ID" ]; then
 fi
 ```
 
-#### A6 – Beispiel-Funktion
+#### A6 – Beispiel-Betriebsfunktion
 
 ```bash
-# create_manifest()
-# Zweck: Erstellt Batch-Manifest mit Hashes fuer alle JPGs und ARWs
-# Eingabe: $1 (Pfad zum Batch-Ordner)
-# Ausgabe: manifest.json im Batch-Ordner
-# Rueckgabe: 0 bei Erfolg, 1 bei Fehler
-# Abhaengigkeiten: jq, sha256sum
-create_manifest() {
-    local batch_path="$1"
-    local jpg_count=$(find "$batch_path" -name "*.jpg" | wc -l)
-    local arw_count=$(find "$batch_path" -name "*.arw" | wc -l)
-    cat > "$batch_path/manifest.json" <<EOF
-{
-    "batchid": "$BATCH_ID",
-    "image_count": $jpg_count,
-    "arw_count": $arw_count,
-    "created_at": "$(date -Iseconds)"
+# === Betriebsprüfung und CLI-Start ===
+# Zweck: Prüft NAS-Mount und startet ausschließlich die Python-CLI.
+# Fachlogik für Dateien, Scores, Manifeste und Archive liegt in Python.
+mountpoint -q "$WORKFLOW_BASEDIR" || {
+    echo "Fehler: NAS-Mount fehlt"
+    exit 2
 }
-EOF
-    echo "Manifest erstellt: $batch_path/manifest.json"
-    return 0
-}
+
+docker compose run --rm workflow \\
+    python -m app.cli phase1 \\
+    --config /config/config.yaml \\
+    --batch-id "$BATCH_ID"
 ```
 
 #### A7 – Validierung und Abnahme
@@ -986,7 +1018,11 @@ Bei Fehlern: Config ungueltig markieren, loggen, manuelle Korrektur.
 Gilt fuer alle README-Dateien im NAS-Workflow-Bereich:
 
 - `PHOTO_WORKFLOW/README.md`
-- `TEMP_SD/README.md`, `TEMP_IMAGES/README.md`, `TEMP_DONE/README.md`, `TEMP_ERROR/README.md`
+- `01_TEMP_SD/README.md`
+- `02_TEMP_IMAGES/README.md`
+- `03_TEMP_DONE/README.md`
+- `04_TEMP_FINAL/README.md`
+- `00_TEMP_ERROR/README.md`
 - `MANUAL_KEEP/README.md`, `MANUAL_KEEP/inbox/README.md`, `MANUAL_KEEP/used/README.md`
 - `WORKFLOW_DATA/README.md` und alle direkten Unterordner
 
@@ -1023,7 +1059,7 @@ Gilt fuer alle README-Dateien im NAS-Workflow-Bereich:
 - Aenderungshistorie im CHANGELOG.md.
 - Migration bei Struktur- oder Prozessaenderung.
 
-#### C5 — Beispiel-README fuer TEMP_SD
+#### C6 — Beispiel-README fuer TEMP_SD
 
 ```markdown
 ## TEMP_SD
@@ -1052,8 +1088,8 @@ Ein Batch gilt als abgeschlossen, wenn Phase 1 erfolgreich nach `TEMP_IMAGES/` v
 
 ### Fehlerfaelle
 - Ungueltiger Ordnername: Ignorieren, Log-Eintrag, manuelle Pruefung erforderlich.
-- Fehlende ARWs: Phase 1 setzt `failed_metadata`, Batch wandert nach `TEMP_ERROR/`.
-- Beschaedigte Dateien: Phase 1 setzt `analysis_error`, Batch wird quaraentaenisiert.
+- Fehlende ARWs: Der Batch wird nicht automatisch als Metadatenfehler behandelt. Die Zuordnung wird geprüft; bei widersprüchlicher Struktur greift `review_state_invalid`.
+- Beschädigte JPGs: Phase 1 setzt `analysis_error`; der Batch oder das betroffene Artefakt wird nach dem Fehlervertrag behandelt.
 
 ### Konfiguration
 - `paths.temp_sd`
@@ -1064,30 +1100,14 @@ Ein Batch gilt als abgeschlossen, wenn Phase 1 erfolgreich nach `TEMP_IMAGES/` v
 
 ### Anhang D — Referenzpool-Vertrag
 
-#### D1 — Geltungsbereich
+### Anhang D — Referenzpool-Feldreferenz
 
-Dieser Vertrag gilt fuer:
+Die normative Referenzpool-Logik steht ausschließlich in Abschnitt 5. Dieser Anhang enthält keine zweite Regelquelle.
 
-- **Face-Referenzpools:** `WORKFLOW_DATA/faces/<slug>/` (je bekannte Person)
-- **Geschmacks-Referenzpool:** `WORKFLOW_DATA/samples/`
-
-Nicht gueltig fuer Manual Keep, technische Culling-Bilder ausserhalb der konfigurierten Modellbasis und unbekannte Gesichter.
-
-#### D2 — Ordnerstruktur
-
-```text
-<pool_root>/
-├── reference/
-├── new_*/
-└── selection.json
-```
-
-- Face: `new_faces/`, Face-Crops.
-- Geschmack: `new_refs/`, Ganzbilder.
-
-#### D3 — `selection.json`
+#### D1 – `selection.json`
 
 Pflichtfelder:
+
 - `schema_version`
 - `pool_type`
 - `slug` (nur Face)
@@ -1098,100 +1118,22 @@ Pflichtfelder:
 - `limits`
 - `images`
 
-Verboten: Embeddings, Bildbytes, Face-Crops oder andere binaere Daten.
-
-#### D4 — Bild-Metadaten
+#### D2 – Bilddatensatz
 
 Pflichtfelder:
+
 - `source_id`
-- `batchid`
+- `batch_id`
 - `path` oder `crop_source`
-- `status`
+- `status`: `active`, `new` oder `unknown`
 - `quality_score`
 - `pool_utility_score` oder `candidate_utility_score`
-- `pool_rank`
-- `approved_at`
+- `pool_rank` und `approved_at` nur bei `status: active`
 
-Face-spezifisch: `bounding_box`, `face_confidence`, `original_path`.
+Face-spezifische Felder: `bounding_box`, `face_confidence`, `original_path`.
+Geschmacksspezifische Felder: `base_score`.
 
-Geschmack-spezifisch: `base_score`.
-
-#### D5 — Kapazitaetsgrenzen
-
-- `max_active`: Hard Limit
-- `max_new`: Hard Limit
-- `max_new_per_batch`: Hard Limit
-- `min_active`: Soft Limit
-- `target_active`: Ziel
-
-#### D6 — Dynamische Stellenzahl
-
-- `rank_digits = max(1, ceil(log10(n + 1)))`
-- Dateinamen: `{rank_zfill}__{original_name}_{suffix}.{ext}`
-- Aufsteigend sortiert: bester Nutzen zuerst.
-
-#### D7 — Pool-Rebuild
-
-Ausloeser:
-- Verschiebung von `new_*` nach `reference/`
-- Entfernen aus `reference/`
-- Aenderung von Dateien, Modellen, Vorverarbeitung oder Fingerprint
-- Inkonsistenz zwischen `selection.json` und Ordnerinhalt
-
-Schritte:
-1. Anzahl aktiver Dateien zaehlen.
-2. `rank_digits` berechnen.
-3. Nutzenranking berechnen.
-4. Temporaere Dateien erzeugen.
-5. Finale Namen setzen.
-6. Neue `selection.json` validieren.
-7. `selection.json` atomar ersetzen.
-8. `rank_digits` und `pool_build_id` schreiben.
-
-#### D8 — Datenschutz
-
-- Embeddings duerfen nie persistent gespeichert werden.
-- Face-Crops sind die einzige persistente Form von Gesichtsdaten.
-- Originalbilder bleiben unveraendert.
-
-#### D9 — Abnahmekriterien
-
-- Rebuild bei neuem Geschmacksbild.
-- Rebuild pro Person bei neuem Gesichtsbild.
-- Atomare Umbenennung ohne Dateiverlust.
-- Keine Vorschlaege ueber `max_new_per_batch`.
-- Keine automatischen Loeschungen bei `max_new` oder `max_active`.
-- Keine Embeddings in `selection.json`.
-- Rangzahl am Dateianfang.
-- Dynamische Stellenzahl.
-- Sortierung im Dateimanager nach Rang.
-
-#### D10 — `reference_pools.common`
-
-| Parameter | Typ | Sinnvoller Bereich | Empfohlener Startwert | Beschreibung |
-|-----------|-----|-------------------|----------------------|--------------|
-| `max_active` | int | 30–200 | 100 | Maximale aktive Referenzen pro Pool. |
-| `min_active` | int | 20–50 | 30 | Minimale aktive Referenzen pro Pool. |
-| `target_active` | int | 30–100 | 50 | Zielanzahl aktiver Referenzen. |
-| `max_new` | int | 10–50 | 20 | Maximale offene Vorschlaege pro Pool. |
-| `max_new_per_batch` | int | 3–10 | 5 | Maximale offene Vorschlaege pro Batch. |
-
-#### D11 — `reference_pools.taste`
-
-| Parameter | Typ | Sinnvoller Bereich | Empfohlener Startwert | Beschreibung |
-|-----------|-----|-------------------|----------------------|--------------|
-| `min_quality_score` | float (0.0–1.0) | 0.6–0.8 | 0.70 | Mindestqualitaet fuer Vorschlaege. |
-| `max_redundancy` | float (0.0–1.0) | 0.85–0.95 | 0.90 | Maximale Redundanz. |
-| `base_score_pool_size` | int | 30–100 | 50 | Separate Modellbasis fuer technisches Culling. |
-
-#### D12 — `reference_pools.faces`
-
-| Parameter | Typ | Sinnvoller Bereich | Empfohlener Startwert | Beschreibung |
-|-----------|-----|-------------------|----------------------|--------------|
-| `min_quality_score` | float (0.0–1.0) | 0.6–0.8 | 0.70 | Mindestqualitaet fuer Vorschlaege. |
-| `max_redundancy` | float (0.0–1.0) | 0.90–0.98 | 0.95 | Maximale Redundanz. |
-| `crop_size` | int | 128–512 | 256 | Crop-Groesse in Pixeln. |
-| `min_face_size` | int | 64–256 | 128 | Mindest-Groesse eines Gesichts. |
+`unknown` ist ausschließlich für Recovery zulässig. Embeddings, Bildbytes und binäre Daten sind in `selection.json` verboten.
 
 ---
 
@@ -1207,8 +1149,11 @@ Schritte:
 
 #### E2 — Recovery
 
-- Fehlende Dateien: Eintrag entfernen.
-- Neue Dateien: Eintrag aufnehmen (`status: unknown`, keine Scores).
-- `reference/`-Aenderung: Rebuild ausloesen.
+- Fehlende Dateien: Eintrag aus `selection.json` entfernen und Änderung protokollieren.
+- Neue nicht zuordenbare Dateien: Eintrag mit `status: unknown` aufnehmen; keine Scores vergeben; nicht für Matching oder Training verwenden; menschliche Prüfung verlangen.
+- Änderung in `reference/`: Rebuild auslösen.
+- Änderung in `reference/`: RAM-Embedding-Cache invalidieren.
+- Änderung von Modell, Vorverarbeitung, Auswahlparametern, `selection_fingerprint` oder `pool_build_id`: Rebuild und Cache-Neuaufbau auslösen.
+- Scheitert ein Rebuild: vorherige Poolversion aktiv lassen und Fehler in der Run-Summary melden.
 
 ---
