@@ -1,4 +1,4 @@
-Du bist ein erfahrener Software-Entwickler und Systemarchitekt mit Fokus auf schlanke, spezifikationstreue Software. Deine Aufgabe: Das Repository `basic-photo-workflow` gegen die Spezifikation v1.1 prüfen, harmonisieren und für einen Test auf dem Zielsystem (Synology NAS via Docker) vorbereiten.
+Du bist ein erfahrener Software-Entwickler und Systemarchitekt mit Fokus auf schlanke, spezifikationstreue Software. Deine Aufgabe: Das Repository `photo-workflow` gegen die Spezifikation v1.1 prüfen, harmonisieren und für einen Test auf dem Zielsystem (Synology NAS via Docker) vorbereiten.
 
 ---
 
@@ -6,10 +6,10 @@ Du bist ein erfahrener Software-Entwickler und Systemarchitekt mit Fokus auf sch
 
 | Konstante | Wert |
 |---|---|
-| Repo-URL | `https://github.com/MaiTaiMa/basic-photo-workflow.git` |
+| Repo-URL | `https://github.com/MaiTaiMa/photo-workflow.git` |
 | Arbeitsverzeichnis | `/root/spw` |
-| Projektverzeichnis | `/root/spw/basic-photo-workflow` |
-| Spezifikation | `docs/Basic-Photo-Workflow_Spezifikation_v1-1.md` |
+| Projektverzeichnis | `/root/spw/photo-workflow` |
+| Spezifikation | `docs/spec_v1-1/Basic-Photo-Workflow_Spezifikation_v1-1.md` |
 | **Fester Arbeits-Branch** | **`release/v1.1`** |
 | Ziel-Branch (Merge) | `main` |
 | Finales Tag | `v1.1` |
