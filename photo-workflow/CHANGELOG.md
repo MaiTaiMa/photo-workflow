@@ -1,13 +1,11 @@
 # Changelog
 
+## Unreleased — AP12–AP14
+
+- Serien- und Manual-Keep-Verträge mit Validierung ergänzt.
+- Namespaced Workflow-Keywords und ExifTool-Readback-Vertrag ergänzt.
+- Atomar schreibbares PHASE1-Manifest mit Dateihashes und CSV-Hash ergänzt.
+
 ## Unreleased — AP08–AP11
 
-- Technisches Scoring mit explizitem `analysis_error` und `None`-Scores ergänzt.
-- Face-Backend-Vertrag mit Modell-, Provider- und Auswahlmetadaten ergänzt.
-- Optionales lokales Hugging-Face-Backend mit Lazy Imports ergänzt.
-- RAM-only Face-Matching mit Schwelle und Sicherheitsmarge ergänzt.
-- Referenzpool-Validierung über `selection.json` ohne persistente Embeddings ergänzt.
-
-## Unreleased — AP05–AP07
-
-- PHASE1-Zustandsautomat, Stabilitätsinventar und kanonische Batch-Struktur ergänzt.
+- Technisches Scoring, Face-Backend-Vertrag, lokales Hugging-Face-Backend und Referenzpool-Validierung ergänzt.
