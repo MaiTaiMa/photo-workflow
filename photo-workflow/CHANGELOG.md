@@ -1,12 +1,12 @@
 # Changelog
 
+## Unreleased — AP21.4
+
+- Strikte Betriebsprüfung für API-Credentials, Pilotfreigabe und Publish-Konfiguration ergänzt.
+- SIGTERM-/SIGINT-Vertrag für sichere Pause vor teuren Schritten ergänzt.
+- JSON-Security-Audit gegen Embeddings, Bildbytes und Secrets ergänzt.
+- Tests für API-, Runtime- und Security-Gates ergänzt.
+
 ## Unreleased — AP21.3
 
-- Atomaren Referenzpool-Rebuild mit Ranking, Limits und Fingerprints ergänzt.
-- `selection.json` bleibt frei von Embeddings und Bildbytes.
-- Face-Crops werden ausschließlich unter `new_faces` gespeichert.
-- RAM-Referenzcache wird bei geändertem Pool-Fingerprint invalidiert und neu aufgebaut.
-
-## Unreleased — AP21.2
-
-- State-, Manifest- und Archivprüfung gehärtet.
+- Referenzpool-Rebuild, Face-Crop-Vertrag und Cache-Invalidierung ergänzt.
