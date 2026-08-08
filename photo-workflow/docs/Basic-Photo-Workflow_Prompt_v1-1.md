@@ -1,58 +1,80 @@
-Du bist ein erfahrener Software-Entwickler und Systemarchitekt mit Fokus auf schlanke, spezifikationstreue Software. Deine Aufgabe: Das Repository `photo-workflow` gegen die Spezifikation v1.1 prüfen, harmonisieren und für einen Test auf dem Zielsystem (Synology NAS via Docker) vorbereiten.
+# Implementierung eines Arbeitspakets
 
----
+Implementiere das Arbeitspaket aus:
 
-## Feste Konstanten (niemals ändern)
+`[AP-DATEI].md`
 
-| Konstante | Wert |
-|---|---|
-| Repo-URL | `https://github.com/MaiTaiMa/photo-workflow.git` |
-| Arbeitsverzeichnis | `/root/spw` |
-| Projektverzeichnis | `/root/spw/photo-workflow` |
-| Spezifikation | `docs/spec_v1-1/Basic-Photo-Workflow_Spezifikation_v1-1.md` |
-| **Fester Arbeits-Branch** | **`release/v1.1`** |
-| Ziel-Branch (Merge) | `main` |
-| Finales Tag | `v1.1` |
-| Finale ZIP | `basic-photo-workflow-v1.1.zip` |
+im bereits analysierten und empfohlenen Repository.
 
-**Wichtig:** Alle Commits erfolgen ausschließlich auf dem festen Branch `release/v1.1`. Lege keine weiteren Feature-Branches an. Der Merge gegen `main` erfolgt erst ganz am Ende nach meiner Freigabe.
+## Verbindliche Grundlagen
 
----
+Nutze als Grundlage ausschließlich:
 
-## Absolut verbindliche Leitprinzipien
+1. `00AP.md` – verbindliche Gesamtarchitektur
+2. `[AP-DATEI].md` – Spezifikation des aktuellen Arbeitspakets
+3. den bestehenden Repository-Code und dessen Tests
 
-1. **Die Spezifikation v1.1 ist unumstößlich.** Sie ist die einzige Referenz. Jede Zeile Code, jede Datei und jede Funktion muss sich gegen sie rechtfertigen lassen.
-2. **Anti-Bloat-Gebot:** Du darfst das Projekt NICHT über die Spezifikation hinaus erweitern. Keine ungefragten Features, keine zusätzlichen Abstraktionsschichten, keine "nützlichen" Hilfsmodule, keine neue Dokumentation außer den von der Spezifikation geforderten. Erweiterungs-Ideen stellst du als Vorschlag vor – implementiert wird NUR nach meiner ausdrücklichen Freigabe.
-3. **Delta-Regel:** Bei jeder Prüfung ordnest du jeden Fund einer von vier Kategorien zu:
-   - **FEHLT** (in Spec gefordert, nicht im Repo) → implementieren
-   - **ABWEICHEND** (vorhanden, aber spec-widrig) → an Spec anpassen
-   - **ÜBERFLÜSSIG** (im Repo, nicht in Spec gefordert, kein Beitrag zur Ausführbarkeit) → entfernen (nur nach meiner Freigabe, einzeln entschieden)
-   - **KONFORM** → unverändert lassen
-5. **Die Spezifikationsdatei bleibt im Projekt** und wird niemals gelöscht, verschoben oder inhaltlich geändert.
-6. **Verdrahtungs-Gebot:** Jede implementierte Funktion muss vollständig verdrahtet sein – von der Eingabe (CLI/API/Config) über die Verarbeitung bis zur Ausgabe. Keine toten Codepfade, keine Stubs, keine ungenutzten Module, keine Imports ohne Verwendung, keine Config-Keys ohne Konsumenten.
-7. **Ausführbarkeits-Gebot:** Das Projekt muss nach jedem Arbeitspaket importierbar/ausführbar sein. Verifiziere das durch Imports, Smoke-Tests und die vorhandene Testsuite.
-8. **Freigabe-Gebot:** Nach jedem Arbeitspaket wartest du auf „Ja" oder „Weiter", bevor du das nächste beginnst.
+Die vollständige Spezifikation v1.1 und v10.2 sind nur dann zusätzlich zu konsultieren, wenn die oben genannten Dokumente eine konkrete Frage nicht eindeutig beantworten.
 
----
+## Aufgabe
 
-## Wiederholbare Gesamtprüfung (auf meinen Befehl: „Gesamtprüfung")
+Setze **ausschließlich das angegebene Arbeitspaket** vollständig um.
 
-Diese Prüfung kann beliebig oft angefordert werden, auch zwischen Arbeitspaketen. Zerlege die folgende komplexe Aufgabe in kleine, klar abgegrenzte Arbeitspakete. Bearbeite immer nur ein Arbeitspaket vollständig und verständlich.
+Dabei:
 
-Nach jedem Paket halte an und frage exakt: „Soll ich weitermachen?“
+- bestehende Architektur einhalten,
+- definierte Schnittstellen unverändert verwenden,
+- definierte Datenmodelle einhalten,
+- bestehende Funktionalität nicht unnötig verändern,
+- keine zusätzlichen Features entwickeln,
+- keine zukünftigen Funktionen aus v10.2 implementieren,
+- kein ungeplantes Refactoring durchführen.
 
-Fahre nur fort, wenn ich mit „JA“ antworte. Sobald alle Arbeitspakete erledigt sind, melde eindeutig: „Aufgabe vollständig abgeschlossen.“
+Analysiere vor der Änderung nur die für das Arbeitspaket relevanten Dateien und deren direkte Abhängigkeiten.
 
-1. **Spec-Konformität:** Jedes Spec-Kapitel gegen das Repo prüfen → aktualisierte Delta-Tabelle ausgeben.
-2. **Verdrahtung:** Vollständiger Aufrufgraph aller Einstiegspunkte; tote Funktionen, ungenutzte Module/Imports/Config-Keys identifizieren.
-3. **Bloat-Check:** Alle Dateien auflisten, die keine Spec-Anforderung erfüllen und nicht zur Ausführbarkeit beitragen → Entfernungs-Vorschläge mit Begründung (Synology API ausgenommen).
-4. **Ausführbarkeit:** Sauberer Import aller Module, komplette Testsuite, Docker-Build (`docker build`), Container-Smoke-Test.
-5. **Ergebnis:** Bericht mit Kategorien FEHLT / ABWEICHEND / ÜBERFLÜSSIG / KONFORM und konkreten Folge-APs. **Frage mich**, welche Folge-APs du anlegen sollst.
-6. **ZIP:** `basic-photo-workflow-v1-1.zip` mit dem kompletten Projektstand inkl. Spezifikation, Tests, Docker-Dateien und Dokumentation erstellen und zum Download bereitstellen.
-7. **Abschlussbericht:** erfüllte Spec-Kapitel, entfernte Überreste, Testergebnisse, bekannte Einschränkungen.
+## Implementierung
 
----
+Alle im AP definierten Dateien, Funktionen, Klassen und Schnittstellen müssen tatsächlich implementiert und in den vorgesehenen Workflow integriert werden.
 
-## Start
+Keine Stubs, ungenutzten Funktionen oder nicht verdrahteten Module hinterlassen.
 
-**Beginne jetzt mit der Gesamtprüfung**
+Falls die Umsetzung eine Änderung an `00AP.md`, einer bestehenden Schnittstelle oder einem anderen abgeschlossenen AP erfordern würde:
+
+**nicht eigenständig ändern**, sondern den Konflikt melden und vor der Änderung anhalten.
+
+## Tests
+
+Führe die im AP definierten Tests aus bzw. ergänze sie.
+
+Prüfe mindestens:
+
+- Importierbarkeit der geänderten Module
+- relevante Unit-Tests
+- relevante Integrationstests
+- bestehende Tests, soweit sie durch die Änderung betroffen sein können
+- einen geeigneten Smoke-Test
+
+Behebe Fehler nur, wenn sie durch dieses Arbeitspaket verursacht werden oder für dessen korrekte Implementierung notwendig sind.
+
+## Abschluss
+
+Gib nach der Implementierung kompakt aus:
+
+**Geändert:**
+- neue/geänderte Dateien
+
+**Umgesetzt:**
+- wichtigste implementierte Funktionen
+
+**Tests:**
+- ausgeführte Tests
+- Ergebnis
+
+**Abweichungen/Probleme:**
+- nur falls vorhanden
+
+**AP-Status:**
+- ABGESCHLOSSEN
+- oder BLOCKIERT mit Begründung
+
+Implementiere anschließend **kein weiteres Arbeitspaket** und warte auf die Freigabe für das nächste AP.
