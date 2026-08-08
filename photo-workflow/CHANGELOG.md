@@ -1,12 +1,12 @@
 # Changelog
 
+## Unreleased — AP18–AP20
+
+- PHASE3-Transfer mit Dry-Run, Copy/Verify/Remove und Zielbestand-Hashprüfung ergänzt.
+- Synology-Photos-Adapter als capability-gated Dry-Run-Adapter ergänzt.
+- API-Schreiboperationen und Personen-Zuordnung bleiben bis zum Pilotlauf deaktiviert.
+- Resume-fähige Index-Status- und secrets-freie Korrelationsrecords ergänzt.
+
 ## Unreleased — AP15–AP17
 
-- Unveränderliche Review-Records mit Konfigurationsfingerprint ergänzt.
-- Kalibrierungsindex an den Review-Record gebunden.
-- Verifizierte ZIP-Archive mit Dateiliste, Größen, SHA256 und Kollisionsschutz ergänzt.
-- Sichere Batch-Quarantäne ohne Löschung des Originals ergänzt.
-
-## Unreleased — AP12–AP14
-
-- Serien-, Manual-Keep-, Metadaten- und PHASE1-Manifest-Verträge ergänzt.
+- Review-Records, verifizierte Archive und Recovery-Quarantäne ergänzt.
