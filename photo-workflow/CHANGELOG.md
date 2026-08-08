@@ -1,12 +1,11 @@
 # Changelog
 
+## Unreleased — AP22.0
+
+- Nichtverändernder Audit für 98AP-Skript- und JSON-Regeln ergänzt.
+- Prüfungen für Header, Version, Kommentarhinweise, Zeilenlänge und JSON-Pflichtfelder ergänzt.
+- AP22.0-Ausführung und Grenzen dokumentiert.
+
 ## Unreleased — AP21.5
 
-- CI-Workflow für Unit-, Integrations- und Security-Tests ergänzt.
-- End-to-End-Vertrag für PHASE1 bis PHASE3-Dry-Run ergänzt.
-- Repository-Security-Test gegen persistierte Embeddings und Secrets ergänzt.
-- Abnahmematrix und offene Produktiv-Gates dokumentiert.
-
-## Unreleased — AP21.4
-
-- Strikte Betriebs- und Sicherheits-Gates ergänzt.
+- CI, End-to-End-Verträge, Security-Test und Abnahmematrix ergänzt.
