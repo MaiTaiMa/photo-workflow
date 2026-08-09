@@ -22,6 +22,7 @@ import shutil
 from datetime import datetime
 from typing import Dict, List, Any, Tuple, Optional, Set
 from pathlib import Path
+from app.utils import top_level_images, top_level_jpgs, is_jpg_file
 
 # =============================================================================
 # Konstanten
@@ -33,6 +34,10 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".JPG", ".JPEG", ".png", ".PNG"}
 # =============================================================================
 # Hilfsfunktionen fur Batch-Erkennung
 # =============================================================================
+
+def now():
+    """ISO-8601 Zeitstempel für Logs."""
+    return datetime.now().isoformat()
 
 def _normalize_filename(filename: str) -> str:
     """Normalisiert Dateinamen fur case-insensitive Vergleiche."""

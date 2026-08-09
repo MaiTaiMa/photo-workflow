@@ -26,11 +26,13 @@ import os
 import shutil
 import sys
 import time
+import re
+import zipfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-import re
-import zipfile
+from app.utils import top_level_jpgs, is_jpg_file
+
 
 import yaml
 
@@ -192,7 +194,7 @@ def load_config(path: str | Path) -> dict:
     personal_cfg = cfg.setdefault('personal_scoring', {})
     personal_cfg.setdefault('enabled', True)
     personal_cfg.setdefault('source_dir', cfg.get('training', {}).get('sample_images_dir', cull.get('reference_scoring', {}).get('folder', str(Path(cfg['paths']['base_dir']) / 'reference_images'))))
-    personal_cfg.setdefault('model_path', cfg['paths'].get('personal_model', str(Path(cfg['paths']['base_dir']) / 'models' / 'personal' / 'user_taste_model.json'))))
+    personal_cfg.setdefault('model_path', cfg['paths'].get('personal_model', str(Path(cfg['paths']['base_dir']) / 'models' / 'personal' / 'user_taste_model.json')))
     personal_cfg.setdefault('cache_enabled', True)
     personal_cfg.setdefault('cache_dir', str(Path(personal_cfg['model_path']).parent))
     personal_cfg.setdefault('cache_rebuild_mode', 'incremental')
@@ -696,26 +698,33 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     log(cfg, f"[FAMILY MODEL] status={family_info['status']} people={family_info['person_count']} cache_used={family_info['used_cache']} cache_rebuilt={family_info['rebuilt_cache']}")
 
     # ==========================================================================
-    # SCHRITT 2: MANUAL_KEEP prufen (AP2 - Vorrang vor automatischer Bewertung)
+    # SCHRITT 2: MANUAL_KEEP prufen (mit Feature-Vektor-Matching)
     # ==========================================================================
     manual_keep_inbox = Path(cfg['paths']['manual_keep_inbox'])
     manual_keep_used = Path(cfg['paths']['manual_keep_used'])
-    
+
+    # similarity_threshold aus Config laden
+    manual_keep_cfg = cfg.get('manual_keep', {})
+    similarity_threshold = float(manual_keep_cfg.get('similarity_threshold', 0.85))
+
     manual_keep_images, manual_keep_status = detect_manual_keep_images(
         batch_path=workdir,
         manual_keep_inbox=manual_keep_inbox,
         manual_keep_used=manual_keep_used,
+        similarity_threshold=similarity_threshold,
     )
-    
-    # Terminal-Ausgabe fur MANUAL_KEEP
+
+    # Terminal-Ausgabe für MANUAL_KEEP
     if manual_keep_status['status'] == 'matched':
-        print(f"[MANUAL_KEEP] inbox={manual_keep_status['inbox_count']} matched={manual_keep_status['matched_count']}")
+        print(f"[MANUAL_KEEP] inbox={manual_keep_status['inbox_count']} matched={manual_keep_status['matched_count']} threshold={similarity_threshold}")
         for img in manual_keep_images:
             print(f"  [MANUAL_KEEP] KEEP: {img.name}")
     elif manual_keep_status['status'] == 'no_inbox':
-        print(f"[MANUAL_KEEP] kein inbox-Batch fur {workdir.name}")
+        print(f"[MANUAL_KEEP] inbox-Ordner fehlt oder leer")
     elif manual_keep_status['status'] == 'empty_inbox':
-        print(f"[MANUAL_KEEP] inbox-Batch leer fur {workdir.name}")
+        print(f"[MANUAL_KEEP] inbox-Ordner leer")
+    elif manual_keep_status['status'] == 'no_match':
+        print(f"[MANUAL_KEEP] keine ähnlichen Bilder gefunden (threshold={similarity_threshold})")
 
     # ==========================================================================
     # SCHRITT 3: Culling-Rows vorbereiten
