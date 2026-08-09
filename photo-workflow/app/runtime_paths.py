@@ -2,13 +2,13 @@
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/runtime_paths.py
-# PURPOSE:     Validierung und Erzeugung von Runtime-Pfaden fuer AP2
+# PURPOSE:     Validierung und Erzeugung von Runtime-Pfaden für AP2
 # AUTHOR:      Benjamin (via AP2-Implementierung)
 # DATE:        2026-08-09
 # VERSION:     1.0.0 (AP2)
 # REQUIRES:    Python 3.8+, config.yaml mit runtime-Sektion
 # CHANGES:
-#   2026-08-09: Initiale Implementierung fuer AP2
+#   2026-08-09: Initiale Implementierung für AP2
 # =============================================================================
 """
 
@@ -21,7 +21,10 @@ REQUIRED_RUNTIME_KEYS = [
     'run_summaries_dir', 'calibration_batches_dir',
 ]
 
+REQUIRED_PATHS_KEYS = ['base_dir', 'temp_sd', 'temp_images', 'temp_done', 'temp_error', 'workflow_data']
+
 def is_path_within_base(path: str, base_dir: str) -> bool:
+    """Prueft, ob ein Pfad kanonisch innerhalb von base_dir liegt."""
     if '..' in path:
         return False
     base_resolved = os.path.realpath(os.path.abspath(base_dir))
@@ -29,6 +32,7 @@ def is_path_within_base(path: str, base_dir: str) -> bool:
     return path_resolved.startswith(base_resolved + os.sep) or path_resolved == base_resolved
 
 def validate_path_safe(path: str, base_dir: str, allow_symlinks: bool = False) -> Tuple[bool, List[str]]:
+    """Umfassende Sicherheitsvalidierung eines Pfades."""
     errors = []
     if '..' in path:
         errors.append(f"Path-Traversal erkannt: {path}")
@@ -37,11 +41,16 @@ def validate_path_safe(path: str, base_dir: str, allow_symlinks: bool = False) -
         errors.append("Pfad ist leer")
         return False, errors
     if not is_path_within_base(path, base_dir):
-        errors.append(f"Pfad liegt ausserhalb von base_dir: {path}")
+        errors.append(f"Pfad liegt außerhalb von base_dir: {path}")
         return False, errors
+    if not allow_symlinks and os.path.islink(path):
+        if not is_path_within_base(os.path.realpath(path), base_dir):
+            errors.append(f"Symlink zeigt außerhalb von base_dir: {path}")
+            return False, errors
     return True, errors
 
 def validate_runtime_paths(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """Validiert alle Runtime-Pfade gegen base_dir."""
     errors = []
     paths_config = config.get('paths', {})
     base_dir = paths_config.get('base_dir')
@@ -69,9 +78,26 @@ def validate_runtime_paths(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
             is_valid, path_errors = validate_path_safe(path_value, base_dir, allow_symlinks=False)
             if not is_valid:
                 errors.extend([f"runtime.{key}: {err}" for err in path_errors])
+    for key in ['temp_sd', 'temp_images', 'temp_done', 'temp_error', 'temp_final']:
+        if key in paths_config:
+            path_value = paths_config[key]
+            if isinstance(path_value, str) and path_value.strip():
+                full_path = os.path.join(base_dir, path_value)
+                is_valid, path_errors = validate_path_safe(full_path, base_dir, allow_symlinks=False)
+                if not is_valid:
+                    errors.extend([f"paths.{key}: {err}" for err in path_errors])
+    for key in ['manual_keep_inbox', 'manual_keep_used']:
+        if key in paths_config:
+            path_value = paths_config[key]
+            if isinstance(path_value, str) and path_value.strip():
+                full_path = os.path.join(base_dir, path_value)
+                is_valid, path_errors = validate_path_safe(full_path, base_dir, allow_symlinks=False)
+                if not is_valid:
+                    errors.extend([f"paths.{key}: {err}" for err in path_errors])
     return len(errors) == 0, errors
 
 def create_runtime_dirs(config: Dict[str, Any], dry_run: bool = False) -> Tuple[bool, List[str], List[str]]:
+    """Erzeugt alle Runtime-Verzeichnisse nach erfolgreicher Validierung."""
     created_dirs = []
     errors = []
     paths_config = config.get('paths', {})
@@ -84,6 +110,8 @@ def create_runtime_dirs(config: Dict[str, Any], dry_run: bool = False) -> Tuple[
     for key in dir_keys:
         if key in runtime_config:
             dir_path = runtime_config[key]
+            if key.endswith('_file') or key.endswith('_log'):
+                dir_path = os.path.dirname(dir_path)
             if not dry_run:
                 try:
                     os.makedirs(dir_path, exist_ok=True)
@@ -114,6 +142,7 @@ def create_runtime_dirs(config: Dict[str, Any], dry_run: bool = False) -> Tuple[
     return len(errors) == 0, created_dirs, errors
 
 def initialize_runtime(config: Dict[str, Any], dry_run: bool = False) -> Tuple[bool, Dict[str, Any]]:
+    """Vollstaendige Initialisierung der Runtime-Pfade."""
     result = {'valid': False, 'errors': [], 'created_dirs': [], 'runtime_paths': {}}
     is_valid, errors = validate_runtime_paths(config)
     result['valid'] = is_valid
@@ -139,6 +168,7 @@ def initialize_runtime(config: Dict[str, Any], dry_run: bool = False) -> Tuple[b
     return True, result
 
 def get_test_config(base_dir: str) -> Dict[str, Any]:
+    """Erzeugt eine gueltige Test-Konfiguration."""
     return {
         'paths': {
             'base_dir': base_dir,
