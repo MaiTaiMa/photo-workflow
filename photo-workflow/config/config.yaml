@@ -378,12 +378,12 @@ reference_pools:
 
 # -----------------------------------------------------------------------------
 # family_recognition
-# CLI-kompatibler Familienadapter. reference_dir verweist auf deine reale Struktur.
+# DYNAMISCH: Alle Ordner in faces/ werden als Personen betrachtet
 # -----------------------------------------------------------------------------
 family_recognition:
-  # enabled: Familienerkennung aktivieren.
+  # enabled: Gesichtserkennung aktivieren
   # Mögliche Werte: true oder false.
-  # Auswirkung: true sucht in WORKFLOW_DATA/faces/<slug>/reference/ nach Referenzen.
+  # Auswirkung: true aktiviert Face-Erkennung; false deaktiviert.
   enabled: true
 
   # reference_dir: Wurzel aller Personenslugs.
@@ -391,9 +391,10 @@ family_recognition:
   # Auswirkung: Fehlt dieser Pfad, meldet Phase 1 reference_dir_missing.
   reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/faces
 
-  # cache_dir: Laufzeitcache für Familienmodell-Metadaten.
+  # cache_dir: Speicherort ausschließlich für nicht-sensitive Cache-Metadaten.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir/models/family_faces.
-  # Auswirkung: Der Cache wird bei Referenzänderungen ungültig; keine Embeddings persistent speichern.
+  # Auswirkung: Referenz-Fingerprints und Laufstatus dürfen persistieren,
+  #             Embeddings dürfen dort niemals gespeichert werden.
   cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
 
   # cache_enabled: Cache-Metadaten verwenden.
@@ -421,9 +422,10 @@ family_recognition:
   # Auswirkung: true routet unsichere Treffer zu Review statt Reject.
   protect_detected_family: true
 
-  # default_person_weight: Standardgewicht für nicht individuell konfigurierte Personen.
-  # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
-  # Auswirkung: Bestimmt den Beitrag zum family_score.
+  # default_person_weight: Standardgewicht fur NICHT konfigurierte Personen
+  # Mögliche Werte: Fließ·kommazahl von 0.0 bis 1.0.
+  # Auswirkung: Alle Ordner ohne explizites Gewicht erhalten diesen Wert.
+  # BEISPIEL: "EXAMPLE_PERSON" bekommt 0.35, wenn nicht explizit konfiguriert.
   default_person_weight: 0.35
 
   # match_tolerance: Maximale akzeptierte Face-Distanz.
@@ -441,9 +443,11 @@ family_recognition:
   # Auswirkung: Begrenzt Laufzeit und Poolgröße.
   max_reference_images_per_person: 100
 
-  # person_weights: Exakte Slugs deiner NAS-Ordner in Kleinbuchstaben.
-  # Mögliche Werte: Slug -> Fließkommazahl von 0.0 bis 1.0.
-  # Auswirkung: Überschreibt default_person_weight für die jeweilige Person.
+  # person_weights: OPTIONALE Gewichte fur BEKANNTE Personen
+  # Mögliche Werte: Slug -> Fließ·kommazahl von 0.0 bis 1.0.
+  # Auswirkung: Uberschreibt default_person_weight fur die jeweilige Person.
+  # WICHTIG: Nur bekannte Slugs eintragen! Neue Ordner automatisch mit Default.
+  # BEISPIEL: "chris" ist bekannt, "EXAMPLE_PERSON" bekommt Default (0.35).
   person_weights:
     chris: 0.35
     daniel: 0.35
@@ -511,6 +515,16 @@ personal_scoring:
   # Auswirkung: Unterhalb dieses Limits pausiert nur personal_score.
   min_reference_images: 5
 
+  # force_cache_rebuild: Vollständigen Rebuild des persönlichen Caches beim nächsten Lauf erzwingen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true nur einmal setzen, danach wieder false.
+  force_cache_rebuild: false
+
+  # recursive: Persönliche Referenzunterordner durchsuchen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: false berücksichtigt nur den direkten Referenzordner.
+  recursive: false
+
 # -----------------------------------------------------------------------------
 # models
 # Lokale Modellgewichte. network-Zugriff und automatische Downloads bleiben gesperrt.
@@ -533,6 +547,7 @@ models:
     max_input_side: 1600
     nms_threshold: 0.30
     top_k: 5000
+    min_face_size: 128
 
   face_recognition:
     backend: opencv
@@ -566,40 +581,157 @@ series_detection:
   demote_non_best_to: review
 
 # -----------------------------------------------------------------------------
+# training
+# Lokale Trainingspfade für den optionalen persönlichen Geschmacksadapter.
+# Alle Daten bleiben innerhalb von WORKFLOW_DATA.
+# -----------------------------------------------------------------------------
+training:
+  # sample_images_dir: Kompatibilitätspfad für train-personal.
+  # Mögliche Werte: Ordner innerhalb von base_dir.
+  # Auswirkung: Der CLI-Trainingslauf verwendet diesen Pfad bei fehlendem Argument.
+  sample_images_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training/reference
+
+  # exported_labels_dir: Zielordner für exportierte Trainingslabels.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir.
+  # Auswirkung: Labels werden revisionsfähig getrennt von Bilddateien abgelegt.
+  exported_labels_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/training/exported_labels
+
+  # runs_dir: Zielordner für Trainingslauf-Artefakte.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir.
+  # Auswirkung: Technische Trainingsergebnisse bleiben im erlaubten Datenbereich.
+  runs_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/training/runs
+
+  # min_labeled_images: Mindestzahl gelabelter Bilder für einen Trainingslauf.
+  # Mögliche Werte: Positive Ganzzahl.
+  # Auswirkung: Unterhalb des Werts blockiert der Trainingsadapter den Start.
+  min_labeled_images: 20
+
+# -----------------------------------------------------------------------------
 # metadata_culling
 # Namespaced Metadaten. ExifTool muss mit shell=False arbeiten und zurücklesen.
 # -----------------------------------------------------------------------------
 metadata_culling:
+  # enabled: Metadaten-Culling aktivieren.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true schreibt ausschließlich freigegebene Workflow-Metadaten.
   enabled: true
+
+  # write_rating: Sternebewertung schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true schreibt die validierte Bewertungsstufe.
   write_rating: true
+
+  # write_keywords: Namespaced Keywords schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true schreibt workflow:, decision:, series:, family: und person:.
   write_keywords: true
+
+  # write_score_bands: Scorebereiche als Metadaten schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true schreibt Score-Bänder, false schreibt keine Score-Bänder.
   write_score_bands: true
+
+  # write_raw_scores_to_keywords: Rohscores als Keywords schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: false verhindert die Persistenz detaillierter Rohscore-Werte.
   write_raw_scores_to_keywords: false
+
+  # keep_backup: ExifTool-Backupdateien behalten.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: false entfernt ExifTool-Backups nach erfolgreicher Rückprüfung.
   keep_backup: false
+
+  # exiftool_path: Lokaler ExifTool-Aufruf.
+  # Mögliche Werte: PATH-Name oder absoluter Pfad.
+  # Auswirkung: Fehlendes ExifTool wird als Status gemeldet; keine Shell wird gestartet.
   exiftool_path: exiftool
+
+  # keyword_schema: Namespaced Keyword-Vertrag.
+  # Mögliche Werte: namespaced_v1.
+  # Auswirkung: Verhindert Kollisionen mit fremden Metadaten.
   keyword_schema: namespaced_v1
 
 # -----------------------------------------------------------------------------
 # manual_keep
 # Manuelle Keep-Entscheidungen haben Vorrang vor jeder automatischen Bewertung.
+# AP8-Vertrag: Inbox/Used-Logik für idempotente Zuordnung.
 # -----------------------------------------------------------------------------
 manual_keep:
+  # enabled: MANUAL_KEEP-Verarbeitung aktivieren.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true aktiviert die Prüfung auf manuell geschutzte Bilder vor dem Culling.
+  #           false deaktiviert MANUAL_KEEP komplett; alle Bilder unterliegen der automatischen Bewertung.
   enabled: true
+
+  # inbox_dir: Eingang für manuell geschutzte Bilder.
+  # Mögliche Werte: Ordner innerhalb von base_dir.
+  # Auswirkung: Bilder, deren Dateinamen in diesem Ordner liegen, werden zwingend als KEEP markiert.
+  #           Der Ordner muss existieren; bei Fehlen wird MANUAL_KEEP still ubersprungen.
+  # Voraussetzung: Ordnerstruktur MANUAL_KEEP/inbox/BATCH_NAME/ oder MANUAL_KEEP/inbox/IMAGE.JPG
   inbox_dir: ../NAS_EXAMPLE/MANUAL_KEEP/inbox
+
+  # used_dir: Bereits idempotent zugeordnete Manual-Keep-Quellen.
+  # Mögliche Werte: Ordner innerhalb von base_dir.
+  # Auswirkung: Nach erfolgreicher Phase-1-Verarbeitung werden inbox-Bilder hierhin verschoben.
+  #           Verhindert doppelte Zuordnung derselben Quelle bei wiederholten Läufen.
+  # Hinweis: Der Ordner wird bei Bedarf automatisch erstellt.
   used_dir: ../NAS_EXAMPLE/MANUAL_KEEP/used
+
+  # locks_dir: Lock-Verzeichnis für AP8-Idempotenz.
+  # Mögliche Werte: Ordner innerhalb von MANUAL_KEEP.
+  # Auswirkung: Verhindert parallele Zuordnungen desselben Bildes.
+  #           Jede Zuordnung erhält einen zeitlich begrenzten Lock.
+  # Hinweis: Wird intern verwendet; manuelle Eingriffe sind nicht erforderlich.
   locks_dir: ../NAS_EXAMPLE/MANUAL_KEEP/.locks
+
+  # recovery_log: Recovery-Log für MANUAL_KEEP-Zuordnungen.
+  # Mögliche Werte: Datei innerhalb von MANUAL_KEEP.
+  # Auswirkung: Protokolliert Zuordnungen und ermöglicht Wiederherstellung nach Fehlern.
+  #           Enthalt Assignment-IDs, Zeitstempel und User-Informationen.
+  # Hinweis: Wird intern verwendet; Format ist JSON.
   recovery_log: ../NAS_EXAMPLE/MANUAL_KEEP/.recovery_info.json
 
 # -----------------------------------------------------------------------------
 # reporting
 # Reports enthalten ausschließlich Metadaten, Pfade, Status und Scores.
+# 98AP-Regeln: Keine Bildbytes, Embeddings oder Secrets in Reports.
 # -----------------------------------------------------------------------------
 reporting:
+  # write_json_summary: JSON-Laufzusammenfassung schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true erzeugt eine nicht-binä·¨re JSON-Datei mit Status, Hashes und Handlungsbedarf.
+  #           false erzeugt keine JSON-Summary; nur CSV und Terminal-Ausgabe.
+  # Hinweis: true empfohlen für Auditierbarkeit und Scheduler-Integration.
   write_json_summary: true
-  write_csv_scores: true
-  stdout_mode: scheduler_mail
-  require_user_actions_required: true
 
+  # write_csv_scores: Scorezeilen als CSV schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true erzeugt eine CSV-Datei mit allen Scores und Entscheidungen pro Bild.
+  #           false erzeugt keine CSV; nur JSON-Summary und Terminal-Ausgabe.
+  # Hinweis: CSV enthält keine Bildbytes oder Embeddings; nur Metadaten und Scores.
+  write_csv_scores: true
+
+  # json_summary_dir: Ordner für nicht-binä·¨re Laufzusammenfassungen.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
+  # Auswirkung: true bei write_json_summary schreibt Reports nur in diesen Ordner.
+  #           Der Ordner wird bei Bedarf automatisch erstellt.
+  # Hinweis: Reports sind revisionsfä·¨hig und enthalten Config-Fingerprint, Hashes und Zeitstempel.
+  json_summary_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/run_summaries
+
+  # stdout_mode: Ausgabeformat für Scheduler/Administration.
+  # Mögliche Werte: scheduler_mail.
+  # Auswirkung: Formatiert den Abschlussreport für Scheduler-Mailaufbereitung.
+  #           Andere Modi sind derzeit nicht implementiert.
+  # Hinweis: Dieser Wert beeinflusst nur die Terminal-Ausgabe, nicht die Datei-Reports.
+  stdout_mode: scheduler_mail
+
+  # require_user_actions_required: Handlungsbedarf explizit melden.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true meldet volle Queues und Recovery-Aufgaben als User-Actions.
+  #           false unterdruckt diese Meldungen; nur Status und Counts werden ausgegeben.
+  # Hinweis: true empfohlen für vollständige Transparenz und manuelle Nachsteuerung.
+  require_user_actions_required: true
+  
 # -----------------------------------------------------------------------------
 # extensions
 # Erweiterungen dürfen nur hier ergänzt werden. Unbekannte Top-Level-Schlüssel
