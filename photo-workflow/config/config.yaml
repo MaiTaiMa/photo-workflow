@@ -169,6 +169,26 @@ workflow:
   create_done_marker_before_move: true
 
 # -----------------------------------------------------------------------------
+# phase2
+# Review/Rejected-Bereinigung und Transfer nach temp_final.
+# -----------------------------------------------------------------------------
+phase2:
+  # cleanup_review_rejected: Review und Rejected nach Phase 2 bereinigen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true verschiebt Review-/Rejected-Dateien nach temp_error.
+  cleanup_review_rejected: true
+
+  # move_to_temp_final: Bereinigten Batch nach temp_final verschieben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true aktiviert den Transfer nach temp_final (Pfad in paths.temp_final).
+  move_to_temp_final: true
+
+  # dry_run: Nur simulieren, keine Dateioperationen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true protokolliert nur, false führt Moves tatsächlich aus.
+  dry_run: false
+
+# -----------------------------------------------------------------------------
 # culling
 # Technisches JPG-Culling. ARWs werden niemals still überschrieben oder gelöscht.
 # -----------------------------------------------------------------------------

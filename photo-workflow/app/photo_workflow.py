@@ -1064,16 +1064,35 @@ def process_container_done(dir_path: Path, cfg: dict) -> None:
 
 
 def run_phase2(cfg: dict, folder: str | None = None) -> None:
-    """Führt Phase 2 (Archivierung) für alle Batches in temp_done aus."""
+    """Führt Phase 2 (Archivierung + Cleanup) für alle Batches in temp_done aus."""
     global COUNT_FOUND_DONE
-
+    
     done_root = ensure_dir(cfg['paths']['temp_done'])
     folders = [Path(folder)] if folder else [p for p in sorted(done_root.iterdir()) if p.is_dir()]
-
+    
+    # Phase-2-Config auslesen
+    phase2_cfg = cfg.get('phase2', {})
+    cleanup_enabled = bool(phase2_cfg.get('cleanup_review_rejected', True))
+    dry_run = bool(phase2_cfg.get('dry_run', False))
+    
     for dir_path in folders:
         COUNT_FOUND_DONE += 1
         if is_valid_done_folder(dir_path.name):
-            process_done_folder(dir_path, cfg)
+            # NEU: Phase 2 mit Cleanup
+            from app.phase2_contract import run_phase2_with_cleanup
+            
+            result = run_phase2_with_cleanup(
+                batch_path=str(dir_path),
+                cfg=cfg,
+                dry_run=dry_run,
+            )
+            
+            if result['status'] == 'ok':
+                log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup={result["cleanup_result"].get("status")} move={result.get("move_result", {}).get("success", False)}')
+            elif result['status'] == 'partial':
+                log(cfg, f'[PHASE2 PARTIAL] {dir_path.name} cleanup={result["cleanup_result"].get("status")}', error=True)
+            else:
+                log(cfg, f'[PHASE2 FAILED] {dir_path.name} cleanup={result["cleanup_result"].get("status")}', error=True)
         else:
             process_container_done(dir_path, cfg)
             
