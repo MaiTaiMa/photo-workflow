@@ -50,4 +50,4 @@ def test_config_requires_paths_and_safety():
     # Vollstaendige Config → OK
     config = get_test_config("/tmp/workflow")
     validate_config_strict(config)
-    assert len(config_fingerprint(config)) == 16
+    assert len(config_fingerprint(config)) == 64

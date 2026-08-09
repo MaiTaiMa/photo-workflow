@@ -1,721 +1,608 @@
+# =============================================================================
 # Projekt: Synology Photo Workflow
-# Datei: config/config.target-reference-pools.yaml
-# Zweck: Gemeinsame Zielkonfiguration für AP2 bis AP8.
-
-# Diese Datei beschreibt den späteren Zielstand. Sie darf erst nach der
-# phasenweisen Schema- und Code-Integration als aktive Produktivkonfiguration
-# verwendet werden. AP2 validiert zunächst Pfade und Runtime; AP3 bis AP8
-# schalten die jeweiligen Fachbereiche kontrolliert frei.
-
-# Verbindliche Regeln:
-# - Aktive Referenzen liegen ausschließlich in */reference/.
-# - Neue Vorschläge liegen ausschließlich in */new_refs/ oder */new_faces/.
-# - selection.json ist die alleinige Wahrheit je Referenzpool.
-# - Kein Vorschlag wird automatisch aktiviert.
-# - Bildbytes, Crops und Embeddings gehören nicht in selection.json, Reports
-# oder Git.
-# - Modellgewichte, Caches, Logs und private Bilder gehören nicht in Git.
-# - Face-Namen bleiben case-preserving, zum Beispiel Chris oder Kind1.
-
-# Version: 1.5.0
+# Datei: config/config.yaml
+# Funktion: Zentrale, secrets-freie Betriebs-Konfiguration für AP2 bis AP8.
+# Hinweis: Pfade bilden die NAS_EXAMPLE-Struktur ab; Credentials gehören nur in
+#          Umgebungsvariablen und niemals in diese Datei.
+# Version: 2.1.0
+# =============================================================================
 # Änderungsprotokoll:
-# 2026-08-09 | 1.5.0 | Zusammenführung von AP2/AP3-Zielconfig und 98AP-Regeln
-# 2026-08-09 | 1.4.0 | Referenzpools, Runtime, lokale Modelle und Serienregeln
+#   2026-08-09 | 2.1.0 | NAS_EXAMPLE-Struktur, Pool-Pfade und Cache-Rebuild ergänzt
+#   2026-08-09 | 2.0.0 | Strikte 98AP-Konfiguration für AP2 bis AP8
+# =============================================================================
 
 # -----------------------------------------------------------------------------
 # paths
-# Kanonische Wurzeln des persistenten Datenbereichs.
-# Jede produktive Datei muss innerhalb von base_dir liegen. Die Anwendung muss
-# diese Bedingung vor jeder Dateimutation kanonisch und symlink-sicher prüfen.
+# Kanonische Wurzeln für produktive Daten und Legacy-Kompatibilität.
+# Alle produktiven Pfade MÜSSEN innerhalb von base_dir liegen.
 # -----------------------------------------------------------------------------
 paths:
-# base_dir: Obergrenze für alle produktiven Workflowdaten.
-# Mögliche Werte: Existierender NAS-Datenordner.
-# Auswirkung: Außenpfade und Traversal werden blockiert.
-base_dir: ../NAS_EXAMPLE
+  # base_dir: Obergrenze aller produktiven Workflow-Daten.
+  # Mögliche Werte: Existierender NAS-Datenordner.
+  # Auswirkung: Pfade außerhalb dieser Grenze werden sicherheitsbedingt blockiert.
+  base_dir: ../NAS_EXAMPLE
 
-# temp_error: Quarantäne für unsichere oder fehlerhafte Batchzustände.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: Fehler werden isoliert statt still weiterverarbeitet.
-temp_error: ../NAS_EXAMPLE/00_TEMP_ERROR
+  # temp_error: Quarantäne für fehlerhafte oder unsichere Batch-Zustände.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: Fehler-Batches werden isoliert; keine Folgeaktion wird ausgeführt.
+  temp_error: ../NAS_EXAMPLE/00_TEMP_ERROR
 
-# temp_sd: Eingang neuer Kamera-Batches.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: Phase 1 liest neue Batches ausschließlich aus diesem Bereich.
-temp_sd: ../NAS_EXAMPLE/01_TEMP_SD
+  # temp_sd: Eingangsbereich für neue Kamera- oder SD-Karten-Batches.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: Phase 1 liest ausschließlich aus diesem Verzeichnis.
+  temp_sd: ../NAS_EXAMPLE/01_TEMP_SD
 
-# temp_images: Arbeitsbereich nach erfolgreicher Eingangsprüfung.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: Batchdaten bleiben vom Eingang getrennt.
-temp_images: ../NAS_EXAMPLE/02_TEMP_IMAGES
+  # temp_images: Arbeitsbereich nach erfolgreicher Eingangsprüfung.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: Verarbeitete Batches werden von temp_sd hierher überführt.
+  temp_images: ../NAS_EXAMPLE/02_TEMP_IMAGES
 
-# temp_done: Übergabebereich manuell freigegebener Batches.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: Phase 2 darf nur explizit freigegebene Batches verarbeiten.
-temp_done: ../NAS_EXAMPLE/03_TEMP_DONE
+  # temp_done: Manuell freigegebener Übergabebereich.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: Nur freigegebene Batches dürfen die nächste Phase erreichen.
+  temp_done: ../NAS_EXAMPLE/03_TEMP_DONE
 
-# temp_final: Lokaler Finalisierungsbereich vor einer späteren Publikation.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: Phase 3 erhält einen kontrollierten Endpunkt.
-temp_final: ../NAS_EXAMPLE/04_TEMP_FINAL
+  # temp_final: Optionaler Bereich für lokale Endprüfung.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: true/false gibt es hier nicht; ein gesetzter Pfad aktiviert nur den Zielort.
+  temp_final: ../NAS_EXAMPLE/04_TEMP_FINAL
 
-# manual_keep_inbox: Eingang manuell markierter Keeps.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: MANUAL_KEEP bleibt vom normalen Culling getrennt.
-manual_keep_inbox: ../NAS_EXAMPLE/MANUAL_KEEP/inbox
+  # manual_keep_inbox: Eingang für manuell geschützte Bilder.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: Dateien hier erzwingen später eine Keep-Entscheidung.
+  manual_keep_inbox: ../NAS_EXAMPLE/MANUAL_KEEP/inbox
 
-# manual_keep_used: Erfolgreich verarbeitete Manual-Keep-Quellen.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: Verhindert doppelte Zuordnung derselben Quelle.
-manual_keep_used: ../NAS_EXAMPLE/MANUAL_KEEP/used
+  # manual_keep_used: Bereits idempotent zugeordnete Manual-Keep-Quellen.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: Verhindert eine zweite Zuordnung derselben Quelle.
+  manual_keep_used: ../NAS_EXAMPLE/MANUAL_KEEP/used
 
-# workflow_data_dir: Wurzel für Runtime, Pools, Modelle und Reports.
-# Mögliche Werte: Unterordner innerhalb von base_dir.
-# Auswirkung: Persistente technische Daten bleiben vom Batch getrennt.
-workflow_data_dir: ../NAS_EXAMPLE/WORKFLOW_DATA
+  # workflow_data_dir: Wurzel für Modelle, Referenzpools, Runtime und Reports.
+  # Mögliche Werte: Unterordner innerhalb von base_dir.
+  # Auswirkung: Technische Daten bleiben von Batch-Dateien getrennt.
+  workflow_data_dir: ../NAS_EXAMPLE/WORKFLOW_DATA
 
-# -----------------------------------------------------------------------------
-# workflow
-# Batch-Lebenszyklus, Locking und Datumsrekonstruktion.
-# -----------------------------------------------------------------------------
-workflow:
-# wait_time_seconds: Stabilitätswartezeit für neue Batches.
-# Mögliche Werte: Nichtnegative Ganzzahl in Sekunden.
-# Auswirkung: Ein Batch muss während dieser Zeit unverändert bleiben.
-wait_time_seconds: 60
+  # personal_model: Legacy-Kompatibilität für app/photo_workflow.py.
+  # Mögliche Werte: JSON-Datei innerhalb von workflow_data_dir/models/taste.
+  # Auswirkung: Der aktuelle CLI-Entry-Point legt den Elternordner dieses Pfads an.
+  personal_model: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste/user_taste_model.json
 
-# stale_lock_seconds: Maximales Alter eines verwaisten Locks.
-# Mögliche Werte: Positive Ganzzahl in Sekunden.
-# Auswirkung: Nur eindeutig alte Locks dürfen recoveryfähig sein.
-stale_lock_seconds: 43200
+  # lock_file: Legacy-Kompatibilität für app/photo_workflow.py.
+  # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/locks.
+  # Auswirkung: Verhindert parallele produktive CLI-Läufe.
+  lock_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/.script.lock
 
-# merge_strategy: Verhalten bei bereits vorhandenem Zielbatch.
-# Mögliche Werte: merge_then_fallback.
-# Auswirkung: Zuerst wird gemerged; Kollisionen erhalten einen Fallback.
-merge_strategy: merge_then_fallback
+  # log_file: Legacy-Kompatibilität für app/photo_workflow.py.
+  # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
+  # Auswirkung: Der aktuelle CLI-Entry-Point schreibt normale Laufereignisse hierhin.
+  log_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/process.log
 
-# create_done_marker_before_move: Abschlussmarker vor einem Move schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true dokumentiert den Abschluss vor dem Übergang.
-create_done_marker_before_move: true
-
-# date_reconstruction: Rekonstruktion unvollständiger Batchnamen.
-# Mögliche Werte: legacy_bash oder full_year.
-# Auswirkung: Bestimmt die reproduzierbare Datumsableitung.
-date_reconstruction:
-# mode: Aktiver Rekonstruktionsmodus.
-# Mögliche Werte: legacy_bash oder full_year.
-# Auswirkung: Steuert die Bildung von YYYY-MM-DD.
-mode: legacy_bash
-
-# decade_prefix: Dreistelliges Präfix im legacy_bash-Modus.
-# Mögliche Werte: Genau drei Ziffern.
-# Auswirkung: Wird vor die ausgewählte Jahresziffer gesetzt.
-decade_prefix: "202"
-
-# year_digit_index: Index der Jahresziffer im Quellnamen.
-# Mögliche Werte: Nichtnegative Ganzzahl innerhalb des Quellnamens.
-# Auswirkung: Bestimmt das letzte Jahreszeichen.
-year_digit_index: 3
+  # error_log: Legacy-Kompatibilität für app/photo_workflow.py.
+  # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
+  # Auswirkung: Der aktuelle CLI-Entry-Point schreibt Fehler und Blockierungen hierhin.
+  error_log: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/error.log
 
 # -----------------------------------------------------------------------------
 # runtime
-# Alle veränderlichen Laufzeitdaten liegen ausschließlich hier.
-# Config-Parsing muss diese Werte vor Locking und Verzeichnisanlage prüfen.
+# Strikter AP2-Vertrag für veränderliche Laufzeit-Artefakte.
+# Die Duplikate zu paths.* existieren vorübergehend für den bestehenden CLI-Entry-Point.
 # -----------------------------------------------------------------------------
 runtime:
-# lock_file: Globaler Lock gegen parallele produktive Läufe.
-# Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime.
-# Auswirkung: Verhindert konkurrierende Mutationen.
-lock_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/.script.lock
+  # lock_file: Globaler Lock für produktive Runs.
+  # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/locks.
+  # Auswirkung: Ein vorhandener gültiger Lock blockiert einen parallelen Run.
+  lock_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/.script.lock
 
-# state_dir: Atomare Zustandsdateien der Batchphasen.
-# Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
-# Auswirkung: Ermöglicht Wiederaufnahme und Recovery.
-state_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/state
+  # state_dir: Atomare Batch-Zustandsdateien.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
+  # Auswirkung: Ermöglicht Resume und Recovery mit Hash-Kette.
+  state_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/state
 
-# quarantine_dir: Technische Runtime-Quarantäne.
-# Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
-# Auswirkung: Unsichere Artefakte werden isoliert.
-quarantine_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/quarantine
+  # quarantine_dir: Technische Quarantäne für unsichere Artefakte.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
+  # Auswirkung: Quarantänedaten werden nicht weiterverarbeitet.
+  quarantine_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/quarantine
 
-# log_file: Normales Workflowprotokoll.
-# Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
-# Auswirkung: Laufereignisse werden zentral protokolliert.
-log_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/process.log
+  # log_file: Laufprotokoll.
+  # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
+  # Auswirkung: Protokolliert normale Ereignisse.
+  log_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/process.log
 
-# error_log: Fehler- und Blockierungsprotokoll.
-# Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
-# Auswirkung: Fehler bleiben vom normalen Lauf getrennt.
-error_log: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/error.log
+  # error_log: Fehlerprotokoll.
+  # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
+  # Auswirkung: Protokolliert Fehler getrennt vom normalen Lauf.
+  error_log: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/error.log
 
-# run_summaries_dir: JSON-/CSV-Laufzusammenfassungen.
-# Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
-# Auswirkung: Status, Hashes und User-Actions werden sichtbar.
-run_summaries_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/run_summaries
+  # run_summaries_dir: Nicht-binäre Laufzusammenfassungen.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
+  # Auswirkung: JSON- und CSV-Reports werden hier abgelegt.
+  run_summaries_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/run_summaries
 
-# calibration_batches_dir: Unveränderliche Kalibrierungsdatensätze.
-# Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
-# Auswirkung: Menschliche Endentscheidungen bleiben revisionsfähig.
-calibration_batches_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/calibration/batches
-
-# -----------------------------------------------------------------------------
-# models
-# Lokale Modellartefakte. Gewichte, Tokenizer und Caches gehören nicht in Git.
-# -----------------------------------------------------------------------------
-models:
-# face_detection: Lokale YuNet-Gesichtserkennung.
-# Aktivierung erfolgt erst nach Adapter- und Pfadprüfung.
-face_detection:
-# backend: Technischer Modelladapter.
-# Mögliche Werte: opencv.
-# Auswirkung: Lädt ein lokales ONNX-Modell.
-backend: opencv
-
-# model_path: Lokale YuNet-Gewichtsdatei.
-# Mögliche Werte: Datei innerhalb von base_dir.
-# Auswirkung: Liefert Gesichtsboxen und Landmarken.
-model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_detection_yunet_2023mar.onnx
-
-# confidence_threshold: Mindestvertrauen einer Detection.
-# Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
-# Auswirkung: Niedrigere Treffer werden verworfen.
-confidence_threshold: 0.65
-
-# max_input_side: Maximale Bildseitenlänge für die Detection.
-# Mögliche Werte: Positive Ganzzahl in Pixeln.
-# Auswirkung: Begrenzt Rechenzeit und Speicherbedarf.
-max_input_side: 1600
-
-# nms_threshold: Schwelle für Non-Maximum-Suppression.
-# Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
-# Auswirkung: Reduziert doppelte Treffer.
-nms_threshold: 0.30
-
-# top_k: Maximale Kandidatenzahl vor der Auswahl.
-# Mögliche Werte: Positive Ganzzahl.
-# Auswirkung: Begrenzt die Kandidatenmenge.
-top_k: 5000
-
-# face_recognition: Lokale SFace-Gesichtserkennung.
-# Face-Embeddings dürfen nur im vorgesehenen Runtime-Cache bleiben.
-face_recognition:
-# backend: Technischer Modelladapter.
-# Mögliche Werte: opencv.
-# Auswirkung: Lädt das SFace-ONNX-Modell über OpenCV.
-backend: opencv
-
-# model_path: Lokale SFace-Gewichtsdatei.
-# Mögliche Werte: Datei innerhalb von base_dir.
-# Auswirkung: Erzeugt Embeddings für Vergleiche.
-model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_recognition_sface_2021dec.onnx
-
-# distance_metric: Vergleichsmetrik.
-# Mögliche Werte: cosine oder l2.
-# Auswirkung: Bestimmt die Distanzberechnung.
-distance_metric: cosine
-
-# match_tolerance: Maximale akzeptierte Vergleichsdistanz.
-# Mögliche Werte: Kalibrierte Fließkommazahl.
-# Auswirkung: Kleinere Werte reduzieren Fehlzuordnungen.
-match_tolerance: 0.60
-
-# clip: Lokaler CLIP-Adapter für AP6.
-# In AP2 bis AP5 bleibt CLIP deaktiviert und verändert kein Culling.
-clip:
-# enabled: CLIP produktiv aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: Erst ab AP6 darf true verwendet werden.
-enabled: false
-
-# backend: Modelladapter.
-# Mögliche Werte: transformers.
-# Auswirkung: Bestimmt den lokalen Loader.
-backend: transformers
-
-# model_dir: Lokaler CLIP-Modellordner.
-# Mögliche Werte: Ordner innerhalb von base_dir.
-# Auswirkung: Enthält Config, Processor, Tokenizer und Gewichte.
-model_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/clip
-
-# local_files_only: Netzwerkzugriff beim Laden blockieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true verhindert unbeabsichtigte Downloads.
-local_files_only: true
-
-# device: Zielgerät.
-# Mögliche Werte: auto, cpu oder cuda.
-# Auswirkung: auto wählt ein verfügbares lokales Gerät.
-device: auto
-
-# -----------------------------------------------------------------------------
-# culling
-# Technisches Culling und Routing innerhalb eines Batch-Ordners.
-# Referenz- und persönliche Scores bleiben getrennte Komponenten.
-# -----------------------------------------------------------------------------
-culling:
-# enabled: Technische Culling-Bewertung aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: false deaktiviert die Bewertung, nicht die Batchverwaltung.
-enabled: true
-
-# move_files: Bewertete JPGs in Review oder Rejected verschieben.
-# Mögliche Werte: true oder false.
-# Auswirkung: Jede Verschiebung benötigt vorherige Sicherheitsprüfung.
-move_files: true
-
-# arw_dirname: Ordner für RAW-Dateien.
-# Mögliche Werte: ARW.
-# Auswirkung: RAW-Dateien bleiben vom JPG-Culling getrennt.
-arw_dirname: ARW
-
-# save_dirname: Ordner für Sicherungen und Reports.
-# Mögliche Werte: SAVE.
-# Auswirkung: ZIPs und Bewertungsreports werden dort abgelegt.
-save_dirname: SAVE
-
-# review_dirname: Ziel für manuelle Review-Fälle.
-# Mögliche Werte: Review.
-# Auswirkung: Unsichere Entscheidungen werden nicht verworfen.
-review_dirname: Review
-
-# rejected_dirname: Ziel für technische Reject-Fälle.
-# Mögliche Werte: Rejected.
-# Auswirkung: Reject bleibt nachvollziehbar und getrennt.
-rejected_dirname: Rejected
-
-# create_review_folder: Review-Ordner automatisch bereitstellen.
-# Mögliche Werte: true oder false.
-# Auswirkung: Erstellt den Ordner nach erfolgreicher Pfadprüfung.
-create_review_folder: true
-
-# create_rejected_folder: Rejected-Ordner automatisch bereitstellen.
-# Mögliche Werte: true oder false.
-# Auswirkung: Erstellt den Ordner nach erfolgreicher Pfadprüfung.
-create_rejected_folder: true
-
-# keep_threshold: Mindestwert für eine Keep-Entscheidung.
-# Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
-# Auswirkung: Werte ab dieser Grenze können Keep erreichen.
-keep_threshold: 0.65
-
-# reject_threshold: Höchstwert für eine Reject-Entscheidung.
-# Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
-# Auswirkung: Werte darunter können Reject erreichen.
-reject_threshold: 0.35
-
-# weights: Gewichte der generischen und persönlichen Bewertung.
-# Mögliche Werte: Nichtnegative Fließkommazahlen.
-# Auswirkung: Bestimmt den Einfluss beider Bewertungskomponenten.
-weights:
-# generic: Anteil der generischen Bewertung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Erhöht den Einfluss des allgemeinen Bildscores.
-generic: 0.55
-
-# personal: Anteil der persönlichen Bewertung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Erhöht den Einfluss des persönlichen Geschmacksmodells.
-personal: 0.45
-
-# component_weights: Gewichte der einzelnen Score-Komponenten.
-# Mögliche Werte: Nichtnegative Fließkommazahlen.
-# Auswirkung: Bestimmt die Zusammensetzung des Gesamtwerts.
-component_weights:
-# base_score: Anteil des generischen Basisscores.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet Schärfe, Ästhetik, Belichtung und Referenz.
-base_score: 0.55
-
-# eye_score: Anteil der Augenprüfung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet offene und problemfreie Augen.
-eye_score: 0.10
-
-# personal_score: Anteil des persönlichen Scores.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet das persönliche Bewertungsmodell.
-personal_score: 0.20
-
-# family_score: Anteil der Familienerkennung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet erkannte geschützte Personen.
-family_score: 0.15
-
-# base_weights: Gewichte des generischen Basisscores.
-# Mögliche Werte: Nichtnegative Fließkommazahlen.
-# Auswirkung: Kombiniert die vier generischen Bildmerkmale.
-base_weights:
-# sharp: Anteil der Schärfebewertung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet technische Bildschärfe.
-sharp: 0.36
-
-# aesth: Anteil der ästhetischen Bewertung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet die allgemeine Bildästhetik.
-aesth: 0.36
-
-# exposure: Anteil der Belichtungsbewertung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet die technische Belichtung.
-exposure: 0.18
-
-# reference: Anteil des Referenzscores.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Gewichtet die Nähe zu Referenzbildern.
-reference: 0.10
-
-# eye_detection: Aktiviert die Augenprüfung.
-# Mögliche Werte: true oder false.
-# Auswirkung: true berücksichtigt geschlossene oder problematische Augen.
-eye_detection:
-enabled: true
-
-# reference_scoring: Vergleich mit generischen Referenzbildern.
-# Mögliche Werte: Vertragskonforme Referenzparameter.
-# Auswirkung: Referenzbilder beeinflussen den generischen Basisscore.
-reference_scoring:
-# enabled: Referenzbewertung aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true berechnet Referenzähnlichkeiten.
-enabled: true
-
-# folder: Ordner mit Referenzbildern.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir.
-# Auswirkung: Bilder aus diesem Ordner werden als Referenz verwendet.
-folder: ../NAS_EXAMPLE/WORKFLOW_DATA/samples
-
-# recursive: Unterordner rekursiv durchsuchen.
-# Mögliche Werte: true oder false.
-# Auswirkung: true berücksichtigt verschachtelte Referenzordner.
-recursive: false
-
-# preview_size: Größe der Vorschaubilder.
-# Mögliche Werte: Positive Ganzzahl gemäß Adapter.
-# Auswirkung: Begrenzt den Aufwand der Referenzbewertung.
-preview_size: 32
-
-# cache_enabled: Referenzcache aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true darf gültige Referenzergebnisse wiederverwenden.
-cache_enabled: true
-
-# cache_dir: Speicherort des Referenzbewertungscaches.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir/models.
-# Auswirkung: Trennt den Cache vom persönlichen Bewertungsmodell.
-cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/reference_scoring
-
-# force_cache_rebuild: Referenzcache vollständig neu erstellen.
-# Mögliche Werte: true oder false.
-# Auswirkung: true verwirft den bisherigen Cache nach Sicherheitsprüfung.
-force_cache_rebuild: false
-
-# star_rating_bands: Zuordnung von Scores zu Sternebewertungen.
-# Mögliche Werte: Ganzzahlige Sterne mit Grenzen von 0.0 bis 1.0.
-# Auswirkung: Übersetzt Scores in Metadatenbewertungen.
-star_rating_bands:
-5: 0.9
-4: 0.75
-3: 0.6
-2: 0.4
-1: 0.2
-0: 0.0
-
-# -----------------------------------------------------------------------------
-# training
-# Dieser Block definiert Referenzbilder, Labels und Trainingsartefakte.
-# Alle Trainingsdaten und Ergebnisse bleiben innerhalb von WORKFLOW_DATA.
-# -----------------------------------------------------------------------------
-training:
-# sample_images_dir: Referenzbilder für Training und Bewertung.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir.
-# Auswirkung: Bilder aus diesem Ordner können als Trainingsdaten dienen.
-sample_images_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/reference
-
-# exported_labels_dir: Exportierte Trainingslabels.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir.
-# Auswirkung: Labels werden dort revisionsfähig gespeichert.
-exported_labels_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/training/exported_labels
-
-# runs_dir: Trainingsläufe und deren Ergebnisse.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir.
-# Auswirkung: Trainingsartefakte bleiben im NAS-Datenbereich.
-runs_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/training/runs
-
-# min_labeled_images: Mindestzahl gelabelter Bilder.
-# Mögliche Werte: Positive Ganzzahl.
-# Auswirkung: Unterhalb dieser Zahl darf kein Training starten.
-min_labeled_images: 20
+  # calibration_batches_dir: Revisionsfähige Kalibrierungsentscheidungen.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime/calibration.
+  # Auswirkung: Menschliche Entscheidungen bleiben nachvollziehbar.
+  calibration_batches_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/calibration/batches
 
 # -----------------------------------------------------------------------------
 # safety
-# Dieser Block definiert harte Sicherheitsgrenzen für Pfade und Löschvorgänge.
-# Sicherheit hat Vorrang vor Stabilität, Nutzen, Einfachheit und Performance.
+# Harte Schutzgrenzen. Für einen Betriebsstart nur die sicheren Defaultwerte nutzen.
 # -----------------------------------------------------------------------------
 safety:
-# require_paths_within_base_dir: Pfadprüfung erzwingen.
-# Mögliche Werte: true oder false.
-# Auswirkung: true blockiert Pfade außerhalb von paths.base_dir.
-require_paths_within_base_dir: true
+  # require_paths_within_base_dir: Kanonische base_dir-Grenze erzwingen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true blockiert Traversal und Außenpfade; false deaktiviert diesen Schutz.
+  require_paths_within_base_dir: true
 
-# follow_symlinks: Symlinks bei produktiven Pfaden folgen.
-# Mögliche Werte: true oder false.
-# Auswirkung: false verhindert Umgehungen der Pfadgrenzen.
-follow_symlinks: false
+  # follow_symlinks: Symlinks bei produktiven Pfaden verfolgen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: false blockiert Symlink-Umgehungen; true darf nur kontrolliert verwendet werden.
+  follow_symlinks: false
 
-# never_delete_outside_arw_dir: Löschung außerhalb von ARW verhindern.
-# Mögliche Werte: true oder false.
-# Auswirkung: true blockiert jede Löschung außerhalb des erlaubten ARW-Bereichs.
-never_delete_outside_arw_dir: true
+  # never_delete_outside_arw_dir: Löschschutz außerhalb eines ARW-Bereichs.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true blockiert unzulässige Löschoperationen; false ist nicht produktiv empfohlen.
+  never_delete_outside_arw_dir: true
 
 # -----------------------------------------------------------------------------
-# reporting
-# Dieser Block steuert JSON-Zusammenfassungen und Scheduler-Ausgaben.
-# Bildbytes, Embeddings, Secrets und Tokens dürfen nicht persistiert werden.
+# workflow
+# Steuerung von Batch-Lebenszyklus und Recovery.
 # -----------------------------------------------------------------------------
-reporting:
-# write_json_summary: JSON-Laufzusammenfassung schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true erzeugt ein nicht-binäres Laufartefakt.
-write_json_summary: true
+workflow:
+  # wait_time_seconds: Stabilitätswartezeit eines neu gefundenen Batches.
+  # Mögliche Werte: Nichtnegative Ganzzahl in Sekunden.
+  # Auswirkung: Ein Batch muss während dieses Zeitraums unverändert bleiben.
+  wait_time_seconds: 60
 
-# json_summary_dir: Ordner für Laufzusammenfassungen.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir.
-# Auswirkung: Zusammenfassungen bleiben im erlaubten Datenbereich.
-json_summary_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/run_summaries
+  # stale_lock_seconds: Alter, ab dem ein Lock als verwaist geprüft werden darf.
+  # Mögliche Werte: Positive Ganzzahl in Sekunden.
+  # Auswirkung: Ein jüngerer Lock blockiert; ein älterer erfordert Recovery-Prüfung.
+  stale_lock_seconds: 43200
 
-# stdout_mode: Ziel und Format der Standardausgabe.
-# Mögliche Werte: scheduler_mail.
-# Auswirkung: Meldungen werden für Scheduler-Mailaufbereitung ausgegeben.
-stdout_mode: scheduler_mail
+  # merge_strategy: Verhalten bei bereits vorhandenem Zielbatch.
+  # Mögliche Werte: merge_then_fallback.
+  # Auswirkung: Zuerst wird sicher gemerged, Kollisionen erhalten einen neuen Zielnamen.
+  merge_strategy: merge_then_fallback
 
-# require_user_actions_required: Handlungsbedarf explizit melden.
-# Mögliche Werte: true oder false.
-# Auswirkung: Volle Queues und Recovery-Aufgaben werden sichtbar.
-require_user_actions_required: true
+  # create_done_marker_before_move: Abschlussmarker vor dem Batch-Move schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true dokumentiert Abschluss vor dem Übergang; false reduziert Recovery-Sicherheit.
+  create_done_marker_before_move: true
+
+# -----------------------------------------------------------------------------
+# culling
+# Technisches JPG-Culling. ARWs werden niemals still überschrieben oder gelöscht.
+# -----------------------------------------------------------------------------
+culling:
+  # enabled: Generische Bildbewertung aktivieren.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true bewertet JPGs; false führt keine Culling-Entscheidungen aus.
+  enabled: true
+
+  # move_files: Ergebnisse in Review oder Rejected verschieben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true führt geprüfte Moves aus; false erzeugt nur Entscheidungen und Reports.
+  move_files: true
+
+  # arw_dirname: Name des RAW-Unterordners innerhalb eines Batches.
+  # Mögliche Werte: String, üblicherweise ARW.
+  # Auswirkung: Dieser Ordner ist der harte Schutzbereich für RAW-Dateien.
+  arw_dirname: ARW
+
+  # save_dirname: Name des Save- und Archivordners eines Batches.
+  # Mögliche Werte: String, üblicherweise SAVE.
+  # Auswirkung: Archive und Berichte werden dort abgelegt.
+  save_dirname: SAVE
+
+  # review_dirname: Name des Zielordners für unklare Entscheidungen.
+  # Mögliche Werte: String, üblicherweise Review.
+  # Auswirkung: Review-Dateien bleiben erhalten und werden nicht verworfen.
+  review_dirname: Review
+
+  # rejected_dirname: Name des Zielordners für technische Rejects.
+  # Mögliche Werte: String, üblicherweise Rejected.
+  # Auswirkung: Rejects bleiben nachvollziehbar getrennt.
+  rejected_dirname: Rejected
+
+  # create_review_folder: Review-Ordner bei Bedarf anlegen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true erstellt den Ordner nach Pfadprüfung; false verlangt einen vorhandenen Ordner.
+  create_review_folder: true
+
+  # create_rejected_folder: Rejected-Ordner bei Bedarf anlegen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true erstellt den Ordner nach Pfadprüfung; false verlangt einen vorhandenen Ordner.
+  create_rejected_folder: true
+
+  # keep_threshold: Mindestscore für keep.
+  # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
+  # Auswirkung: Höhere Werte reduzieren Keep-Entscheidungen.
+  keep_threshold: 0.65
+
+  # reject_threshold: Höchstscore für reject.
+  # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
+  # Auswirkung: Niedrigere Werte reduzieren Reject-Entscheidungen.
+  reject_threshold: 0.35
+
+  # base_weights: Gewichte der technischen Basisbewertung.
+  # Mögliche Werte: Nichtnegative Fließkommazahlen; Summe sollte 1.0 sein.
+  # Auswirkung: Bestimmt Einfluss von Schärfe, Ästhetik und Belichtung.
+  base_weights:
+    sharp: 0.40
+    aesth: 0.40
+    exposure: 0.20
+
+  # component_weights: Gewichte für den finalen Score.
+  # Mögliche Werte: Nichtnegative Fließkommazahlen; Summe sollte 1.0 sein.
+  # Auswirkung: Fehlende Komponenten werden vom Adapter normalisiert.
+  component_weights:
+    base_score: 0.55
+    eye_score: 0.10
+    aesthetic_reference_score: 0.10
+    personal_score: 0.10
+    family_score: 0.15
+
+  # reference_scoring: Legacy- und CLI-kompatibler Stilreferenz-Adapter.
+  # Mögliche Werte: Konfigurationsblock mit lokalen Pfaden.
+  # Auswirkung: Bei vorhandenen Referenzen wird ein Stilprofil erstellt oder erneuert.
+  reference_scoring:
+    # enabled: Stilreferenz-Scoring aktivieren.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true nutzt active references; false liefert keinen Referenzscore.
+    enabled: true
+
+    # folder: Wurzel des aktiven Stilreferenzpools.
+    # Mögliche Werte: Ordner innerhalb von base_dir.
+    # Auswirkung: Der aktuelle CLI-Entry-Point liest Bilder aus reference/.
+    folder: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference/reference
+
+    # recursive: Unterordner des Referenzordners durchsuchen.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: false beschränkt das Profil auf den direkten reference/-Ordner.
+    recursive: false
+
+    # preview_size: Kantenlänge für den kompakten Referenzvergleich.
+    # Mögliche Werte: Positive Ganzzahl in Pixeln.
+    # Auswirkung: Kleinere Werte sind schneller, größere Werte detaillierter.
+    preview_size: 32
+
+    # cache_enabled: Laufzeitprofil wiederverwenden, wenn Referenzen unverändert sind.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true spart Rechenzeit; der Cache enthält keine persistenten Embeddings.
+    cache_enabled: true
+
+    # cache_dir: Speicherort nicht-sensitiver Cache-Metadaten.
+    # Mögliche Werte: Ordner innerhalb von workflow_data_dir/models/reference_scoring.
+    # Auswirkung: Änderungen der Referenzen invalidieren diesen Cache.
+    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/reference_scoring
+
+    # force_cache_rebuild: Rebuild beim nächsten Run erzwingen.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true erzeugt Profil neu und muss danach wieder auf false gesetzt werden.
+    force_cache_rebuild: false
+
+# -----------------------------------------------------------------------------
+# reference_pools
+# AP3–AP5-Vertrag: selection.json ist je Pool die alleinige Wahrheit.
+# -----------------------------------------------------------------------------
+reference_pools:
+  # common: Gemeinsame Hard- und Soft-Limits aller Referenzpools.
+  common:
+    # max_active: Harte Obergrenze aktiver Referenzen.
+    # Mögliche Werte: Positive Ganzzahl.
+    # Auswirkung: Weitere Aktivierung wird blockiert.
+    max_active: 100
+
+    # min_active: Weiche Mindestgröße eines aktiven Adapters.
+    # Mögliche Werte: 0 bis max_active.
+    # Auswirkung: Der betroffene Adapter pausiert bei Unterschreitung.
+    min_active: 5
+
+    # target_active: Angestrebte aktive Poolgröße.
+    # Mögliche Werte: min_active bis max_active.
+    # Auswirkung: Abweichungen werden als User-Action berichtet.
+    target_active: 30
+
+    # max_new: Harte Obergrenze offener Vorschläge.
+    # Mögliche Werte: Nichtnegative Ganzzahl.
+    # Auswirkung: Eine volle Queue blockiert neue Vorschläge.
+    max_new: 20
+
+    # max_new_per_batch: Harte Vorschlagsgrenze je Batch.
+    # Mögliche Werte: 0 bis max_new.
+    # Auswirkung: Verhindert Vorschlagsfluten.
+    max_new_per_batch: 5
+
+    # rename_active_references: Aktive Referenzen mit AP4-Namensplan umbenennen.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true erlaubt ausschließlich einen validierten Rename-Plan.
+    rename_active_references: true
+
+    # active_filename_template: Deterministisches Namensschema aktiver Referenzen.
+    # Mögliche Werte: Template mit rank, stem, suffix und ext.
+    # Auswirkung: Aktive Dateinamen werden reproduzierbar erzeugt.
+    active_filename_template: "{rank}__{stem}__{suffix}{ext}"
+
+  # aesthetic_reference: Allgemeine Stil- und Qualitätsreferenzen.
+  aesthetic_reference:
+    # enabled: Stilpool aktivieren.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true erlaubt Stilscore und Vorschläge; false pausiert nur diesen Adapter.
+    enabled: true
+    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference
+    reference_dirname: reference
+    new_dirname: new_refs
+    selection_filename: selection.json
+    min_quality_score: 0.70
+    max_redundancy: 0.90
+    preview_size: 32
+    cache_enabled: true
+    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/reference_scoring
+    auto_rebuild_on_active_change: true
+    force_cache_rebuild: false
+
+  # personal_training: Bewusst aktivierte Lieblingsbilder.
+  personal_training:
+    # enabled: Persönlichen Pool aktivieren.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true erlaubt persönlichen Score und Trainingsvorschläge.
+    enabled: true
+    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training
+    reference_dirname: reference
+    new_dirname: new_refs
+    selection_filename: selection.json
+    min_quality_score: 0.70
+    max_redundancy: 0.90
+    cache_enabled: true
+    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste
+    auto_rebuild_on_active_change: true
+    force_cache_rebuild: false
+
+  # faces: Personenpools; Ordnernamen müssen exakt den Slugs entsprechen.
+  faces:
+    # enabled: Face-Pools aktivieren.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true erlaubt Face-Vorschläge; eine leere reference/-Map pausiert nur die Person.
+    enabled: true
+    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/faces
+    reference_dirname: reference
+    new_dirname: new_faces
+    selection_filename: selection.json
+    min_quality_score: 0.70
+    max_redundancy: 0.95
+    crop_size: 256
+    min_face_size: 128
+    cache_enabled: true
+    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
+    auto_rebuild_on_active_change: true
+    force_cache_rebuild: false
 
 # -----------------------------------------------------------------------------
 # family_recognition
-# Dieser Block steuert Familienreferenzen, Schutzentscheidungen und Face-Caches.
-# Automatisch erzeugte Face-Crops werden nicht automatisch als Referenzen aktiviert.
+# CLI-kompatibler Familienadapter. reference_dir verweist auf deine reale Struktur.
 # -----------------------------------------------------------------------------
 family_recognition:
-# enabled: Familienerkennung aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true aktiviert Erkennung und Familien-Schutzlogik.
-enabled: true
+  # enabled: Familienerkennung aktivieren.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true sucht in WORKFLOW_DATA/faces/<slug>/reference/ nach Referenzen.
+  enabled: true
 
-# reference_dir: Manuell aktivierte Familienreferenzen.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir.
-# Auswirkung: Referenzbilder werden für den Personenvergleich verwendet.
-reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/faces
+  # reference_dir: Wurzel aller Personenslugs.
+  # Mögliche Werte: Ordner innerhalb von base_dir.
+  # Auswirkung: Fehlt dieser Pfad, meldet Phase 1 reference_dir_missing.
+  reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/faces
 
-# protect_detected_family: Erkannte Familienbilder schützen.
-# Mögliche Werte: true oder false.
-# Auswirkung: true verhindert automatische Reject-Entscheidungen für Treffer.
-protect_detected_family: true
+  # cache_dir: Laufzeitcache für Familienmodell-Metadaten.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir/models/family_faces.
+  # Auswirkung: Der Cache wird bei Referenzänderungen ungültig; keine Embeddings persistent speichern.
+  cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
 
-# score_boost_weight: Zusatzgewicht für erkannte Familienpersonen.
-# Mögliche Werte: Fließkommazahl gemäß Scoring-Vertrag.
-# Auswirkung: Erhöht den Familienanteil am Gesamtwert.
-score_boost_weight: 0.2
+  # cache_enabled: Cache-Metadaten verwenden.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true vermeidet unnötige Rebuilds bei unveränderten Referenzen.
+  cache_enabled: true
 
-# write_native_tags: Native Familien-Tags schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true schreibt namespaced Familienmetadaten nach Gate-Prüfung.
-write_native_tags: true
+  # cache_rebuild_mode: Rebuild-Strategie.
+  # Mögliche Werte: incremental oder full.
+  # Auswirkung: incremental reagiert auf Änderungen; full baut beim nächsten Run vollständig neu.
+  cache_rebuild_mode: incremental
 
-# write_face_regions: erkannte Gesichtsbereiche schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true schreibt erlaubte Gesichtsregion-Metadaten.
-write_face_regions: true
+  # auto_rebuild_on_reference_change: Rebuild bei Erstbetrieb oder Referenzänderung.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true ist der Betriebsdefault; ein separater rebuild-family-cache-Run bleibt optional.
+  auto_rebuild_on_reference_change: true
 
-# exiftool_path: Ausführbares ExifTool.
-# Mögliche Werte: PATH-Auflösung oder absoluter Pfad.
-# Auswirkung: Wird für kontrollierte Metadatenänderungen verwendet.
-exiftool_path: exiftool
+  # force_cache_rebuild: Vollständigen Rebuild beim nächsten Lauf erzwingen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true nur einmal setzen, danach wieder false; überschreibt keinen gültigen Pool.
+  force_cache_rebuild: false
 
-# match_tolerance: Maximale Distanz für Personenmatches.
-# Mögliche Werte: Fließkommazahl gemäß SFace-Kalibrierung.
-# Auswirkung: Kleinere Werte reduzieren Fehlmatches.
-match_tolerance: 0.45
+  # protect_detected_family: Treffer mindestens vor automatischem Reject schützen.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true routet unsichere Treffer zu Review statt Reject.
+  protect_detected_family: true
 
-# default_person_weight: Standardgewicht unbekannter Referenzpersonen.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Wird verwendet, wenn kein Personengewicht definiert ist.
-default_person_weight: 0.35
+  # default_person_weight: Standardgewicht für nicht individuell konfigurierte Personen.
+  # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
+  # Auswirkung: Bestimmt den Beitrag zum family_score.
+  default_person_weight: 0.35
 
-# max_reference_images_per_person: Maximale Referenzbilder je Person.
-# Mögliche Werte: Positive Ganzzahl.
-# Auswirkung: Begrenzt Speicher- und Rechenaufwand.
-max_reference_images_per_person: 200
+  # match_tolerance: Maximale akzeptierte Face-Distanz.
+  # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
+  # Auswirkung: Kleinere Werte verringern Fehlmatches, erhöhen aber Nicht-Treffer.
+  match_tolerance: 0.45
 
-# person_weights: Individuelle Gewichte der bekannten Personen.
-# Mögliche Werte: Nichtnegative Fließkommazahlen.
-# Auswirkung: Überschreibt default_person_weight je Person.
-person_weights:
-Vater: 0.35
-Mutter: 0.35
-Kind1: 0.55
-Kind2: 0.55
-Oma: 0.3
-Opa: 0.3
+  # min_reference_images_per_person: Mindestzahl aktiver Referenzen pro Person.
+  # Mögliche Werte: Positive Ganzzahl.
+  # Auswirkung: Leere Pools, etwa kind2 oder mutter, pausieren nur den jeweiligen Adapter.
+  min_reference_images_per_person: 3
 
-# cache_enabled: Familiencache aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true darf gültige Embedding-Ergebnisse im Laufcache verwenden.
-cache_enabled: true
+  # max_reference_images_per_person: Harte Obergrenze aktiver Referenzen je Person.
+  # Mögliche Werte: Positive Ganzzahl.
+  # Auswirkung: Begrenzt Laufzeit und Poolgröße.
+  max_reference_images_per_person: 100
 
-# cache_dir: Familiencache unterhalb von models.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir/models.
-# Auswirkung: Trennt Familiencache und persönliche Bewertungsdaten.
-cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
+  # person_weights: Exakte Slugs deiner NAS-Ordner in Kleinbuchstaben.
+  # Mögliche Werte: Slug -> Fließkommazahl von 0.0 bis 1.0.
+  # Auswirkung: Überschreibt default_person_weight für die jeweilige Person.
+  person_weights:
+    chris: 0.35
+    daniel: 0.35
+    kind1: 0.55
+    kind2: 0.55
+    michele: 0.35
+    mutter: 0.35
+    nelly: 0.35
+    oma: 0.30
+    opa: 0.30
+    vater: 0.35
 
-# cache_rebuild_mode: Strategie zum Neuaufbau des Familiencaches.
-# Mögliche Werte: incremental.
-# Auswirkung: Nur geänderte Referenzen werden neu verarbeitet.
-cache_rebuild_mode: incremental
+  # write_native_tags: Personen-Tags per ExifTool schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true schreibt nur nach validierter Entscheidung und Readback.
+  write_native_tags: true
 
-# force_cache_rebuild: Familiencache vollständig neu erstellen.
-# Mögliche Werte: true oder false.
-# Auswirkung: true verwirft den bisherigen Cache nach Sicherheitsprüfung.
-force_cache_rebuild: false
+  # write_face_regions: Gesichtsregionen schreiben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true nur verwenden, wenn der aktive Adapter diese Metadaten unterstützt.
+  write_face_regions: true
 
-# min_reference_images_per_person: Mindestzahl je Person.
-# Mögliche Werte: Positive Ganzzahl.
-# Auswirkung: Unterhalb dieser Zahl wird die Person nicht sicher aktiviert.
-min_reference_images_per_person: 3
-
-# -----------------------------------------------------------------------------
-# series_detection
-# Dieser Block erkennt Serien und markiert Nicht-Bestbilder für Review.
-# Serienentscheidungen dürfen keine ungesicherten ARW-Aktionen auslösen.
-# -----------------------------------------------------------------------------
-series_detection:
-# enabled: Serienerkennung aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true gruppiert ähnliche Bilder zu Serien.
-enabled: true
-
-# cluster_eps: Maximale Distanz innerhalb eines Clusters.
-# Mögliche Werte: Fließkommazahl gemäß Clustering-Adapter.
-# Auswirkung: Kleinere Werte bilden strengere Serien.
-cluster_eps: 0.18
-
-# min_samples: Mindestzahl Bilder je Cluster.
-# Mögliche Werte: Positive Ganzzahl.
-# Auswirkung: Einzelbilder werden nicht als Serie behandelt.
-min_samples: 2
-
-# preview_size: Größe der Vorschaubilder.
-# Mögliche Werte: Positive Ganzzahl.
-# Auswirkung: Begrenzt Speicher- und Rechenaufwand.
-preview_size: 32
-
-# review_margin: Mindestabstand für eine sichere Bestentscheidung.
-# Mögliche Werte: Nichtnegative Fließkommazahl.
-# Auswirkung: Kleine Abstände führen zur manuellen Review.
-review_margin: 0.03
-
-# demote_non_best_to: Zielstatus für Nicht-Bestbilder.
-# Mögliche Werte: review.
-# Auswirkung: Nicht-Bestbilder werden nicht automatisch gelöscht.
-demote_non_best_to: review
-
-# -----------------------------------------------------------------------------
-# metadata_culling
-# Dieser Block steuert namespaced Metadaten und deren Rückprüfung.
-# ExifTool muss ohne Shell-Interpolation und mit shell=False verwendet werden.
-# -----------------------------------------------------------------------------
-metadata_culling:
-# enabled: Metadaten-Culling aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true schreibt freigegebene Workflow-Metadaten.
-enabled: true
-
-# write_rating: Sternebewertung schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true schreibt die validierte Bewertungsstufe.
-write_rating: true
-
-# write_keywords: Workflow-Schlüsselwörter schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true schreibt namespaced Keywords.
-write_keywords: true
-
-# keep_backup: Backup vor Metadatenänderung behalten.
-# Mögliche Werte: true oder false.
-# Auswirkung: true bewahrt ein Backup gemäß Metadatenvertrag.
-keep_backup: false
-
-# exiftool_path: Ausführbares ExifTool.
-# Mögliche Werte: PATH-Auflösung oder absoluter Pfad.
-# Auswirkung: Wird für kontrollierte Metadatenänderungen verwendet.
-exiftool_path: exiftool
-
-# keyword_schema: Namespaceschema für Workflow-Schlüsselwörter.
-# Mögliche Werte: namespaced_v1.
-# Auswirkung: Verhindert Kollisionen mit fremden Metadaten.
-keyword_schema: namespaced_v1
-
-# write_score_bands: Score-Bänder als Metadaten schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true persistiert die validierte Bewertungsstufe.
-write_score_bands: true
-
-# write_raw_scores_to_keywords: Rohscores als Keywords schreiben.
-# Mögliche Werte: true oder false.
-# Auswirkung: true schreibt nur vertragskonforme Scorewerte.
-write_raw_scores_to_keywords: true
+  # exiftool_path: ExifTool ohne Shell-Interpolation ausführen.
+  # Mögliche Werte: PATH-Name oder absoluter Pfad.
+  # Auswirkung: Fehlendes Tool wird gemeldet; es darf keine Dateioperation auslösen.
+  exiftool_path: exiftool
 
 # -----------------------------------------------------------------------------
 # personal_scoring
-# Dieser Block steuert das persönliche Bewertungsmodell und dessen Cache.
-# Persönliche Referenzen, Embeddings und Modellartefakte bleiben unter models.
+# Persönlicher Geschmackspool. Der erste Betrieb darf ohne Referenzen starten.
 # -----------------------------------------------------------------------------
 personal_scoring:
-# source_dir: Persönliche Referenzbilder.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir.
-# Auswirkung: Bilder aus diesem Ordner beeinflussen den persönlichen Score.
-source_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/reference
+  # enabled: Persönliche Bewertung aktivieren.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true nutzt den Adapter erst ab ausreichenden active references.
+  enabled: true
 
-# model_path: Persönliches Bewertungsmodell.
-# Mögliche Werte: JSON-Datei innerhalb von paths.base_dir/models/taste.
-# Auswirkung: Wird für persönliche Bewertung und Training verwendet.
-model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste/user_taste_model.json
+  # source_dir: Aktiver persönlicher Referenzordner.
+  # Mögliche Werte: Ordner innerhalb von base_dir.
+  # Auswirkung: Fehlt oder ist er leer, pausiert nur personal_score.
+  source_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training/reference
 
-# cache_dir: Cache des persönlichen Bewertungsmodells.
-# Mögliche Werte: Ordner innerhalb von paths.base_dir/models/taste.
-# Auswirkung: Trennt den persönlichen Cache vom Modell selbst.
-cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste/cache
+  # model_path: Modellartefakt für persönlichen Score.
+  # Mögliche Werte: Datei innerhalb von workflow_data_dir/models/taste.
+  # Auswirkung: Kann beim ersten Training erzeugt werden; keine Secrets enthalten.
+  model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste/user_taste_model.json
 
-# enabled: Persönliche Bewertung aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true berücksichtigt den persönlichen Bewertungsanteil.
-enabled: true
+  # cache_dir: Cache-Metadaten des persönlichen Adapters.
+  # Mögliche Werte: Ordner innerhalb von workflow_data_dir/models/taste.
+  # Auswirkung: Änderungen aktiver Referenzen invalidieren den Cache.
+  cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste
 
-# cache_enabled: Persönlichen Cache aktivieren.
-# Mögliche Werte: true oder false.
-# Auswirkung: true darf gültige Ergebnisse wiederverwenden.
-cache_enabled: true
+  # cache_enabled: Cache-Metadaten verwenden.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true vermeidet unnötige Berechnungen.
+  cache_enabled: true
 
-# cache_rebuild_mode: Strategie zum Neuaufbau des persönlichen Caches.
-# Mögliche Werte: incremental.
-# Auswirkung: Nur geänderte Referenzdaten werden neu verarbeitet.
-cache_rebuild_mode: incremental
+  # auto_train_on_change: Bei Referenzänderung neu trainieren.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true startet nach validierter Änderung automatisch einen sicheren Rebuild.
+  auto_train_on_change: true
 
-# auto_train_on_change: Training bei Referenzänderung starten.
-# Mögliche Werte: true oder false.
-# Auswirkung: true startet Training nach erfolgreicher Änderungsprüfung.
-auto_train_on_change: true
+  # min_reference_images: Mindestmenge aktiver Lieblingsbilder.
+  # Mögliche Werte: Positive Ganzzahl.
+  # Auswirkung: Unterhalb dieses Limits pausiert nur personal_score.
+  min_reference_images: 5
 
-# recursive: Persönliche Referenzunterordner durchsuchen.
-# Mögliche Werte: true oder false.
-# Auswirkung: false berücksichtigt nur den direkten Referenzordner.
-recursive: false
+# -----------------------------------------------------------------------------
+# models
+# Lokale Modellgewichte. network-Zugriff und automatische Downloads bleiben gesperrt.
+# -----------------------------------------------------------------------------
+models:
+  clip:
+    # enabled: CLIP als zusätzliche AP6-Scorekomponente aktivieren.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true benötigt einen vollständigen lokalen Modellordner; false hält CLIP im Shadow/Off-Modus.
+    enabled: false
+    backend: transformers
+    model_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/clip
+    local_files_only: true
+    device: auto
 
-# min_reference_images: Mindestzahl persönlicher Referenzbilder.
-# Mögliche Werte: Positive Ganzzahl.
-# Auswirkung: Unterhalb dieser Zahl wird kein persönliches Modell trainiert.
-min_reference_images: 5
+  face_detection:
+    backend: opencv
+    model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_detection_yunet_2023mar.onnx
+    confidence_threshold: 0.65
+    max_input_side: 1600
+    nms_threshold: 0.30
+    top_k: 5000
+
+  face_recognition:
+    backend: opencv
+    model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_recognition_sface_2021dec.onnx
+    distance_metric: cosine
+    match_tolerance: 0.60
+
+# -----------------------------------------------------------------------------
+# series_detection
+# Best-of-Ermittlung; Nicht-Bestbilder werden standardmäßig nur zur Review gegeben.
+# -----------------------------------------------------------------------------
+series_detection:
+  # enabled: Serienerkennung einschalten.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true gruppiert zeitlich, numerisch und visuell ähnliche Bilder.
+  enabled: true
+  exif_time_enabled: true
+  time_window_seconds: 8
+  filename_sequence_enabled: true
+  max_filename_gap: 2
+  min_sequence_images: 2
+  visual_clustering_enabled: true
+  cluster_eps: 0.18
+  min_samples: 2
+  preview_size: 32
+  review_margin: 0.03
+
+  # demote_non_best_to: Zielstatus nicht bester Serienbilder.
+  # Mögliche Werte: review oder reject.
+  # Auswirkung: review erhält die Bilder; reject ist nur nach bewusster Freigabe zulässig.
+  demote_non_best_to: review
+
+# -----------------------------------------------------------------------------
+# metadata_culling
+# Namespaced Metadaten. ExifTool muss mit shell=False arbeiten und zurücklesen.
+# -----------------------------------------------------------------------------
+metadata_culling:
+  enabled: true
+  write_rating: true
+  write_keywords: true
+  write_score_bands: true
+  write_raw_scores_to_keywords: false
+  keep_backup: false
+  exiftool_path: exiftool
+  keyword_schema: namespaced_v1
+
+# -----------------------------------------------------------------------------
+# manual_keep
+# Manuelle Keep-Entscheidungen haben Vorrang vor jeder automatischen Bewertung.
+# -----------------------------------------------------------------------------
+manual_keep:
+  enabled: true
+  inbox_dir: ../NAS_EXAMPLE/MANUAL_KEEP/inbox
+  used_dir: ../NAS_EXAMPLE/MANUAL_KEEP/used
+  locks_dir: ../NAS_EXAMPLE/MANUAL_KEEP/.locks
+  recovery_log: ../NAS_EXAMPLE/MANUAL_KEEP/.recovery_info.json
+
+# -----------------------------------------------------------------------------
+# reporting
+# Reports enthalten ausschließlich Metadaten, Pfade, Status und Scores.
+# -----------------------------------------------------------------------------
+reporting:
+  write_json_summary: true
+  write_csv_scores: true
+  stdout_mode: scheduler_mail
+  require_user_actions_required: true
+
+# -----------------------------------------------------------------------------
+# extensions
+# Erweiterungen dürfen nur hier ergänzt werden. Unbekannte Top-Level-Schlüssel
+# sind nach 98AP ein Validierungsfehler.
+# -----------------------------------------------------------------------------
+extensions: {}
