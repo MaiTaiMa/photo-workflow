@@ -326,6 +326,51 @@ def require_within(cfg: dict, target: Path) -> None:
     if not path_within(base, target):
         raise ValueError(f'Path escapes base_dir: {target}')
         
+def run_pipeline(cfg: dict, folder: str | None = None) -> None:
+    """
+    Führt eine Pipeline von Phasen aus (konfigurierbar).
+    
+    98AP-Regeln:
+      - AP7: Nachvollziehbare Zustandsübergänge
+      - AP8: Phasen dürfen nur in definierter Reihenfolge ausgeführt werden
+    
+    Args:
+        cfg: Config-Dictionary
+        folder: Optionaler spezifischer Batch-Ordner
+    """
+    pipeline_cfg = cfg.get('pipeline', {})
+    phases = pipeline_cfg.get('phases', ['phase1', 'phase2'])
+    stop_on_error = bool(pipeline_cfg.get('stop_on_error', True))
+    
+    log(cfg, f'[PIPELINE] Starte Pipeline mit Phasen: {phases}')
+    
+    for phase in phases:
+        log(cfg, f'[PIPELINE] === Phase: {phase} ===')
+        
+        try:
+            if phase == 'phase1':
+                run_phase1(cfg, folder)
+            elif phase == 'phase2':
+                run_phase2(cfg, folder)
+            elif phase == 'phase3':  # Zukünftig
+                # run_phase3(cfg, folder)  # Noch nicht implementiert
+                log(cfg, f'[PIPELINE] Phase {phase} noch nicht implementiert', error=True)
+            elif phase == 'train-personal':
+                run_training(cfg, None, None)
+            elif phase == 'rebuild-family-cache':
+                run_family_cache_rebuild(cfg)
+            else:
+                log(cfg, f'[PIPELINE] Unbekannte Phase: {phase}', error=True)
+                
+        except Exception as exc:
+            log(cfg, f'[PIPELINE] Phase {phase} fehlgeschlagen: {exc}', error=True)
+            
+            if stop_on_error:
+                log(cfg, f'[PIPELINE] Pipeline abgebrochen (stop_on_error=true)', error=True)
+                return
+    
+    log(cfg, f'[PIPELINE] Pipeline erfolgreich abgeschlossen')
+        
 @contextmanager
 def file_lock(cfg: dict):
     """
@@ -1178,27 +1223,35 @@ def build_parser() -> argparse.ArgumentParser:
     """Erstellt den CLI-Parser für alle Commands."""
     parser = argparse.ArgumentParser(description='Synology photo workflow with AI-assisted culling.')
     parser.add_argument('--config', default='config/config.yaml')
-
+    
     sub = parser.add_subparsers(dest='command', required=True)
-
+    
     # Phase 1
     p1 = sub.add_parser('phase1')
     p1.add_argument('--folder', default=None)
-
+    
     # Phase 2
     p2 = sub.add_parser('phase2')
     p2.add_argument('--folder', default=None)
-
+    
+    # Pipeline (konfigurierbar)
+    p_pipe = sub.add_parser('pipeline')
+    p_pipe.add_argument('--folder', default=None)
+    
+    # Alias: phase12 (identisch zu pipeline)
+    p12 = sub.add_parser('phase12')
+    p12.add_argument('--folder', default=None)
+    
     # Training
     train = sub.add_parser('train-personal')
     train.add_argument('--images-dir', default=None)
     train.add_argument('--model-out', default=None)
-
+    
     # Family Cache Rebuild
     sub.add_parser('rebuild-family-cache')
-
+    
     return parser
-
+    
 
 def main() -> int:
     """Haupt-Entry-Point für den Workflow."""
@@ -1226,6 +1279,8 @@ def main() -> int:
                 run_phase1(cfg, args.folder)
             elif args.command == 'phase2':
                 run_phase2(cfg, args.folder)
+            elif args.command in ('pipeline', 'phase12'):
+                run_pipeline(cfg, args.folder)
             elif args.command == 'train-personal':
                 run_training(cfg, args.images_dir, args.model_out)
             elif args.command == 'rebuild-family-cache':

@@ -144,6 +144,28 @@ safety:
   never_delete_outside_arw_dir: true
 
 # -----------------------------------------------------------------------------
+# pipeline
+# Definiert welche Phasen in welchem Modus ausgeführt werden sollen.
+# -----------------------------------------------------------------------------
+pipeline:
+  # phases: Liste der auszuführenden Phasen (in Reihenfolge)
+  # Mögliche Werte: phase1, phase2, phase3, train-personal, rebuild-family-cache
+  # Auswirkung: Beim Start mit 'pipeline' werden alle Phasen nacheinander ausgeführt.
+  phases:
+    - phase1
+    - phase2
+  
+  # stop_on_error: Bei Fehler in einer Phase abbrechen?
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true stoppt die Pipeline beim ersten Fehler; false führt alle Phasen aus.
+  stop_on_error: true
+  
+  # default: Standard-Pipeline für 'phase12' (alias für pipeline)
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true macht 'phase12' zum Alias für 'pipeline'.
+  default: true
+
+# -----------------------------------------------------------------------------
 # workflow
 # Steuerung von Batch-Lebenszyklus und Recovery.
 # -----------------------------------------------------------------------------
