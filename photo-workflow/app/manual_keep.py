@@ -28,7 +28,7 @@ from pathlib import Path
 # =============================================================================
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".JPG", ".JPEG", ".png", ".PNG", ".tif", ".tiff", ".webp"}
-
+JPG_EXTS = {".jpg", ".jpeg"}
 
 # =============================================================================
 # Hilfsfunktionen fur Batch-Erkennung
@@ -134,12 +134,11 @@ def top_level_jpgs(folder: Path) -> List[Path]:
 
 def is_image_file(path: Path) -> bool:
     """Check if path is a supported image file."""
-    return path.is_file() and not path.is_symlink() and path.suffix.lower() in IMAGE_EXTENSIONS
+    return path.is_file() and not path.is_symlink() and path.suffix.lower() in IMAGE_EXTS
 
 
 def is_jpg_file(path: Path) -> bool:
-    """Check if path is a .JPG file."""
-    return path.is_file() and not path.is_symlink() and path.suffix.lower() in {".jpg", ".jpeg"}
+    return path.is_file() and not path.is_symlink() and path.suffix.lower() in JPG_EXTS
 
 # =============================================================================
 # Feature-Extraktion (unterhalb der Imports, vor ManualKeep-Klasse)
@@ -548,6 +547,8 @@ def detect_manual_keep_images(
     status = {
         'inbox_count': 0,
         'matched_count': 0,
+        'matched_source_count': 0,
+        'matched_source_paths': [],
         'status': 'ok',
     }
     
@@ -589,21 +590,33 @@ def detect_manual_keep_images(
     
     # 2. Alle Batch-Bilder mit inbox-Features vergleichen
     keep_images: List[Path] = []
+    matched_source_paths: set[str] = set()
     
-    for batch_img in top_level_jpgs(batch_path):
+    for batch_img in top_level_images(batch_path):
         batch_features = extract_visual_features(batch_img)
-        
-        # Beste Ähnlichkeit finden
+
         best_similarity = 0.0
+        best_inbox_feature = None
+
         for inbox_feature in inbox_features:
-            similarity = cosine_similarity(batch_features, inbox_feature['features'])
+            similarity = cosine_similarity(
+                batch_features,
+                inbox_feature['features'],
+            )
+
             if similarity > best_similarity:
                 best_similarity = similarity
-        
-        # Bei Ähnlichkeit > Threshold: MANUAL_KEEP
+                best_inbox_feature = inbox_feature
+
         if best_similarity >= similarity_threshold:
             keep_images.append(batch_img)
             status['matched_count'] += 1
+
+            if best_inbox_feature is not None:
+                matched_source_paths.add(best_inbox_feature['path'])
+
+    status['matched_source_paths'] = sorted(matched_source_paths)
+    status['matched_source_count'] = len(matched_source_paths)
     
     # Status setzen
     if keep_images:
@@ -612,6 +625,76 @@ def detect_manual_keep_images(
         status['status'] = 'no_match'
     
     return keep_images, status
+
+def move_manual_keep_sources_to_used(
+    matched_source_paths: list[str],
+    manual_keep_inbox: Path,
+    manual_keep_used: Path,
+) -> dict:
+    """
+    Verschiebt erfolgreich verwendete MANUAL_KEEP-Quellbilder von inbox nach used.
+
+    Die Quelldateien stammen aus dem Feature-Matching. Deshalb erfolgt keine
+    Zuordnung über Batch-Dateinamen.
+
+    Unterordner relativ zu inbox bleiben unter used erhalten. Das verhindert
+    Namenskollisionen bei mehrfach vorkommenden Dateinamen.
+    """
+    result = {
+        'moved_count': 0,
+        'already_used_count': 0,
+        'failed_count': 0,
+        'errors': [],
+        'status': 'ok',
+    }
+
+    inbox_root = manual_keep_inbox.resolve()
+    used_root = manual_keep_used.resolve()
+    used_root.mkdir(parents=True, exist_ok=True)
+
+    for source_path_text in sorted(set(matched_source_paths)):
+        source = Path(source_path_text)
+
+        try:
+            resolved_source = source.resolve()
+            relative_path = resolved_source.relative_to(inbox_root)
+        except (FileNotFoundError, ValueError) as exc:
+            result['failed_count'] += 1
+            result['errors'].append(
+                f'Ungültige MANUAL_KEEP-Quelle: {source_path_text} ({exc})'
+            )
+            continue
+
+        target = used_root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        features_source = source.with_suffix(source.suffix + '.features.json')
+        features_target = target.with_suffix(target.suffix + '.features.json')
+
+        try:
+            if target.exists():
+                result['already_used_count'] += 1
+            else:
+                shutil.move(str(source), str(target))
+                result['moved_count'] += 1
+
+            if features_source.exists() and not features_target.exists():
+                shutil.move(str(features_source), str(features_target))
+
+        except OSError as exc:
+            result['failed_count'] += 1
+            result['errors'].append(f'{source} -> {target}: {exc}')
+
+    if result['failed_count']:
+        result['status'] = 'partial' if result['moved_count'] else 'failed'
+    elif result['moved_count']:
+        result['status'] = 'moved'
+    elif result['already_used_count']:
+        result['status'] = 'already_used'
+    else:
+        result['status'] = 'nothing_to_move'
+
+    return result
 
 def mark_manual_keep_used(
     batch_path: Path,

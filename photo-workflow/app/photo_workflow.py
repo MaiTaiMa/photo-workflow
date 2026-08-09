@@ -31,8 +31,12 @@ import zipfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from app.manual_keep import top_level_jpgs, is_jpg_file
-
+from app.manual_keep import (
+    detect_manual_keep_images,
+    move_manual_keep_sources_to_used,
+    top_level_jpgs,
+    is_jpg_file,
+)
 
 import yaml
 
@@ -813,6 +817,23 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     rows = apply_series_culling(rows, cfg)
     family_tag_written = 0
     culling_metadata_written = 0
+
+    if manual_keep_status['status'] == 'matched':
+        move_result = move_manual_keep_sources_to_used(
+            matched_source_paths=manual_keep_status['matched_source_paths'],
+            manual_keep_inbox=manual_keep_inbox,
+            manual_keep_used=manual_keep_used,
+        )
+
+        print(
+            "[MANUAL_KEEP] "
+            f"used_moved={move_result['moved_count']} "
+            f"already_used={move_result['already_used_count']} "
+            f"failed={move_result['failed_count']}"
+        )
+
+        for error in move_result['errors']:
+            print(f"[MANUAL_KEEP] MOVE FAILED: {error}")
 
     # ==========================================================================
     # SCHRITT 5: Metadaten schreiben und Bilder verschieben
