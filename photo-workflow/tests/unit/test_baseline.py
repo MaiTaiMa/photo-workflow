@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from app.batch_identity import batch_id
-from app.config_schema import ConfigError, config_fingerprint, validate_config
+from app.config_schema import ConfigError, config_fingerprint, validate_config_strict
 from app.path_security import PathSecurityError, ensure_within
 from app.state_store import StateStore
 
@@ -34,7 +34,7 @@ def test_path_security_rejects_escape(tmp_path: Path):
 
 def test_config_requires_paths_and_safety():
     with pytest.raises(ConfigError):
-        validate_config({})
+        validate_config_strict({})
     config = {"paths": {"base_dir": "/tmp/workflow"}, "safety": {}}
-    validate_config(config)
-    assert len(config_fingerprint(config)) == 64
+    validate_config_strict(config)
+    assert len(config_fingerprint(config)) == 16

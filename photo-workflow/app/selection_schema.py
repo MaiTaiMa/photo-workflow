@@ -18,7 +18,7 @@
 
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Tuple, Optional
 from pathlib import Path
 
@@ -383,7 +383,7 @@ def create_empty_selection(pool_type: str, base_dir: str) -> Dict[str, Any]:
     Returns:
         Leere selection.json als Dict
     """
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
     
     return {
         "schema_version": SCHEMA_VERSION,

@@ -145,3 +145,22 @@ def get_test_config(base_dir: str) -> Dict[str, Any]:
             'never_delete_outside_arw_dir': True,
         },
     }
+
+def validate_config_strict(config: Dict[str, Any]) -> None:
+    """
+    Validiert die Config strikt.
+    Wirft ConfigError bei ungueltiger Config.
+    
+    Ideal fuer:
+    - Tests (pytest.raises)
+    - Kommandozeilen-Tools
+    - Fruehe Fehlererkennung
+    
+    Abwaertskompatibilitaet:
+    - validate_config() bleibt unveraendert (gibt Tuple zurueck)
+    - Bestehender Code wird nicht beeinflusst
+    """
+    is_valid, errors = validate_config(config)
+    if not is_valid:
+        error_msg = f"Config validation failed: {'; '.join(errors)}"
+        raise ConfigError(error_msg)
