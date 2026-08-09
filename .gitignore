@@ -21,15 +21,12 @@ NAS_EXAMPLE/
 *.JPEG
 .env
 
+# lokale virtuelle Unmgebung – duerfen niemals ins Repo
+.venv/
+
 # Gesichtsbilder und biometrische Daten – duerfen niemals ins Repo
-faces/
-**/faces/
-
-reference/
-**/reference/
-
-newrefs/
-**/newrefs/
+#faces/
+#**/faces/
 
 # Modell-Gewichte und safetensors
 *.safetensors

@@ -9,8 +9,8 @@ from datetime import datetime
 from typing import List, Dict
 import numpy as np
 
-from metadata_rating import read_rating
-from aesthetic import extract_features, generic_aesthetic_score
+from app.metadata_rating import read_rating
+from app.aesthetic import extract_features, generic_aesthetic_score
 
 
 IMAGE_EXTS = {'.jpg', '.jpeg', '.JPG', '.JPEG'}
@@ -153,7 +153,7 @@ def build_personal_reference_state(cfg: dict) -> dict:
 
 
 def build_personal_model_from_directory(images_dir: str | Path, model_out: str | Path, recursive: bool = False) -> dict:
-    from aesthetic import extract_features, generic_aesthetic_score
+    from app.aesthetic import extract_features, generic_aesthetic_score
     images_dir = Path(images_dir)
     model_out = Path(model_out)
     rows = []
@@ -194,7 +194,7 @@ def _write_personal_report(cfg: dict, report: dict) -> None:
 
 
 def load_or_rebuild_personal_model(cfg: dict):
-    from aesthetic import load_personal_model
+    from app.aesthetic import load_personal_model
     pcfg = _personal_cfg(cfg)
     paths = _personal_cache_paths(cfg)
     info = {
