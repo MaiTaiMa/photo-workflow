@@ -31,7 +31,7 @@ import zipfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from app.utils import top_level_jpgs, is_jpg_file
+from app.manual_keep import top_level_jpgs, is_jpg_file
 
 
 import yaml

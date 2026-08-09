@@ -22,7 +22,6 @@ import shutil
 from datetime import datetime
 from typing import Dict, List, Any, Tuple, Optional, Set
 from pathlib import Path
-from app.utils import top_level_images, top_level_jpgs, is_jpg_file
 
 # =============================================================================
 # Konstanten
@@ -133,7 +132,14 @@ def top_level_jpgs(folder: Path) -> List[Path]:
         key=lambda path: path.name.lower(),
     )
 
+def is_image_file(path: Path) -> bool:
+    """Check if path is a supported image file."""
+    return path.is_file() and not path.is_symlink() and path.suffix.lower() in IMAGE_EXTENSIONS
 
+
+def is_jpg_file(path: Path) -> bool:
+    """Check if path is a .JPG file."""
+    return path.is_file() and not path.is_symlink() and path.suffix.lower() in {".jpg", ".jpeg"}
 
 # =============================================================================
 # Feature-Extraktion (unterhalb der Imports, vor ManualKeep-Klasse)
