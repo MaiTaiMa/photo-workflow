@@ -9,10 +9,9 @@ Dieses Repository enthält einen konservativen Zwei-Phasen-Workflow für Kamera-
 
 ## Inhalte des Repos
 
-- `synology-photo-workflow/app/` enthält die Python-Fachmodule und die CLI.
-- `synology-photo-workflow/scripts/` enthält die Bash-Start- und Vorprüfungsskripte.
-- `synology-photo-workflow/tests/` enthält die automatisierten Prüfungen.
-- `synology-photo-workflow/docs/` enthält die ausführliche Dokumentation.
+- `photo-workflow/app/` enthält die Python-Fachmodule und die CLI.
+- `photo-workflow/tests/` enthält die automatisierten Prüfungen.
+- `photo-workflow/docs/` enthält die ausführliche Dokumentation.
 - `NAS_EXAMPLE/` zeigt die persistente Zielstruktur für den NAS-Betrieb.
 
 ## Was das Projekt macht
