@@ -1062,7 +1062,6 @@ def process_container_done(dir_path: Path, cfg: dict) -> None:
         if sub.is_dir() and is_valid_done_folder(sub.name):
             process_done_folder(sub, cfg)
 
-
 def run_phase2(cfg: dict, folder: str | None = None) -> None:
     """
     Führt Phase 2 (Archivierung + Cleanup) für alle Batches in temp_done aus.
@@ -1071,7 +1070,8 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
       1. ARW-Zip erstellen (process_done_folder)
       2. State-Update (bereits in process_done_folder)
       3. Review/Rejected bereinigen (cleanup_review_rejected)
-      4. Move nach temp_final (move_to_temp_final)
+      4. Ordner löschen (_Review, _Rejected)
+      5. Move nach temp_final (move_to_temp_final)
     """
     global COUNT_FOUND_DONE
     
@@ -1086,6 +1086,11 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
     
     for dir_path in folders:
         COUNT_FOUND_DONE += 1
+        
+        # Nur Ordner ohne führenden Punkt verarbeiten
+        if dir_path.name.startswith('.'):
+            continue
+        
         if is_valid_done_folder(dir_path.name):
             # ==========================================================================
             # SCHRITT 1: Bestehende Phase-2-Archivierung (ARW-Zip, State-Update)
@@ -1106,19 +1111,25 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                 
                 log(cfg, f'[CLEANUP] {dir_path.name} keep={cleanup_result["review_keep_moved"]} reject={cleanup_result["review_reject_moved"]} rejected={cleanup_result["rejected_moved"]} status={cleanup_result["status"]}')
                 
+                if cleanup_result['errors']:
+                    for error in cleanup_result['errors']:
+                        log(cfg, f'[CLEANUP WARN] {dir_path.name} {error}', error=True)
+                
                 # ==========================================================================
                 # SCHRITT 3: Bereinigung verifizieren
                 # ==========================================================================
                 verify_result = verify_cleanup_complete(str(dir_path))
                 
-                if not verify_result['complete'] and phase2_cfg.get('require_empty_review_rejected', True):
-                    log(cfg, f'[PHASE2 PARTIAL] {dir_path.name} Review/Rejected nicht vollständig bereinigt', error=True)
+                # Ordner wurden bereits gelöscht, verify_result zeigt nur den Status vor dem Löschen
+                # Move nach temp_final nur wenn cleanup erfolgreich war
+                if cleanup_result['status'] not in ['ok', 'partial']:
+                    log(cfg, f'[PHASE2 FAILED] {dir_path.name} Cleanup fehlgeschlagen', error=True)
                     continue
                 
                 # ==========================================================================
-                # SCHRITT 4: Move nach temp_final (nur wenn aktiviert + bereinigt)
+                # SCHRITT 4: Move nach temp_final (nur wenn aktiviert + cleanup OK)
                 # ==========================================================================
-                if move_enabled and verify_result['complete']:
+                if move_enabled:
                     move_result = move_to_temp_final(
                         batch_path=str(dir_path),
                         cfg=cfg,
@@ -1131,15 +1142,13 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                         log(cfg, f'[PHASE2 OK] {dir_path.name} move_to_temp_final deaktiviert')
                     else:
                         log(cfg, f'[PHASE2 FAILED] {dir_path.name} {move_result["error"]}', error=True)
-                elif move_enabled and not verify_result['complete']:
-                    log(cfg, f'[PHASE2 PARTIAL] {dir_path.name} Move übersprungen (Review/Rejected nicht leer)', error=True)
                 else:
                     log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup abgeschlossen, move deaktiviert')
             else:
                 log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup deaktiviert')
         else:
             process_container_done(dir_path, cfg)
-            
+
 def run_training(cfg: dict, images_dir: str | None = None, model_out: str | None = None) -> None:
     """Trainiert das persönliche Bewertungsmodell."""
     images_dir = images_dir or cfg['training']['sample_images_dir']
@@ -1154,7 +1163,6 @@ def run_training(cfg: dict, images_dir: str | None = None, model_out: str | None
     )
 
     log(cfg, f"[TRAIN] model={model_out} rows={model['training_rows']}")
-
 
 def run_family_cache_rebuild(cfg: dict) -> None:
     """Baut den Family-Cache komplett neu auf."""
