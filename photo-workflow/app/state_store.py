@@ -3,11 +3,12 @@ Skript: app/state_store.py
 Zweck: Speichert atomare, pro Batch hashverkettete Zustandsdateien.
 Autor: MaiTaiMa
 Erstellt: 2026-08-08
-Version: 1.1
+Version: 1.2
 Requires: Python 3.11
 
 Änderungsprotokoll:
   2026-08-08 | 1.1 | AP22.1 Header, Kommentare und Formatierung ergänzt
+  2026-08-08 | 1.2 | State-Hash-Payload an die Validierung angeglichen
 """
 
 from __future__ import annotations
@@ -42,8 +43,12 @@ def _digest(payload: dict[str, Any]) -> str:
     Wörterbuchschlüssel werden sortiert und JSON kompakt serialisiert.
     Der Hash wird aus dem Record ohne seinen eigenen Hashwert gebildet.
     """
-    text = json.dumps(payload, ensure_ascii=False, sort_keys=True,
-                      separators=(",", ":"))
+    text = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -113,9 +118,11 @@ class StateStore:
         if reason is not None:
             record["reason"] = reason
         record.update(fields)
+
         unsigned = dict(record)
-        unsigned["hash"] = ""
+        unsigned.pop("hash")
         record["hash"] = _digest(unsigned)
+
         self._atomic_write(self.path_for(batch_id), record)
         return record
 
@@ -128,7 +135,10 @@ class StateStore:
         an das Betriebssystem übergeben wurde.
         """
         path.parent.mkdir(parents=True, exist_ok=True)
-        fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        fd, temporary = tempfile.mkstemp(
+            prefix=f".{path.name}.",
+            dir=path.parent,
+        )
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 json.dump(value, handle, ensure_ascii=False, indent=2)

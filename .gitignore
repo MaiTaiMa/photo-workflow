@@ -4,6 +4,7 @@
 __pycache__/
 .pytest_cache/
 *.py[cod]
+
 WORKFLOW_DATA/
 00_TEMP_ERROR/
 01_TEMP_SD/
@@ -21,9 +22,12 @@ NAS_EXAMPLE/
 *.JPEG
 .env
 
+# lokale virtuelle Unmgebung – duerfen niemals ins Repo
+.venv/
+
 # Gesichtsbilder und biometrische Daten – duerfen niemals ins Repo
-faces/
-**/faces/
+#faces/
+#**/faces/
 
 reference/
 **/reference/
