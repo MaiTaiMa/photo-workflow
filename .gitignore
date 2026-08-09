@@ -4,7 +4,6 @@
 __pycache__/
 .pytest_cache/
 *.py[cod]
-
 WORKFLOW_DATA/
 00_TEMP_ERROR/
 01_TEMP_SD/
@@ -28,12 +27,6 @@ NAS_EXAMPLE/
 # Gesichtsbilder und biometrische Daten – duerfen niemals ins Repo
 #faces/
 #**/faces/
-
-reference/
-**/reference/
-
-newrefs/
-**/newrefs/
 
 # Modell-Gewichte und safetensors
 *.safetensors
