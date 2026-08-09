@@ -84,6 +84,122 @@ def _match_batch_images(batch_path: Path, inbox_filenames: Set[str]) -> List[Pat
     
     return keep_images
 
+# =============================================================================
+# Feature-Extraktion (unterhalb der Imports, vor ManualKeep-Klasse)
+# =============================================================================
+
+def extract_visual_features(image_path: Path, preview_size: int = 32) -> list[float]:
+    """
+    Extrahiert Feature-Vektor für ein Bild (ähnlich wie series_detection).
+    
+    98AP-Regeln:
+      - Keine Bildbytes speichern, nur Features
+      - Preview-Size konfigurierbar (Default 32px)
+      - Feature-Vektor als Liste von Floats
+    
+    Args:
+        image_path: Pfad zum Bild
+        preview_size: Kantenlänge für Feature-Extraktion
+    
+    Returns:
+        Liste von Floats (Feature-Vektor)
+    """
+    try:
+        from PIL import Image
+        import numpy as np
+        
+        # Bild laden und auf preview_size skalieren
+        with Image.open(image_path) as img:
+            img = img.convert('RGB')
+            img = img.resize((preview_size, preview_size), Image.Resampling.LANCZOS)
+            
+            # In numpy Array konvertieren und normalisieren
+            arr = np.array(img, dtype=np.float32) / 255.0
+            
+            # Flattened Feature-Vektor (RGB * preview_size^2)
+            features = arr.flatten().tolist()
+            
+            return features
+    
+    except Exception as e:
+        # Bei Fehler leeren Vektor zurückgeben
+        return [0.0] * (3 * preview_size * preview_size)
+
+
+def cosine_similarity(features_a: list[float], features_b: list[float]) -> float:
+    """
+    Berechnet Kosinus-Ähnlichkeit zwischen zwei Feature-Vektoren.
+    
+    Args:
+        features_a: Erster Feature-Vektor
+        features_b: Zweiter Feature-Vektor
+    
+    Returns:
+        Ähnlichkeit von 0.0 (unähnlich) bis 1.0 (identisch)
+    """
+    import numpy as np
+    
+    # In numpy Arrays konvertieren
+    vec_a = np.array(features_a, dtype=np.float32)
+    vec_b = np.array(features_b, dtype=np.float32)
+    
+    # Kosinus-Ähnlichkeit berechnen
+    dot_product = np.dot(vec_a, vec_b)
+    norm_a = np.linalg.norm(vec_a)
+    norm_b = np.linalg.norm(vec_b)
+    
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    
+    return float(dot_product / (norm_a * norm_b))
+
+
+def load_or_extract_features(image_path: Path) -> dict:
+    """
+    Lädt gespeicherte Features oder extrahiert sie neu.
+    
+    98AP-Regeln:
+      - Features werden als JSON neben dem Bild gespeichert
+      - Bei Änderung des Bildes (mtime) neu extrahieren
+    
+    Args:
+        image_path: Pfad zum Bild
+    
+    Returns:
+        dict mit 'features', 'path', 'filename', 'mtime_ns'
+    """
+    features_path = image_path.with_suffix(image_path.suffix + '.features.json')
+    
+    # Features existieren?
+    if features_path.exists():
+        try:
+            features = json.loads(features_path.read_text(encoding='utf-8'))
+            
+            # Prüfen, ob Bild unverändert ist
+            stat = image_path.stat()
+            if features.get('mtime_ns') == stat.st_mtime_ns:
+                return features
+        except Exception:
+            pass  # Bei Fehler neu extrahieren
+    
+    # Neu extrahieren
+    stat = image_path.stat()
+    features = {
+        'path': str(image_path),
+        'filename': image_path.name,
+        'size': stat.st_size,
+        'mtime_ns': stat.st_mtime_ns,
+        'features': extract_visual_features(image_path),
+        'created_at': now(),
+    }
+    
+    # Speichern
+    try:
+        features_path.write_text(json.dumps(features, indent=2), encoding='utf-8')
+    except Exception:
+        pass  # Speichern optional, nicht kritisch
+    
+    return features
 
 # =============================================================================
 # ManualKeep-Klasse (AP8)
@@ -340,7 +456,6 @@ class ManualKeep:
         # TODO: In Log-Datei schreiben
         pass
 
-
 # =============================================================================
 # Funktion fur Phase-1-Integration (AP2)
 # =============================================================================
@@ -349,73 +464,97 @@ def detect_manual_keep_images(
     batch_path: Path,
     manual_keep_inbox: Path,
     manual_keep_used: Path,
+    similarity_threshold: float = 0.85,
 ) -> Tuple[List[Path], dict]:
     """
-    Erkennt Bilder im Batch, die im MANUAL_KEEP/inbox liegen.
+    Erkennt Bilder im Batch, die MANUAL_KEEP-Bildern ähneln.
     
     98AP-Regeln:
-      - AP2: MANUAL_KEEP hat Vorrang vor automatischer Bewertung
-      - Nur Bilder im inbox werden als KEEP markiert
-      - Bilder im used wurden bereits verarbeitet (idempotent)
-      - Kein Bild darf doppelt verarbeitet werden
+      - Feature-Vektor-basiertes Matching (nicht Dateiname)
+      - Threshold-configurierbar (Default 0.85)
+      - inbox kann flach oder mit Batch-Unterordnern sein
+      - Keine Bildbytes persistieren, nur Features
     
     Args:
         batch_path: Pfad zum Batch-Ordner
         manual_keep_inbox: Pfad zum MANUAL_KEEP/inbox-Ordner
         manual_keep_used: Pfad zum MANUAL_KEEP/used-Ordner
+        similarity_threshold: Minimale Ähnlichkeit für Match (0.0-1.0)
     
     Returns:
-        Tuple (List[Image-Pfade], status_dict)
-        status_dict enthaelt:
+        Tuple (List[Image-Pfade im Batch], status_dict)
+        status_dict enthält:
             - inbox_count: Anzahl Bilder im inbox
             - matched_count: Anzahl Treffer im Batch
-            - status: 'ok', 'no_inbox', 'batch_missing'
+            - status: 'ok', 'no_inbox', 'empty_inbox', 'matched', 'no_match'
     """
     status = {
-        "inbox_count": 0,
-        "matched_count": 0,
-        "status": "ok",
+        'inbox_count': 0,
+        'matched_count': 0,
+        'status': 'ok',
     }
     
-    # Batch-Pfad pruefen
+    # Batch-Pfad prüfen
     if not batch_path.exists() or not batch_path.is_dir():
-        status["status"] = "batch_missing"
+        status['status'] = 'batch_missing'
         return [], status
     
-    # Inbox-Pfad pruefen
+    # Inbox-Pfad prüfen
     if not manual_keep_inbox.exists() or not manual_keep_inbox.is_dir():
-        status["status"] = "no_inbox"
+        status['status'] = 'no_inbox'
         return [], status
     
-    # Batch-Namen extrahieren
-    batch_name = batch_path.name
-    inbox_batch = manual_keep_inbox / batch_name
+    # 1. Alle MANUAL_KEEP-Bilder im inbox laden (flach + Unterordner)
+    inbox_features: list[dict] = []
     
-    # Inbox-Batch existiert nicht?
-    if not inbox_batch.exists() or not inbox_batch.is_dir():
-        status["status"] = "no_inbox"
-        return [], status
+    # Flache Struktur: inbox/*.JPG
+    for pattern in ['*.JPG', '*.jpg', '*.JPEG', '*.jpeg']:
+        for img in manual_keep_inbox.glob(pattern):
+            if img.is_file() and not img.is_symlink():
+                features = load_or_extract_features(img)
+                inbox_features.append(features)
+                status['inbox_count'] += 1
     
-    # Alle Bilddateinamen im inbox sammeln
-    inbox_filenames = _collect_inbox_filenames(inbox_batch)
-    status["inbox_count"] = len(inbox_filenames)
+    # Unterordner-Struktur: inbox/BATCH_NAME/*.JPG
+    for batch_dir in manual_keep_inbox.iterdir():
+        if batch_dir.is_dir() and not batch_dir.name.startswith('.'):
+            for pattern in ['*.JPG', '*.jpg', '*.JPEG', '*.jpeg']:
+                for img in batch_dir.glob(pattern):
+                    if img.is_file() and not img.is_symlink():
+                        features = load_or_extract_features(img)
+                        inbox_features.append(features)
+                        status['inbox_count'] += 1
     
     # Leerer inbox?
-    if not inbox_filenames:
-        status["status"] = "empty_inbox"
+    if not inbox_features:
+        status['status'] = 'empty_inbox'
         return [], status
     
-    # Treffer im Batch finden
-    keep_images = _match_batch_images(batch_path, inbox_filenames)
-    status["matched_count"] = len(keep_images)
+    # 2. Alle Batch-Bilder mit inbox-Features vergleichen
+    keep_images: List[Path] = []
     
+    for batch_img in top_level_jpgs(batch_path):
+        batch_features = extract_visual_features(batch_img)
+        
+        # Beste Ähnlichkeit finden
+        best_similarity = 0.0
+        for inbox_feature in inbox_features:
+            similarity = cosine_similarity(batch_features, inbox_feature['features'])
+            if similarity > best_similarity:
+                best_similarity = similarity
+        
+        # Bei Ähnlichkeit > Threshold: MANUAL_KEEP
+        if best_similarity >= similarity_threshold:
+            keep_images.append(batch_img)
+            status['matched_count'] += 1
+    
+    # Status setzen
     if keep_images:
-        status["status"] = "matched"
+        status['status'] = 'matched'
     else:
-        status["status"] = "no_match"
+        status['status'] = 'no_match'
     
     return keep_images, status
-
 
 def mark_manual_keep_used(
     batch_path: Path,

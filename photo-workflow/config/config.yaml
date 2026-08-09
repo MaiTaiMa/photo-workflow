@@ -655,6 +655,7 @@ metadata_culling:
 # manual_keep
 # Manuelle Keep-Entscheidungen haben Vorrang vor jeder automatischen Bewertung.
 # AP8-Vertrag: Inbox/Used-Logik für idempotente Zuordnung.
+# Feature-Vektor-basiertes Matching (nicht Dateiname).
 # -----------------------------------------------------------------------------
 manual_keep:
   # enabled: MANUAL_KEEP-Verarbeitung aktivieren.
@@ -690,6 +691,13 @@ manual_keep:
   #           Enthalt Assignment-IDs, Zeitstempel und User-Informationen.
   # Hinweis: Wird intern verwendet; Format ist JSON.
   recovery_log: ../NAS_EXAMPLE/MANUAL_KEEP/.recovery_info.json
+
+  # similarity_threshold: Minimale Ähnlichkeit für MANUAL_KEEP-Match.
+  # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
+  # Auswirkung: Höhere Werte reduzieren False Positives, können aber echte Treffer verpassen.
+  # Empfehlung: 0.85 für striktes Matching, 0.75 für tolerantes Matching.
+  # Testwert: 0.85
+  similarity_threshold: 0.85
 
 # -----------------------------------------------------------------------------
 # reporting
