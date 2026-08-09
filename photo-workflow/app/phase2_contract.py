@@ -21,6 +21,7 @@ from pathlib import Path
 import shutil
 from datetime import datetime
 from typing import Dict, Any
+from automation_metrics import AutomationMetrics
 
 
 def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -> Dict[str, Any]:
@@ -391,3 +392,18 @@ def run_phase2_with_cleanup(batch_path: str, cfg: dict, dry_run: bool = False) -
             result['status'] = 'failed'
     
     return result
+    
+    
+def update_automation_metrics(runtime_path: Path):
+    """
+    Aktualisiert Automation-Metrics nach Phase-2-Abschluss.
+    
+    Wird nach jedem Batch aufgerufen.
+    """
+    metrics_calc = AutomationMetrics(runtime_path)
+    metrics = metrics_calc.calculate_readiness(min_batches=10, threshold=0.85)
+    
+    output_path = runtime_path / "automation_metrics.json"
+    metrics_calc.save_metrics(metrics, output_path)
+    
+    return metrics

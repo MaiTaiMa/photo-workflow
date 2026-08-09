@@ -191,6 +191,37 @@ workflow:
   create_done_marker_before_move: true
 
 # -----------------------------------------------------------------------------
+# automation
+# Dieser Block steuert die Vollautomatik für Review-Entscheidungen.
+# Änderungen hier beeinflussen ob Bilder automatisch als keep/reject markiert werden.
+# -----------------------------------------------------------------------------
+automation:
+  # auto_mode: Aktiviert/deaktiviert Vollautomatik
+  # Mögliche Werte: true (aktiv), false (deaktiv)
+  # Auswirkung: true = automatische Entscheidungen bei hoher Übereinstimmung,
+  #              false = manuelle Review-Pflicht für alle Bilder
+  # Voraussetzung: Mindestens 10 Batches mit >85% Übereinstimmung
+  auto_mode: false
+
+  # confidence_threshold: Mindest-Übereinstimmungsrate für Auto-Entscheidungen
+  # Mögliche Werte: 0.0-1.0 (z.B. 0.85 für 85%)
+  # Auswirkung: true = Bilder mit personal_score >= threshold werden auto_keep,
+  #              false = alle Bilder benötigen manuelles Review
+  confidence_threshold: 0.85
+
+  # min_batches_for_auto: Mindestanzahl Batches vor Aktivierung
+  # Mögliche Werte: 1-1000
+  # Auswirkung: true = Aktivierung erst nach N Batches,
+  #              false = Sofortige Aktivierung möglich
+  min_batches_for_auto: 10
+
+  # review_window_days: Zeitfenster für Review-Feedback
+  # Mögliche Werte: 1-365
+  # Auswirkung: true = Feedback-Loop berücksichtigt nur letzte N Tage,
+  #              false = Gesamter History wird berücksichtigt
+  review_window_days: 30
+
+# -----------------------------------------------------------------------------
 # phase2
 # Review/Rejected-Bereinigung und Transfer nach temp_final.
 # -----------------------------------------------------------------------------

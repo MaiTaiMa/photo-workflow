@@ -22,6 +22,7 @@ import shutil
 from datetime import datetime
 from typing import Dict, List, Any, Tuple, Optional, Set
 from pathlib import Path
+from review_validation import ReviewValidator
 
 # =============================================================================
 # Konstanten
@@ -798,3 +799,18 @@ def get_manual_keep_status(
         )
     
     return status
+    
+    
+def validate_batch_decisions(batch_id: str, runtime_path: Path):
+    """
+    Validiert Entscheidungen eines Batches nach Abschluss.
+    
+    Wird nach jeder manuellen Entscheidung aufgerufen.
+    """
+    validator = ReviewValidator(runtime_path)
+    report = validator.validate_decisions(batch_id, window_days=30)
+    
+    output_path = runtime_path / "validation" / f"validation_{batch_id}.json"
+    validator.save_validation_report(report, output_path)
+    
+    return report

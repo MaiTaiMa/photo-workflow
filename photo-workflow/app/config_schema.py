@@ -253,3 +253,42 @@ def get_test_config(base_dir: str) -> Dict[str, Any]:
             'never_delete_outside_arw_dir': True,
         },
     }
+    
+    
+AUTOMATION_SCHEMA = {
+    'type': 'dict',
+    'required': False,
+    'schema': {
+        'auto_mode': {
+            'type': 'bool',
+            'default': False,
+            'description': 'Vollautomatik-Modus aktivieren'
+        },
+        'confidence_threshold': {
+            'type': 'float',
+            'default': 0.85,
+            'min': 0.0,
+            'max': 1.0,
+            'description': 'Mindest-Übereinstimmungsrate für Auto-Entscheidungen'
+        },
+        'min_batches_for_auto': {
+            'type': 'int',
+            'default': 10,
+            'min': 1,
+            'description': 'Mindestanzahl Batches vor Aktivierung'
+        },
+        'review_window_days': {
+            'type': 'int',
+            'default': 30,
+            'min': 1,
+            'description': 'Zeitfenster für Review-Feedback'
+        }
+    }
+}
+
+# In CONFIG_SCHEMA integrieren:
+CONFIG_SCHEMA = {
+    # ... existierende Felder ...
+    'automation': AUTOMATION_SCHEMA,
+    # ...
+}

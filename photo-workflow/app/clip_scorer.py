@@ -19,6 +19,7 @@
 import os
 from typing import Dict, List, Any, Tuple, Optional
 from pathlib import Path
+from auto_decision import AutoDecider
 
 # Transformer-Imports (optional, nur wenn verfügbar)
 try:
@@ -244,3 +245,19 @@ def compute_batch_scores(image_paths: List[str], model_path: str,
         results.append((image_path, score))
     
     return results
+    
+    
+def score_batch_auto(batch_manifest: Dict, config: Dict) -> Dict:
+    """
+    Scoret Batch mit automatischer Entscheidung.
+    """
+    decider = AutoDecider(config)
+    
+    for image in batch_manifest['images']:
+        scores = calculate_scores(image)
+        decision = decider.decide(scores)
+        
+        if decision != 'manual_review':
+            # Automatische Entscheidung direkt übernehmen
+            image['review_state'] = decision
+            image['decision_reason'] = decider.get_decision_reason(decision, scores)
