@@ -28,7 +28,7 @@ from app.utils import top_level_images, top_level_jpgs, is_jpg_file
 # Konstanten
 # =============================================================================
 
-IMAGE_EXTS = {".jpg", ".jpeg", ".JPG", ".JPEG", ".png", ".PNG"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".JPG", ".JPEG", ".png", ".PNG", ".tif", ".tiff", ".webp"}
 
 
 # =============================================================================
@@ -68,12 +68,13 @@ def _collect_inbox_filenames(inbox_batch: Path) -> Set[str]:
 
 def _match_batch_images(batch_path: Path, inbox_filenames: Set[str]) -> List[Path]:
     """
-    Findet alle Bilder im Batch, die im inbox liegen.
+    Returns supported image files directly in folder (no subfolders).
+    Sorted by name for reproducible ordering.
     
-    98AP-Regeln:
-      - Case-insensitive Vergleiche
-      - Nur IMAGE_EXTS berucksichtigen
-      - Leere Treffer als leer melden, nicht als Fehler
+    Excludes:
+      - Symlinks
+      - Hidden files (starting with '.')
+      - Non-image files
     """
     keep_images: List[Path] = []
     
@@ -88,6 +89,51 @@ def _match_batch_images(batch_path: Path, inbox_filenames: Set[str]) -> List[Pat
                         keep_images.append(img)
     
     return keep_images
+
+def top_level_images(folder: Path) -> List[Path]:
+    """Returns supported image files directly in folder (no subfolders)."""
+    if not folder.is_dir():
+        return []
+    
+    return sorted(
+        (
+            path
+            for path in folder.iterdir()
+            if path.is_file()
+            and not path.is_symlink()
+            and not path.name.startswith('.')
+            and path.suffix.lower() in IMAGE_EXTS
+        ),
+        key=lambda path: path.name.lower(),
+    )
+
+
+def top_level_jpgs(folder: Path) -> List[Path]:
+    """
+    Returns only .JPG/.jpeg files directly in folder (no subfolders).
+    Sorted by name for reproducible ordering.
+    
+    Excludes:
+      - Symlinks
+      - Hidden files (starting with '.')
+      - Non-JPG files
+    """
+    if not folder.is_dir():
+        return []
+    
+    return sorted(
+        (
+            path
+            for path in folder.iterdir()
+            if path.is_file()
+            and not path.is_symlink()
+            and not path.name.startswith('.')
+            and path.suffix.lower() in {".jpg", ".jpeg"}
+        ),
+        key=lambda path: path.name.lower(),
+    )
+
+
 
 # =============================================================================
 # Feature-Extraktion (unterhalb der Imports, vor ManualKeep-Klasse)
