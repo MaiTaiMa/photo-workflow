@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from app.batch_identity import batch_id
-from app.config_schema import ConfigError, config_fingerprint, validate_config_strict
+from app.config_schema import  ConfigError, config_fingerprint, validate_config_strict, get_test_config
 from app.path_security import PathSecurityError, ensure_within
 from app.state_store import StateStore
 
@@ -33,8 +33,21 @@ def test_path_security_rejects_escape(tmp_path: Path):
 
 
 def test_config_requires_paths_and_safety():
+    """Testet dass paths, runtime und safety Pflichtfelder sind"""
+    
+    # Leere Config → Error
     with pytest.raises(ConfigError):
         validate_config_strict({})
-    config = {"paths": {"base_dir": "/tmp/workflow"}, "safety": {}}
+    
+    # Config ohne safety → Error
+    config_no_safety = {
+        "paths": {"base_dir": "/tmp/workflow"},
+        "runtime": {"lock_file": "/tmp/workflow/lock"},
+    }
+    with pytest.raises(ConfigError):
+        validate_config_strict(config_no_safety)
+    
+    # Vollstaendige Config → OK
+    config = get_test_config("/tmp/workflow")
     validate_config_strict(config)
     assert len(config_fingerprint(config)) == 16
