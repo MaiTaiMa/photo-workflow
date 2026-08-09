@@ -1064,7 +1064,15 @@ def process_container_done(dir_path: Path, cfg: dict) -> None:
 
 
 def run_phase2(cfg: dict, folder: str | None = None) -> None:
-    """Führt Phase 2 (Archivierung + Cleanup) für alle Batches in temp_done aus."""
+    """
+    Führt Phase 2 (Archivierung + Cleanup) für alle Batches in temp_done aus.
+    
+    Reihenfolge:
+      1. ARW-Zip erstellen (process_done_folder)
+      2. State-Update (bereits in process_done_folder)
+      3. Review/Rejected bereinigen (cleanup_review_rejected)
+      4. Move nach temp_final (move_to_temp_final)
+    """
     global COUNT_FOUND_DONE
     
     done_root = ensure_dir(cfg['paths']['temp_done'])
@@ -1073,26 +1081,62 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
     # Phase-2-Config auslesen
     phase2_cfg = cfg.get('phase2', {})
     cleanup_enabled = bool(phase2_cfg.get('cleanup_review_rejected', True))
+    move_enabled = bool(phase2_cfg.get('move_to_temp_final', False))
     dry_run = bool(phase2_cfg.get('dry_run', False))
     
     for dir_path in folders:
         COUNT_FOUND_DONE += 1
         if is_valid_done_folder(dir_path.name):
-            # NEU: Phase 2 mit Cleanup
-            from app.phase2_contract import run_phase2_with_cleanup
+            # ==========================================================================
+            # SCHRITT 1: Bestehende Phase-2-Archivierung (ARW-Zip, State-Update)
+            # ==========================================================================
+            process_done_folder(dir_path, cfg)
             
-            result = run_phase2_with_cleanup(
-                batch_path=str(dir_path),
-                cfg=cfg,
-                dry_run=dry_run,
-            )
-            
-            if result['status'] == 'ok':
-                log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup={result["cleanup_result"].get("status")} move={result.get("move_result", {}).get("success", False)}')
-            elif result['status'] == 'partial':
-                log(cfg, f'[PHASE2 PARTIAL] {dir_path.name} cleanup={result["cleanup_result"].get("status")}', error=True)
+            # ==========================================================================
+            # SCHRITT 2: Review/Rejected bereinigen (nur wenn aktiviert)
+            # ==========================================================================
+            if cleanup_enabled:
+                from app.phase2_contract import cleanup_review_rejected, verify_cleanup_complete, move_to_temp_final
+                
+                cleanup_result = cleanup_review_rejected(
+                    batch_path=str(dir_path),
+                    cfg=cfg,
+                    dry_run=dry_run,
+                )
+                
+                log(cfg, f'[CLEANUP] {dir_path.name} keep={cleanup_result["review_keep_moved"]} reject={cleanup_result["review_reject_moved"]} rejected={cleanup_result["rejected_moved"]} status={cleanup_result["status"]}')
+                
+                # ==========================================================================
+                # SCHRITT 3: Bereinigung verifizieren
+                # ==========================================================================
+                verify_result = verify_cleanup_complete(str(dir_path))
+                
+                if not verify_result['complete'] and phase2_cfg.get('require_empty_review_rejected', True):
+                    log(cfg, f'[PHASE2 PARTIAL] {dir_path.name} Review/Rejected nicht vollständig bereinigt', error=True)
+                    continue
+                
+                # ==========================================================================
+                # SCHRITT 4: Move nach temp_final (nur wenn aktiviert + bereinigt)
+                # ==========================================================================
+                if move_enabled and verify_result['complete']:
+                    move_result = move_to_temp_final(
+                        batch_path=str(dir_path),
+                        cfg=cfg,
+                        dry_run=dry_run,
+                    )
+                    
+                    if move_result['success']:
+                        log(cfg, f'[PHASE2 OK] {dir_path.name} moved to temp_final')
+                    elif move_result['error'] == 'move_to_temp_final ist in der Config deaktiviert':
+                        log(cfg, f'[PHASE2 OK] {dir_path.name} move_to_temp_final deaktiviert')
+                    else:
+                        log(cfg, f'[PHASE2 FAILED] {dir_path.name} {move_result["error"]}', error=True)
+                elif move_enabled and not verify_result['complete']:
+                    log(cfg, f'[PHASE2 PARTIAL] {dir_path.name} Move übersprungen (Review/Rejected nicht leer)', error=True)
+                else:
+                    log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup abgeschlossen, move deaktiviert')
             else:
-                log(cfg, f'[PHASE2 FAILED] {dir_path.name} cleanup={result["cleanup_result"].get("status")}', error=True)
+                log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup deaktiviert')
         else:
             process_container_done(dir_path, cfg)
             
