@@ -1,0 +1,298 @@
+# Projekt: Synology Photo Workflow
+# Datei: config/config.target-reference-pools.yaml
+# Zweck: Zielkonfiguration für getrennte Referenzpools, Laufzeitdaten,
+#        lokale Face-Modelle, CLIP und verbesserte Serienerkennung.
+# Version: 1.4
+#
+# WICHTIG:
+# - Aktive Referenzen liegen nur in */reference/.
+# - Vorschläge liegen nur in */new_refs/ oder */new_faces/.
+# - selection.json ist die alleinige Wahrheit pro Referenzpool.
+# - Kein Vorschlag wird automatisch aktiviert.
+# - Diese Zielconfig erfordert die AP2-Anpassungen im Python-Code.
+
+# -----------------------------------------------------------------------------
+# paths
+# Kanonische Wurzeln des persistenten NAS-Bereichs.
+# -----------------------------------------------------------------------------
+paths:
+  base_dir: ../NAS_EXAMPLE
+
+  temp_error: ../NAS_EXAMPLE/00_TEMP_ERROR
+  temp_sd: ../NAS_EXAMPLE/01_TEMP_SD
+  temp_images: ../NAS_EXAMPLE/02_TEMP_IMAGES
+  temp_done: ../NAS_EXAMPLE/03_TEMP_DONE
+  temp_final: ../NAS_EXAMPLE/04_TEMP_FINAL
+
+  manual_keep_inbox: ../NAS_EXAMPLE/MANUAL_KEEP/inbox
+  manual_keep_used: ../NAS_EXAMPLE/MANUAL_KEEP/used
+
+  workflow_data_dir: ../NAS_EXAMPLE/WORKFLOW_DATA
+
+# -----------------------------------------------------------------------------
+# workflow
+# Batch-Lebenszyklus und Datumsrekonstruktion.
+# -----------------------------------------------------------------------------
+workflow:
+  wait_time_seconds: 60
+  stale_lock_seconds: 43200
+  merge_strategy: merge_then_fallback
+  create_done_marker_before_move: true
+
+  date_reconstruction:
+    mode: legacy_bash
+    decade_prefix: "202"
+    year_digit_index: 3
+
+# -----------------------------------------------------------------------------
+# runtime
+# Alle veränderlichen Laufzeitdaten liegen ausschließlich hier.
+# -----------------------------------------------------------------------------
+runtime:
+  lock_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/.script.lock
+  state_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/state
+  quarantine_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/quarantine
+
+  log_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/process.log
+  error_log: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/error.log
+  run_summaries_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/run_summaries
+
+  calibration_batches_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/calibration/batches
+
+# -----------------------------------------------------------------------------
+# models
+# Lokale Modellartefakte. Modellgewichte gehören nicht in Git.
+# -----------------------------------------------------------------------------
+models:
+  face_detection:
+    backend: opencv
+    model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_detection_yunet_2023mar.onnx
+    confidence_threshold: 0.65
+    max_input_side: 1600
+    nms_threshold: 0.30
+    top_k: 5000
+
+  face_recognition:
+    backend: opencv
+    model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_recognition_sface_2021dec.onnx
+    distance_metric: cosine
+    match_tolerance: 0.60
+
+  clip:
+    # Wird erst in AP6 produktiv aktiviert.
+    enabled: false
+    backend: transformers
+    model_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/clip
+    local_files_only: true
+    device: auto
+
+# -----------------------------------------------------------------------------
+# culling
+# Technisches Culling und Routing innerhalb eines Batch-Ordners.
+# -----------------------------------------------------------------------------
+culling:
+  enabled: true
+  move_files: true
+
+  arw_dirname: ARW
+  save_dirname: SAVE
+  review_dirname: Review
+  rejected_dirname: Rejected
+
+  create_review_folder: true
+  create_rejected_folder: true
+
+  keep_threshold: 0.65
+  reject_threshold: 0.35
+
+  # Nur technische Komponenten. Referenz- und persönliche Modelle werden
+  # nicht in base_score gemischt.
+  base_weights:
+    sharp: 0.40
+    aesth: 0.40
+    exposure: 0.20
+
+  # Finale Kombination. Nicht verfügbare Komponenten werden aus der
+  # Gewichtssumme entfernt und der Rest normalisiert.
+  component_weights:
+    base_score: 0.55
+    eye_score: 0.10
+    aesthetic_reference_score: 0.10
+    personal_score: 0.10
+    family_score: 0.15
+
+  eye_detection:
+    enabled: true
+
+  star_rating_bands:
+    5: 0.90
+    4: 0.75
+    3: 0.60
+    2: 0.40
+    1: 0.20
+    0: 0.00
+
+# -----------------------------------------------------------------------------
+# reference_pools
+# Gemeinsamer Vertrag für Stil-, persönlichen und Face-Referenzpools.
+# selection.json ist je Pool die alleinige Wahrheit.
+# -----------------------------------------------------------------------------
+reference_pools:
+  common:
+    max_active: 100
+    min_active: 5
+    target_active: 30
+
+    # Begrenzte manuelle Vorschlags-Queue.
+    max_new: 20
+    max_new_per_batch: 5
+
+    # Aktive Dateien werden nach Nutzenrang umbenannt.
+    rename_active_references: true
+    active_filename_template: "{rank}__{stem}__{suffix}{ext}"
+
+  aesthetic_reference:
+    # Allgemeine gute Fotos: Stil, Bildwirkung, Licht, Komposition.
+    enabled: true
+    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference
+
+    reference_dirname: reference
+    new_dirname: new_refs
+    selection_filename: selection.json
+
+    min_quality_score: 0.70
+    max_redundancy: 0.90
+    preview_size: 32
+
+    cache_enabled: true
+    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/reference_scoring
+    force_cache_rebuild: false
+
+  personal_training:
+    # Persönliche, bewusst aktivierte Geschmacksreferenzen.
+    # Kein reject/-Ordner: Status und manuelle Entscheidung stehen in selection.json.
+    enabled: true
+    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training
+
+    reference_dirname: reference
+    new_dirname: new_refs
+    selection_filename: selection.json
+
+    min_quality_score: 0.70
+    max_redundancy: 0.90
+
+    cache_enabled: true
+    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste
+    auto_rebuild_on_active_change: true
+    force_cache_rebuild: false
+
+  faces:
+    # Ordnernamen bleiben exakt wie vorhanden, beispielsweise Chris oder Kind1.
+    enabled: true
+    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/faces
+
+    reference_dirname: reference
+    new_dirname: new_faces
+    selection_filename: selection.json
+
+    min_quality_score: 0.70
+    max_redundancy: 0.95
+    crop_size: 256
+    min_face_size: 128
+
+    cache_enabled: true
+    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
+    auto_rebuild_on_active_change: true
+    force_cache_rebuild: false
+
+# -----------------------------------------------------------------------------
+# family_recognition
+# Bekannte Personen, Schutzregeln und Metadaten.
+# -----------------------------------------------------------------------------
+family_recognition:
+  enabled: true
+
+  protect_detected_family: true
+  default_person_weight: 0.35
+
+  # Schlüssel entsprechen exakt den Ordnernamen unter WORKFLOW_DATA/faces.
+  person_weights:
+    Chris: 0.35
+    Daniel: 0.35
+    Kind1: 0.55
+    Kind2: 0.55
+    Michele: 0.35
+    Mutter: 0.35
+    Nelly: 0.35
+    Oma: 0.30
+    Opa: 0.30
+    Vater: 0.35
+
+  match_tolerance: 0.45
+  min_reference_images_per_person: 3
+  max_reference_images_per_person: 100
+
+  write_native_tags: true
+  write_face_regions: true
+  exiftool_path: exiftool
+
+# -----------------------------------------------------------------------------
+# series_detection
+# Reihenfolge: EXIF-Zeit -> Dateinummer -> visuelles Clustering -> Einzelbild.
+# -----------------------------------------------------------------------------
+series_detection:
+  enabled: true
+
+  # Primäres Signal.
+  exif_time_enabled: true
+  time_window_seconds: 8
+
+  # Deterministischer Fallback, z. B. MST06972 bis MST06974.
+  filename_sequence_enabled: true
+  max_filename_gap: 2
+  min_sequence_images: 2
+
+  # Dritter Schritt für noch nicht gruppierte Bilder.
+  visual_clustering_enabled: true
+  cluster_eps: 0.18
+  min_samples: 2
+  preview_size: 32
+
+  review_margin: 0.03
+  demote_non_best_to: review
+
+# -----------------------------------------------------------------------------
+# metadata_culling
+# Namespaced Metadaten, Rückprüfung über ExifTool.
+# -----------------------------------------------------------------------------
+metadata_culling:
+  enabled: true
+  write_rating: true
+  write_keywords: true
+  write_score_bands: true
+  write_raw_scores_to_keywords: true
+
+  keep_backup: false
+  exiftool_path: exiftool
+  keyword_schema: namespaced_v1
+
+# -----------------------------------------------------------------------------
+# reporting
+# Keine Bildbytes oder Embeddings in Reports, CSV oder Logs.
+# -----------------------------------------------------------------------------
+reporting:
+  write_json_summary: true
+  write_csv_scores: true
+  stdout_mode: scheduler_mail
+
+  # Jede gesperrte oder volle Vorschlags-Queue erzeugt eine konkrete Aufgabe.
+  require_user_actions_required: true
+
+# -----------------------------------------------------------------------------
+# safety
+# Harte Sicherheitsgrenzen.
+# -----------------------------------------------------------------------------
+safety:
+  require_paths_within_base_dir: true
+  follow_symlinks: false
+  never_delete_outside_arw_dir: true
