@@ -22,7 +22,7 @@ import shutil
 from datetime import datetime
 from typing import Dict, List, Any, Tuple, Optional, Set
 from pathlib import Path
-from review_validation import ReviewValidator
+from app.review_validation import ReviewValidator
 
 # =============================================================================
 # Konstanten

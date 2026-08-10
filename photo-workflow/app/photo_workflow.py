@@ -36,6 +36,8 @@ from pathlib import Path
 
 
 # === App-Imports ===
+from app.automation_config import validate_automation_config
+
 from app.aesthetic import (
     base_score_components,
     ensure_reference_profile,
@@ -209,6 +211,21 @@ def load_config(path: str | Path) -> dict:
     metadata_cfg.setdefault('keyword_schema', 'namespaced_v1')
     metadata_cfg.setdefault('write_score_bands', True)
     metadata_cfg.setdefault('write_raw_scores_to_keywords', False)
+
+    # Automation-Defaults und Validierung
+    cfg.setdefault('automation', {})
+    automation = cfg['automation']
+    automation.setdefault('mode', 'shadow')
+    automation.setdefault('keep_score_min', 0.90)
+    automation.setdefault('reject_score_max', 0.15)
+    automation.setdefault('evaluation_window_days', 90)
+    automation.setdefault('min_evaluated_batches', 10)
+    automation.setdefault('min_evaluated_images', 500)
+    automation.setdefault('min_overall_agreement', 0.85)
+    automation.setdefault('min_keep_precision', 0.95)
+    automation.setdefault('min_reject_precision', 0.98)
+
+    cfg['automation'] = validate_automation_config(cfg)
 
     return cfg
 
