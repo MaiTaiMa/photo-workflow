@@ -34,9 +34,10 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 # === App-Imports ===
 from app.automation_config import validate_automation_config
+from app.auto_decision import predict_decision
+from app.automation_contract import build_prediction_record
 
 from app.aesthetic import (
     base_score_components,
@@ -792,6 +793,20 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     reject_threshold = float(cfg['culling']['reject_threshold'])
     family_cfg = cfg.get('family_recognition', {})
 
+    prediction = build_prediction_record(
+        producer_version=SCRIPT_VERSION,
+        batch_id=workdir.name,
+        image_id=jpg.name,
+        model_version=str(
+            personal_info.get('model_version', 'personal-score-v1')
+        ),
+        predicted_decision='review',
+        prediction_reason='manual_keep_override',
+        personal_score=scored.get('personal_score'),
+        final_score=1.0,
+        predicted_at=datetime.now(timezone.utc).isoformat(),
+    )
+
     for jpg in top_level_jpgs(workdir):
         # MANUAL_KEEP-Bilder zwingend als KEEP markieren (AP2)
         if jpg in manual_keep_images:
@@ -815,6 +830,13 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 'final_score': 1.0,  # MANUAL_KEEP immer maximal
                 'decision': 'keep',
                 'decision_reason': 'manual_keep_match',
+                'automation_mode': cfg['automation']['mode'],
+                'predicted_decision': prediction['predicted_decision'],
+                'prediction_reason': prediction['prediction_reason'],
+                'prediction_model_version': prediction['model_version'],
+                'predicted_at': prediction['predicted_at'],
+                'prediction_schema_version': prediction['schema_version'],
+                'prediction_producer_version': prediction['producer_version'],
                 'protected_by_family_rule': False,
                 'detected_people': '|'.join(family.get('detected_people', [])),
                 'face_status': family.get('status', ''),
@@ -826,6 +848,26 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         family = detect_family_members(jpg, cfg, family_model)
         family_score = float(family.get('family_score', 0.0)) if family_cfg.get('enabled', False) else None
         final = combine_scores(scored['base_score'], scored.get('eye_score'), scored.get('personal_score'), family_score, cfg)
+
+        predicted_decision, prediction_reason = predict_decision(
+            personal_score=scored.get('personal_score'),
+            final_score=final,
+            config=cfg,
+        )
+
+        prediction = build_prediction_record(
+            producer_version=SCRIPT_VERSION,
+            batch_id=workdir.name,
+            image_id=jpg.name,
+            model_version=str(
+                personal_info.get('model_version', 'personal-score-v1')
+            ),
+            predicted_decision=predicted_decision,
+            prediction_reason=prediction_reason,
+            personal_score=scored.get('personal_score'),
+            final_score=final,
+            predicted_at=datetime.now(timezone.utc).isoformat(),
+        )
 
         decision = 'keep'
         score_reason = 'score_keep'
@@ -860,6 +902,13 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             'final_score': round(final, 4),
             'decision': decision,
             'decision_reason': score_reason,
+            'automation_mode': cfg['automation']['mode'],
+            'predicted_decision': prediction['predicted_decision'],
+            'prediction_reason': prediction['prediction_reason'],
+            'prediction_model_version': prediction['model_version'],
+            'predicted_at': prediction['predicted_at'],
+            'prediction_schema_version': prediction['schema_version'],
+            'prediction_producer_version': prediction['producer_version'],            
             'protected_by_family_rule': protected,
             'detected_people': '|'.join(family.get('detected_people', [])),
             'face_status': family.get('status', ''),
@@ -929,8 +978,11 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     fieldnames = [
         'file', 'generic_score', 'base_score', 'sharp_score', 'aesth_score', 'exposure_score',
         'eye_score', 'reference_score', 'personal_score', 'family_score', 'final_score',
-        'score_decision', 'score_reason', 'decision', 'decision_reason', 'series_id',
-        'series_size', 'series_rank', 'series_best', 'series_margin_to_best', 'star_rating',
+        'score_decision', 'score_reason', 'decision', 'decision_reason',
+        'automation_mode', 'predicted_decision', 'prediction_reason',
+        'prediction_model_version', 'predicted_at', 'prediction_schema_version',
+        'prediction_producer_version',        
+        'series_id', 'series_size', 'series_rank', 'series_best', 'series_margin_to_best', 'star_rating',
         'protected_by_family_rule', 'detected_people', 'face_status', 'family_metadata_written',
         'family_metadata_status', 'culling_metadata_written', 'culling_metadata_status', 'final_path'
     ]
