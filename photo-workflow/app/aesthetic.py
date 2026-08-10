@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from math import log1p
 from typing import Dict, Optional
-from auto_decision import AutoDecider
+#from app.auto_decision import AutoDecider
 import json
 import statistics
 
@@ -400,29 +400,3 @@ def personal_model_score(image_path: str | Path, model: Optional[dict]) -> Optio
     offset = float(model.get('score_offset', 0.0))
     normalized = (score + offset) / scale
     return clip01(normalized)
-
-
-def score_with_auto_decision(image_path: Path, config: Dict) -> Dict[str, Any]:
-    """
-    Berechnet Score und trifft automatische Entscheidung.
-    
-    Returns:
-        {
-            'personal_score': 0.87,
-            'decision': 'auto_keep',
-            'decision_reason': 'auto_keep_high_score:personal_score=0.87'
-        }
-    """
-    # 1. Score berechnen (existierende Logik)
-    scores = calculate_personal_score(image_path, config)
-    
-    # 2. Automatische Entscheidung
-    decider = AutoDecider(config)
-    decision = decider.decide(scores)
-    reason = decider.get_decision_reason(decision, scores)
-    
-    return {
-        **scores,
-        'decision': decision,
-        'decision_reason': reason
-    }

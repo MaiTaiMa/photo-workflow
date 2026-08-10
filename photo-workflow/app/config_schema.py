@@ -285,10 +285,3 @@ AUTOMATION_SCHEMA = {
         }
     }
 }
-
-# In CONFIG_SCHEMA integrieren:
-CONFIG_SCHEMA = {
-    # ... existierende Felder ...
-    'automation': AUTOMATION_SCHEMA,
-    # ...
-}

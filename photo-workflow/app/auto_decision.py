@@ -59,3 +59,29 @@ class AutoDecider:
             return f"auto_reject_low_score:personal_score={image_scores.get('personal_score', 0.0):.2f}"
         else:
             return "manual_review_required:auto_mode_disabled"
+
+    def predict_decision(
+        *,
+        personal_score: float | None,
+        final_score: float | None,
+        config: dict[str, Any],
+    ) -> tuple[str, str]:
+        """Erstellt eine KI-Prognose, ohne den finalen Review-State zu verändern."""
+        automation = config["automation"]
+
+        if automation["mode"] == "off":
+            return "review", "automation_off"
+
+        if personal_score is None or final_score is None:
+            return "review", "score_unavailable"
+
+        keep_min = float(automation["keep_score_min"])
+        reject_max = float(automation["reject_score_max"])
+
+        if personal_score >= keep_min and final_score >= keep_min:
+            return "keep", "high_confidence_keep"
+
+        if personal_score <= reject_max and final_score <= reject_max:
+            return "reject", "high_confidence_reject"
+
+        return "review", "manual_review_zone"

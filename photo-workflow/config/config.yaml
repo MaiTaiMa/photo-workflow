@@ -192,34 +192,56 @@ workflow:
 
 # -----------------------------------------------------------------------------
 # automation
-# Dieser Block steuert die Vollautomatik für Review-Entscheidungen.
-# Änderungen hier beeinflussen ob Bilder automatisch als keep/reject markiert werden.
+# Dieser Block steuert KI-Prognosen und eine optionale Automatisierung.
+# Die Aktivierung einer Stufe erfolgt ausschließlich durch bewusste Konfiguration.
 # -----------------------------------------------------------------------------
 automation:
-  # auto_mode: Aktiviert/deaktiviert Vollautomatik
-  # Mögliche Werte: true (aktiv), false (deaktiv)
-  # Auswirkung: true = automatische Entscheidungen bei hoher Übereinstimmung,
-  #              false = manuelle Review-Pflicht für alle Bilder
-  # Voraussetzung: Mindestens 10 Batches mit >85% Übereinstimmung
-  auto_mode: false
+  # mode: Betriebsmodus der KI-Entscheidungslogik.
+  # Mögliche Werte: off, shadow, assisted, auto_keep, full_auto.
+  # Auswirkung: off schreibt keine Prognosen; shadow bewertet nur;
+  # assisted markiert Vorschläge; auto_keep automatisiert nur sichere Keep-Fälle;
+  # full_auto darf erst nach manueller Freigabe verwendet werden.
+  mode: shadow
 
-  # confidence_threshold: Mindest-Übereinstimmungsrate für Auto-Entscheidungen
-  # Mögliche Werte: 0.0-1.0 (z.B. 0.85 für 85%)
-  # Auswirkung: true = Bilder mit personal_score >= threshold werden auto_keep,
-  #              false = alle Bilder benötigen manuelles Review
-  confidence_threshold: 0.85
+  # keep_score_min: Mindestwert für eine automatische Keep-Prognose.
+  # Mögliche Werte: 0.0 bis 1.0.
+  # Auswirkung: Werte >= keep_score_min können als keep prognostiziert werden.
+  keep_score_min: 0.90
 
-  # min_batches_for_auto: Mindestanzahl Batches vor Aktivierung
-  # Mögliche Werte: 1-1000
-  # Auswirkung: true = Aktivierung erst nach N Batches,
-  #              false = Sofortige Aktivierung möglich
-  min_batches_for_auto: 10
+  # reject_score_max: Höchstwert für eine Reject-Prognose.
+  # Mögliche Werte: 0.0 bis 1.0.
+  # Auswirkung: Werte <= reject_score_max können als reject prognostiziert werden.
+  reject_score_max: 0.15
 
-  # review_window_days: Zeitfenster für Review-Feedback
-  # Mögliche Werte: 1-365
-  # Auswirkung: true = Feedback-Loop berücksichtigt nur letzte N Tage,
-  #              false = Gesamter History wird berücksichtigt
-  review_window_days: 30
+  # evaluation_window_days: Zeitraum der berücksichtigten Feedback-Daten.
+  # Mögliche Werte: 1 bis 365.
+  # Auswirkung: Nur Entscheidungen innerhalb dieses Zeitraums werden ausgewertet.
+  evaluation_window_days: 90
+
+  # min_evaluated_batches: Mindestzahl vollständig bewerteter Batches.
+  # Mögliche Werte: Ganzzahl >= 1.
+  # Auswirkung: Unterhalb dieses Werts bleibt eine Automatisierung gesperrt.
+  min_evaluated_batches: 10
+
+  # min_evaluated_images: Mindestzahl menschlich bestätigter KI-Prognosen.
+  # Mögliche Werte: Ganzzahl >= 1.
+  # Auswirkung: Unterhalb dieses Werts bleibt eine Automatisierung gesperrt.
+  min_evaluated_images: 500
+
+  # min_overall_agreement: Mindestübereinstimmung aller entscheidbaren Fälle.
+  # Mögliche Werte: 0.0 bis 1.0.
+  # Auswirkung: Unterhalb dieses Werts ist kein höherer Modus zulässig.
+  min_overall_agreement: 0.85
+
+  # min_keep_precision: Mindestpräzision automatischer Keep-Prognosen.
+  # Mögliche Werte: 0.0 bis 1.0.
+  # Auswirkung: Unterhalb dieses Werts ist auto_keep gesperrt.
+  min_keep_precision: 0.95
+
+  # min_reject_precision: Mindestpräzision automatischer Reject-Prognosen.
+  # Mögliche Werte: 0.0 bis 1.0.
+  # Auswirkung: Unterhalb dieses Werts ist full_auto gesperrt.
+  min_reject_precision: 0.98
 
 # -----------------------------------------------------------------------------
 # phase2

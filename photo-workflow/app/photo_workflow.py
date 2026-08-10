@@ -33,7 +33,6 @@ import yaml
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from review_validation import validate_batch_decisions
 
 
 # === App-Imports ===
@@ -1108,21 +1107,6 @@ def process_container_done(dir_path: Path, cfg: dict) -> None:
     for sub in sorted(dir_path.iterdir()):
         if sub.is_dir() and is_valid_done_folder(sub.name):
             process_done_folder(sub, cfg)
-
-
-def process_phase1(batch_id: str, config: Dict):
-    # ... existierende Phase-1-Logik ...
-    
-    # Validation nach jeder manuellen Entscheidung
-    validation_report = validate_batch_decisions(batch_id, runtime_path)
-    
-    # Metrics aktualisieren
-    from automation_metrics import update_automation_metrics
-    metrics = update_automation_metrics(runtime_path)
-    
-    # Loggen
-    if metrics['ready_for_auto_mode']:
-        logger.info(f"Vollautomatik bereit: {metrics['avg_agreement_rate']:.2%}")
 
 
 def run_phase2(cfg: dict, folder: str | None = None) -> None:
