@@ -38,6 +38,7 @@ from pathlib import Path
 from app.automation_config import validate_automation_config
 from app.auto_decision import predict_decision
 from app.automation_contract import build_prediction_record
+from app.automation_store import write_prediction_batch
 
 from app.aesthetic import (
     base_score_components,
@@ -798,6 +799,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     # SCHRITT 3: Culling-Rows vorbereiten
     # ==========================================================================
     rows = []
+    predictions = []
     keep_threshold = float(cfg['culling']['keep_threshold'])
     reject_threshold = float(cfg['culling']['reject_threshold'])
     family_cfg = cfg.get('family_recognition', {})
@@ -822,6 +824,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 final_score=1.0,
                 predicted_at=datetime.now(timezone.utc).isoformat(),
             )
+            predictions.append(prediction)
 
             rows.append({
                 '_source_path': jpg,
@@ -921,6 +924,8 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             final_score=final,
             predicted_at=datetime.now(timezone.utc).isoformat(),
         )
+
+        predictions.append(prediction)
 
         # Bestehende operative Culling-Entscheidung bleibt unverändert.
         decision = 'keep'
@@ -1078,7 +1083,35 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             writer.writerow({name: row.get(name, '') for name in fieldnames})
 
     # ==========================================================================
-    # SCHRITT 7: Summary erstellen
+    # SCHRITT 7: Shadow-Prognosen atomar je Batch speichern
+    # ==========================================================================
+    runtime_path = (
+        Path(cfg['paths']['base_dir'])
+        / 'WORKFLOW_DATA'
+        / 'runtime'
+    )
+
+    prediction_artifact_path = write_prediction_batch(
+        runtime_path=runtime_path,
+        batch_id=workdir.name,
+        predictions=predictions,
+    )
+
+    prediction_keep_count = sum(
+        item['predicted_decision'] == 'keep'
+        for item in predictions
+    )
+    prediction_reject_count = sum(
+        item['predicted_decision'] == 'reject'
+        for item in predictions
+    )
+    prediction_review_count = sum(
+        item['predicted_decision'] == 'review'
+        for item in predictions
+    )
+
+    # ==========================================================================
+    # SCHRITT 8: Summary erstellen
     # ==========================================================================
     clustered_rows = [r for r in rows if r.get('series_id') != 'single']
     summary = {
@@ -1106,12 +1139,17 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'manual_keep_inbox_count': manual_keep_status.get('inbox_count', 0),
         'manual_keep_matched_count': manual_keep_status.get('matched_count', 0),
         'manual_keep_status': manual_keep_status.get('status', 'not_checked'),
+        'prediction_artifact_path': str(prediction_artifact_path),
+        'prediction_count': len(predictions),
+        'prediction_keep_count': prediction_keep_count,
+        'prediction_reject_count': prediction_reject_count,
+        'prediction_review_count': prediction_review_count,
     }
 
     (save_dir / 'culling_summary.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
 
     # ==========================================================================
-    # SCHRITT 8: MANUAL_KEEP Quellen nach used/ verschieben (erst nach vollständigem Erfolg)
+    # SCHRITT 9: MANUAL_KEEP Quellen nach used/ verschieben (erst nach vollständigem Erfolg)
     # ==========================================================================
     if manual_keep_status['status'] == 'matched':
         move_result = move_manual_keep_sources_to_used(
