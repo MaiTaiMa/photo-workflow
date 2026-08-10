@@ -764,7 +764,9 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     manual_keep_used = Path(cfg['paths']['manual_keep_used'])
 
     manual_keep_cfg = cfg.get('manual_keep', {})
-    similarity_threshold = float(manual_keep_cfg.get('similarity_threshold', 0.85))
+    similarity_threshold = float(
+        manual_keep_cfg.get('similarity_threshold', 0.85)
+    )
 
     manual_keep_images, manual_keep_status = detect_manual_keep_images(
         batch_path=workdir,
@@ -775,15 +777,22 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
 
     # Terminal-Ausgabe für MANUAL_KEEP
     if manual_keep_status['status'] == 'matched':
-        print(f"[MANUAL_KEEP] inbox={manual_keep_status['inbox_count']} matched={manual_keep_status['matched_count']} threshold={similarity_threshold}")
-        for img in manual_keep_images:
-            print(f"  [MANUAL_KEEP] KEEP: {img.name}")
+        print(
+            f"[MANUAL_KEEP] inbox={manual_keep_status['inbox_count']} "
+            f"matched={manual_keep_status['matched_count']} "
+            f"threshold={similarity_threshold}"
+        )
+        for image_path in manual_keep_images:
+            print(f"  [MANUAL_KEEP] KEEP: {image_path.name}")
     elif manual_keep_status['status'] == 'no_inbox':
-        print(f"[MANUAL_KEEP] inbox-Ordner fehlt oder leer")
+        print("[MANUAL_KEEP] inbox-Ordner fehlt oder leer")
     elif manual_keep_status['status'] == 'empty_inbox':
-        print(f"[MANUAL_KEEP] inbox-Ordner leer")
+        print("[MANUAL_KEEP] inbox-Ordner leer")
     elif manual_keep_status['status'] == 'no_match':
-        print(f"[MANUAL_KEEP] keine ähnlichen Bilder gefunden (threshold={similarity_threshold})")
+        print(
+            "[MANUAL_KEEP] keine ähnlichen Bilder gefunden "
+            f"(threshold={similarity_threshold})"
+        )
 
     # ==========================================================================
     # SCHRITT 3: Culling-Rows vorbereiten
@@ -793,25 +802,26 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     reject_threshold = float(cfg['culling']['reject_threshold'])
     family_cfg = cfg.get('family_recognition', {})
 
-    prediction = build_prediction_record(
-        producer_version=SCRIPT_VERSION,
-        batch_id=workdir.name,
-        image_id=jpg.name,
-        model_version=str(
-            personal_info.get('model_version', 'personal-score-v1')
-        ),
-        predicted_decision='review',
-        prediction_reason='manual_keep_override',
-        personal_score=scored.get('personal_score'),
-        final_score=1.0,
-        predicted_at=datetime.now(timezone.utc).isoformat(),
-    )
-
     for jpg in top_level_jpgs(workdir):
-        # MANUAL_KEEP-Bilder zwingend als KEEP markieren (AP2)
+        # MANUAL_KEEP hat Vorrang: Die finale Workflow-Entscheidung ist keep.
         if jpg in manual_keep_images:
             scored = score_image(jpg, cfg, personal_model)
             family = detect_family_members(jpg, cfg, family_model)
+
+            # Keine freie KI-Prognose: Der Mensch hat den Keep-Fall erzwungen.
+            prediction = build_prediction_record(
+                producer_version=SCRIPT_VERSION,
+                batch_id=workdir.name,
+                image_id=jpg.name,
+                model_version=str(
+                    personal_info.get('model_version', 'personal-score-v1')
+                ),
+                predicted_decision='review',
+                prediction_reason='manual_keep_override',
+                personal_score=scored.get('personal_score'),
+                final_score=1.0,
+                predicted_at=datetime.now(timezone.utc).isoformat(),
+            )
 
             rows.append({
                 '_source_path': jpg,
@@ -820,14 +830,42 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 'file': jpg.name,
                 'generic_score': round(scored['generic_score'], 4),
                 'base_score': round(scored['base_score'], 4),
-                'sharp_score': '' if scored.get('sharp_score') is None else round(float(scored['sharp_score']), 4),
-                'aesth_score': '' if scored.get('aesth_score') is None else round(float(scored['aesth_score']), 4),
-                'exposure_score': '' if scored.get('exposure_score') is None else round(float(scored['exposure_score']), 4),
-                'eye_score': '' if scored.get('eye_score') is None else round(float(scored['eye_score']), 4),
-                'reference_score': '' if scored.get('reference_score') is None else round(float(scored['reference_score']), 4),
-                'personal_score': '' if scored.get('personal_score') is None else round(float(scored['personal_score']), 4),
-                'family_score': '' if family.get('family_score') is None else round(float(family.get('family_score')), 4),
-                'final_score': 1.0,  # MANUAL_KEEP immer maximal
+                'sharp_score': (
+                    ''
+                    if scored.get('sharp_score') is None
+                    else round(float(scored['sharp_score']), 4)
+                ),
+                'aesth_score': (
+                    ''
+                    if scored.get('aesth_score') is None
+                    else round(float(scored['aesth_score']), 4)
+                ),
+                'exposure_score': (
+                    ''
+                    if scored.get('exposure_score') is None
+                    else round(float(scored['exposure_score']), 4)
+                ),
+                'eye_score': (
+                    ''
+                    if scored.get('eye_score') is None
+                    else round(float(scored['eye_score']), 4)
+                ),
+                'reference_score': (
+                    ''
+                    if scored.get('reference_score') is None
+                    else round(float(scored['reference_score']), 4)
+                ),
+                'personal_score': (
+                    ''
+                    if scored.get('personal_score') is None
+                    else round(float(scored['personal_score']), 4)
+                ),
+                'family_score': (
+                    ''
+                    if family.get('family_score') is None
+                    else round(float(family.get('family_score')), 4)
+                ),
+                'final_score': 1.0,
                 'decision': 'keep',
                 'decision_reason': 'manual_keep_match',
                 'automation_mode': cfg['automation']['mode'],
@@ -838,17 +876,32 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 'prediction_schema_version': prediction['schema_version'],
                 'prediction_producer_version': prediction['producer_version'],
                 'protected_by_family_rule': False,
-                'detected_people': '|'.join(family.get('detected_people', [])),
+                'detected_people': '|'.join(
+                    family.get('detected_people', [])
+                ),
                 'face_status': family.get('status', ''),
             })
-            continue  # Weiteres Scrolling überspringen
+            continue
 
-        # Normales Scrolling für alle anderen Bilder
+        # Normales Scoring für alle Bilder ohne MANUAL_KEEP-Vorrang.
         scored = score_image(jpg, cfg, personal_model)
         family = detect_family_members(jpg, cfg, family_model)
-        family_score = float(family.get('family_score', 0.0)) if family_cfg.get('enabled', False) else None
-        final = combine_scores(scored['base_score'], scored.get('eye_score'), scored.get('personal_score'), family_score, cfg)
 
+        family_score = (
+            float(family.get('family_score', 0.0))
+            if family_cfg.get('enabled', False)
+            else None
+        )
+
+        final = combine_scores(
+            scored['base_score'],
+            scored.get('eye_score'),
+            scored.get('personal_score'),
+            family_score,
+            cfg,
+        )
+
+        # Shadow-Prognose: verändert weder decision noch decision_reason.
         predicted_decision, prediction_reason = predict_decision(
             personal_score=scored.get('personal_score'),
             final_score=final,
@@ -869,6 +922,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             predicted_at=datetime.now(timezone.utc).isoformat(),
         )
 
+        # Bestehende operative Culling-Entscheidung bleibt unverändert.
         decision = 'keep'
         score_reason = 'score_keep'
         protected = False
@@ -892,13 +946,41 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             'file': jpg.name,
             'generic_score': round(scored['generic_score'], 4),
             'base_score': round(scored['base_score'], 4),
-            'sharp_score': '' if scored.get('sharp_score') is None else round(float(scored['sharp_score']), 4),
-            'aesth_score': '' if scored.get('aesth_score') is None else round(float(scored['aesth_score']), 4),
-            'exposure_score': '' if scored.get('exposure_score') is None else round(float(scored['exposure_score']), 4),
-            'eye_score': '' if scored.get('eye_score') is None else round(float(scored['eye_score']), 4),
-            'reference_score': '' if scored.get('reference_score') is None else round(float(scored['reference_score']), 4),
-            'personal_score': '' if scored.get('personal_score') is None else round(float(scored['personal_score']), 4),
-            'family_score': '' if family_score is None else round(float(family_score), 4),
+            'sharp_score': (
+                ''
+                if scored.get('sharp_score') is None
+                else round(float(scored['sharp_score']), 4)
+            ),
+            'aesth_score': (
+                ''
+                if scored.get('aesth_score') is None
+                else round(float(scored['aesth_score']), 4)
+            ),
+            'exposure_score': (
+                ''
+                if scored.get('exposure_score') is None
+                else round(float(scored['exposure_score']), 4)
+            ),
+            'eye_score': (
+                ''
+                if scored.get('eye_score') is None
+                else round(float(scored['eye_score']), 4)
+            ),
+            'reference_score': (
+                ''
+                if scored.get('reference_score') is None
+                else round(float(scored['reference_score']), 4)
+            ),
+            'personal_score': (
+                ''
+                if scored.get('personal_score') is None
+                else round(float(scored['personal_score']), 4)
+            ),
+            'family_score': (
+                ''
+                if family_score is None
+                else round(float(family_score), 4)
+            ),
             'final_score': round(final, 4),
             'decision': decision,
             'decision_reason': score_reason,
@@ -908,9 +990,11 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             'prediction_model_version': prediction['model_version'],
             'predicted_at': prediction['predicted_at'],
             'prediction_schema_version': prediction['schema_version'],
-            'prediction_producer_version': prediction['producer_version'],            
+            'prediction_producer_version': prediction['producer_version'],
             'protected_by_family_rule': protected,
-            'detected_people': '|'.join(family.get('detected_people', [])),
+            'detected_people': '|'.join(
+                family.get('detected_people', [])
+            ),
             'face_status': family.get('status', ''),
         })
 
