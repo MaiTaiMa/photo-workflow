@@ -39,6 +39,7 @@ from app.automation_config import validate_automation_config
 from app.auto_decision import predict_decision
 from app.automation_contract import build_prediction_record
 from app.automation_store import write_prediction_batch
+from app.review_decision import record_human_decision
 
 from app.aesthetic import (
     base_score_components,
@@ -1442,6 +1443,20 @@ def build_parser() -> argparse.ArgumentParser:
     
     # Family Cache Rebuild
     sub.add_parser('rebuild-family-cache')
+
+    # Menschliche Review-Entscheidung
+    review_decision = sub.add_parser(
+        'review-decision',
+        help='Speichert eine menschliche Keep-/Reject-Entscheidung.',
+    )
+    review_decision.add_argument('--batch', required=True)
+    review_decision.add_argument('--image', required=True)
+    review_decision.add_argument(
+        '--decision',
+        required=True,
+        choices=('keep', 'reject'),
+    )
+    review_decision.add_argument('--reason', default=None)
     
     return parser
     
@@ -1454,10 +1469,41 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     cfg = load_config(args.config)
+
+    # review-decision ist absichtlich kein Workflow-Lauf:
+    # keine Ordneranlage, kein globaler Lock, keine Phase und keine Bildänderung.
+    if args.command == 'review-decision':
+        try:
+            runtime_path = (
+                Path(cfg['paths']['base_dir'])
+                / 'WORKFLOW_DATA'
+                / 'runtime'
+            )
+
+            target, decision_status = record_human_decision(
+                runtime_path=runtime_path,
+                batch_id=args.batch,
+                image_id=args.image,
+                decision=args.decision,
+                reason=args.reason,
+                producer_version=SCRIPT_VERSION,
+            )
+
+            print(
+                f"[REVIEW] status={decision_status} "
+                f"batch={args.batch} image={args.image} "
+                f"path={target}"
+            )
+            return 0
+
+        except Exception as exc:
+            print(f"[REVIEW ERROR] {exc}", file=sys.stderr)
+            return 1
+
     started_at = now()
 
     print_start_banner(cfg, args.command)
-
+    
     # Verzeichnisse sicherstellen
     for key in ['temp_sd', 'temp_images', 'temp_done']:
         ensure_dir(cfg['paths'][key])
