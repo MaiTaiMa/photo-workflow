@@ -836,6 +836,30 @@ reporting:
   require_user_actions_required: true
   
 # -----------------------------------------------------------------------------
+# Optionales lokales CLIP-Scoring für den persönlichen Geschmack.
+# Standardmäßig deaktiviert: Aktivierung erst nach erfolgreichem Pilotbetrieb.
+clip_scoring:
+# -----------------------------------------------------------------------------
+
+  # Aktiviert die optionale CLIP-Score-Berechnung im Workflow.
+  # false: bestehender persönlicher Score bleibt unverändert; keine CLIP-Inferenz.
+  # true: berechnet zusätzliche CLIP-basierte Score-Felder.
+  enabled: false
+
+  # Lokaler Ordner des CLIP-Modells. Es werden keine Modelle heruntergeladen.
+  # Der Ordner muss ein vollständiges, lokal ladbares Transformers-CLIP-Modell enthalten.
+  model_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/clip
+
+  # Ordner mit Referenzbildern für eine optionale ästhetische CLIP-Bewertung.
+  # Fehlend oder leer: aesthetic_reference_score bleibt nicht verfügbar.
+  aesthetic_reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference
+
+  # Aktive persönliche Referenzbilder für personal_score.
+  # Jede Inhalts-, Pfad-, Hinzufügungs- oder Entfernungsänderung invalidiert
+  # den Referenz-Embedding-Cache.
+  personal_reference_dir:
+
+# -----------------------------------------------------------------------------
 # extensions
 # Erweiterungen dürfen nur hier ergänzt werden. Unbekannte Top-Level-Schlüssel
 # sind nach 98AP ein Validierungsfehler.

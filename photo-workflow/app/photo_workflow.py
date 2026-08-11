@@ -42,6 +42,8 @@ from app.automation_store import write_prediction_batch
 from app.review_decision import record_human_decision
 from app.validate_reviews import validate_reviews
 from app.automation_readiness import aggregate_readiness
+from app.clip_scorer import CLIPScorer
+from app.personal_score_cache import load_or_build_reference_cache
 
 from app.aesthetic import (
     base_score_components,
@@ -681,10 +683,42 @@ def score_image(path: Path, cfg: dict, model: dict | None) -> dict:
     base_score = weighted_base_score(components, cfg)
     personal = personal_model_score(path, model)
 
+    # Optionaler CLIP-Scoring-Pfad (AP6C)
+    clip_cfg = cfg.get('clip_scoring', {})
+    clip_personal_score = None
+    clip_aesthetic_score = None
+
+    if clip_cfg.get('enabled'):
+        try:
+            model_dir = clip_cfg.get('model_dir')
+            personal_ref_dir = clip_cfg.get('personal_reference_dir')
+            cache_dir = clip_cfg.get('cache_dir')
+            shadow_mode = clip_cfg.get('shadow_mode', True)
+
+            if model_dir and personal_ref_dir and cache_dir:
+                scorer = CLIPScorer(model_dir, local_files_only=True, shadow_mode=shadow_mode)
+
+                cache_path = Path(cache_dir) / 'personal-clip-reference-cache.json'
+                model_id = 'clip-vit-base'
+
+                ref_embeddings, _ = load_or_build_reference_cache(
+                    reference_dir=personal_ref_dir,
+                    cache_path=cache_path,
+                    model_id=model_id,
+                    embed=lambda ref_path: scorer.compute_clip_score(str(ref_path), []),
+                )
+
+                clip_personal_score = scorer.compute_personal_score(str(path), list(ref_embeddings.keys()))
+
+        except Exception:
+            clip_personal_score = None
+
     return {
         'generic_score': max(0.0, min(1.0, generic)),
         'base_score': max(0.0, min(1.0, base_score)),
         'personal_score': personal,
+        'clip_personal_score': clip_personal_score,
+        'clip_aesthetic_score': clip_aesthetic_score,
         'sharp_score': components.get('sharp'),
         'aesth_score': components.get('aesth'),
         'exposure_score': components.get('exposure'),
@@ -866,6 +900,16 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                     if scored.get('personal_score') is None
                     else round(float(scored['personal_score']), 4)
                 ),
+                'clip_personal_score': (
+                    ''
+                    if scored.get('clip_personal_score') is None
+                    else round(float(scored['clip_personal_score']), 4)
+                ),
+                'clip_aesthetic_score': (
+                    ''
+                    if scored.get('clip_aesthetic_score') is None
+                    else round(float(scored['clip_aesthetic_score']), 4)
+                ),              
                 'family_score': (
                     ''
                     if family.get('family_score') is None
