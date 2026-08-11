@@ -41,6 +41,7 @@ from app.automation_contract import build_prediction_record
 from app.automation_store import write_prediction_batch
 from app.review_decision import record_human_decision
 from app.validate_reviews import validate_reviews
+from app.automation_readiness import aggregate_readiness
 
 from app.aesthetic import (
     base_score_components,
@@ -1465,6 +1466,11 @@ def build_parser() -> argparse.ArgumentParser:
         help='Vergleicht KI-Prognosen mit menschlichen Entscheidungen.',
     )
     validate_reviews_parser.add_argument('--batch', required=True)
+
+    readiness_parser = sub.add_parser(
+        "readiness-report",
+        help="Aggregiert Validierungsreports zu einer Automation-Readiness-Metrik.",
+    )
     
     return parser
     
@@ -1537,6 +1543,34 @@ def main() -> int:
 
         except Exception as exc:
             print(f"[VALIDATION ERROR] {exc}", file=sys.stderr)
+            return 1
+
+    # readiness-report ist rein auswertend:
+    # keine Phasen, kein Lock und keine Bildoperationen.
+    if args.command == "readiness-report":
+        try:
+            runtime_path = (
+                Path(cfg["paths"]["base_dir"])
+                / "WORKFLOW_DATA"
+                / "runtime"
+            )
+
+            report, target = aggregate_readiness(runtime_path)
+
+            print(
+                f"[READINESS] status={report['status']} "
+                f"reports={report['report_count']} "
+                f"evaluable_batches={report['evaluable_batch_count']} "
+                f"evaluated={report['evaluated_predictions']} "
+                f"agreement={report['overall_agreement']} "
+                f"keep_precision={report['keep_precision']} "
+                f"reject_precision={report['reject_precision']} "
+                f"path={target}"
+            )
+            return 0
+
+        except Exception as exc:
+            print(f"[READINESS ERROR] {exc}", file=sys.stderr)
             return 1
 
     started_at = now()
