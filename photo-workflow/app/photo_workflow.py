@@ -40,6 +40,7 @@ from app.auto_decision import predict_decision
 from app.automation_contract import build_prediction_record
 from app.automation_store import write_prediction_batch
 from app.review_decision import record_human_decision
+from app.validate_reviews import validate_reviews
 
 from app.aesthetic import (
     base_score_components,
@@ -1457,6 +1458,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=('keep', 'reject'),
     )
     review_decision.add_argument('--reason', default=None)
+
+    # KI-gegen-Mensch-Validierung
+    validate_reviews_parser = sub.add_parser(
+        'validate-reviews',
+        help='Vergleicht KI-Prognosen mit menschlichen Entscheidungen.',
+    )
+    validate_reviews_parser.add_argument('--batch', required=True)
     
     return parser
     
@@ -1500,10 +1508,41 @@ def main() -> int:
             print(f"[REVIEW ERROR] {exc}", file=sys.stderr)
             return 1
 
+    # validate-reviews ist absichtlich kein Workflow-Lauf:
+    # keine Ordneranlage, kein globaler Lock, keine Phase und keine Bildänderung.
+    if args.command == 'validate-reviews':
+        try:
+            runtime_path = (
+                Path(cfg['paths']['base_dir'])
+                / 'WORKFLOW_DATA'
+                / 'runtime'
+            )
+
+            report, target = validate_reviews(
+                runtime_path=runtime_path,
+                batch_id=args.batch,
+                producer_version=SCRIPT_VERSION,
+            )
+
+            print(
+                f"[VALIDATION] status={report['status']} "
+                f"batch={args.batch} "
+                f"evaluated={report['evaluated_predictions']} "
+                f"agreement={report['overall_agreement']} "
+                f"keep_precision={report['keep_precision']} "
+                f"reject_precision={report['reject_precision']} "
+                f"path={target}"
+            )
+            return 0
+
+        except Exception as exc:
+            print(f"[VALIDATION ERROR] {exc}", file=sys.stderr)
+            return 1
+
     started_at = now()
 
     print_start_banner(cfg, args.command)
-    
+
     # Verzeichnisse sicherstellen
     for key in ['temp_sd', 'temp_images', 'temp_done']:
         ensure_dir(cfg['paths'][key])
