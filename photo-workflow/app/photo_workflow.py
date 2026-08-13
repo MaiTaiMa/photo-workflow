@@ -67,6 +67,7 @@ from app.manual_keep import (
 )
 
 from app.series_culling import apply_series_culling
+from app.series_report import write_batch_series_reports
 from app.metadata_writer import write_culling_metadata
 from app.training import train_from_directory, load_or_rebuild_personal_model
 
@@ -1081,6 +1082,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 'final_score': 1.0,
                 'decision': 'keep',
                 'decision_reason': 'manual_keep_match',
+                'manual_keep': True,
                 'automation_mode': cfg['automation']['mode'],
                 'predicted_decision': prediction['predicted_decision'],
                 'prediction_reason': prediction['prediction_reason'],
@@ -1225,6 +1227,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             'final_score': round(final, 4),
             'decision': decision,
             'decision_reason': score_reason,
+            'manual_keep': False,
             'automation_mode': cfg['automation']['mode'],
             'predicted_decision': prediction['predicted_decision'],
             'prediction_reason': prediction['prediction_reason'],
@@ -1245,11 +1248,22 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     rows = apply_series_culling(rows, cfg)
 
     # MANUAL_KEEP hat Vorrang vor Series-Culling.
+    #
+    # apply_series_culling() kann bei Serien decision_reason überschreiben.
+    # Das dauerhafte Flag bleibt daher die maßgebliche Kennzeichnung.
     for row in rows:
-        if row.get('decision_reason') == 'manual_keep_match':
+        if row.get('manual_keep', False):
             row['decision'] = 'keep'
             row['decision_reason'] = 'manual_keep_match'
             row['final_score'] = 1.0
+
+    # AP7: Report enthält die finalen Entscheidungen nach MANUAL_KEEP,
+    # aber vor File-Moves und vor dem Entfernen interner Row-Felder.
+    series_report_info = write_batch_series_reports(
+        rows=rows,
+        save_dir=save_dir,
+        cfg=cfg,
+    )
 
     family_tag_written = 0
     culling_metadata_written = 0
@@ -1336,6 +1350,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'score_reason',
         'decision',
         'decision_reason',
+        'manual_keep',
         'automation_mode',
         'predicted_decision',
         'prediction_reason',
@@ -1429,6 +1444,18 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             for row in rows
             if row.get('series_best')
         ),
+        'series_report_enabled': series_report_info['enabled'],
+        'series_report_count': series_report_info['series_count'],
+        'series_reported_images': series_report_info[
+            'reported_image_count'
+        ],
+        'series_json_report_count': series_report_info[
+            'json_report_count'
+        ],
+        'series_report_directory': series_report_info['report_dir'],
+        'series_text_report_path': series_report_info[
+            'text_report_path'
+        ],
         'family_recognition_enabled': bool(
             family_cfg.get('enabled', False)
         ),
@@ -1490,11 +1517,6 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'prediction_review_count': prediction_review_count,
     }
 
-    (save_dir / 'culling_summary.json').write_text(
-        json.dumps(summary, indent=2),
-        encoding='utf-8',
-    )
-
     # ==========================================================================
     # SCHRITT 9: MANUAL_KEEP Quellen nach used/ verschieben
     # Erst nach vollständig erfolgreichem Batch-Lauf.
@@ -1524,6 +1546,13 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         summary['manual_keep_used_failed_count'] = move_result[
             'failed_count'
         ]
+
+    # Summary erst nach Schritt 9 schreiben, damit die finalen
+    # MANUAL_KEEP-used/-Zähler dauerhaft in culling_summary.json stehen.
+    (save_dir / 'culling_summary.json').write_text(
+        json.dumps(summary, indent=2),
+        encoding='utf-8',
+    )
 
     return summary
 
