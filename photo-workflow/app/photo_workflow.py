@@ -213,6 +213,33 @@ def load_config(path: str | Path) -> dict:
     personal_cfg.setdefault('recursive', False)
     personal_cfg.setdefault('min_reference_images', 5)
 
+    # Optionales lokales CLIP-Scoring
+    clip_cfg = cfg.setdefault('clip_scoring', {})
+    clip_cfg.setdefault('enabled', False)
+    clip_cfg.setdefault(
+        'model_dir',
+        str(Path(cfg['paths']['base_dir']) / 'WORKFLOW_DATA' / 'models' / 'clip'),
+    )
+    clip_cfg.setdefault(
+        'aesthetic_reference_dir',
+        str(Path(cfg['paths']['base_dir']) / 'WORKFLOW_DATA' / 'samples' / 'aesthetic_reference'),
+    )
+    clip_cfg.setdefault(
+        'personal_reference_dir',
+        str(
+            Path(cfg['paths']['base_dir'])
+            / 'WORKFLOW_DATA'
+            / 'samples'
+            / 'personal_training'
+            / 'reference'
+        ),
+    )
+    clip_cfg.setdefault(
+        'cache_dir',
+        str(Path(cfg['paths']['base_dir']) / 'WORKFLOW_DATA' / 'runtime' / 'scoring'),
+    )
+    clip_cfg.setdefault('shadow_mode', True)
+
     # Metadata-Keyword-Schema
     metadata_cfg = cfg.setdefault('metadata_culling', {})
     metadata_cfg.setdefault('keyword_schema', 'namespaced_v1')
@@ -676,42 +703,114 @@ def load_personal(cfg: dict):
     return load_or_rebuild_personal_model(cfg)
 
 
-def score_image(path: Path, cfg: dict, model: dict | None) -> dict:
-    """Berechnet alle Scores für ein Bild."""
+def prepare_clip_context(cfg: dict) -> dict:
+    """Bereitet optionales lokales CLIP-Scoring einmal je Culling-Lauf vor."""
+    clip_cfg = cfg.get('clip_scoring', {})
+
+    context = {
+        'enabled': False,
+        'scorer': None,
+        'personal_references': [],
+        'reference_dir': None,
+        'cache_path': None,
+        'model_id': None,
+        'status': 'disabled',
+    }
+
+    if not clip_cfg.get('enabled', False):
+        return context
+
+    model_dir = clip_cfg.get('model_dir')
+    reference_dir = clip_cfg.get('personal_reference_dir')
+    cache_dir = clip_cfg.get('cache_dir')
+    shadow_mode = bool(clip_cfg.get('shadow_mode', True))
+
+    if not model_dir or not reference_dir or not cache_dir:
+        context['status'] = 'incomplete_config'
+        return context
+
+    if shadow_mode:
+        context['status'] = 'shadow_mode'
+        return context
+
+    try:
+        personal_references = [
+            str(path)
+            for path in Path(reference_dir).rglob('*')
+            if path.is_file()
+            and path.suffix.lower() in {'.jpg', '.jpeg', '.png', '.webp'}
+        ]
+
+        if not personal_references:
+            context['status'] = 'no_references'
+            return context
+
+        context.update(
+            {
+                'enabled': True,
+                'scorer': CLIPScorer(
+                    str(model_dir),
+                    local_files_only=True,
+                    shadow_mode=False,
+                ),
+                'personal_references': personal_references,
+                'reference_dir': str(reference_dir),
+                'cache_path': str(
+                    Path(cache_dir) / 'personal-clip-reference-cache.json'
+                ),
+                'model_id': str(Path(model_dir).resolve()),
+                'status': 'ready',
+            }
+        )
+
+    except (
+        ImportError,
+        FileNotFoundError,
+        OSError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
+        context['status'] = f'unavailable:{type(exc).__name__}'
+
+    return context
+
+
+def score_image(
+    path: Path,
+    cfg: dict,
+    model: dict | None,
+    clip_context: dict | None = None,
+) -> dict:
+    """Berechnet Basis-, Personal- und optionale CLIP-Analyse-Scores."""
     generic = generic_aesthetic_score(path)
     components = base_score_components(path, cfg)
     base_score = weighted_base_score(components, cfg)
     personal = personal_model_score(path, model)
 
-    # Optionaler CLIP-Scoring-Pfad (AP6C)
-    clip_cfg = cfg.get('clip_scoring', {})
     clip_personal_score = None
     clip_aesthetic_score = None
+    clip_cache_status = 'disabled'
 
-    if clip_cfg.get('enabled'):
-        try:
-            model_dir = clip_cfg.get('model_dir')
-            personal_ref_dir = clip_cfg.get('personal_reference_dir')
-            cache_dir = clip_cfg.get('cache_dir')
-            shadow_mode = clip_cfg.get('shadow_mode', True)
+    if clip_context is not None:
+        clip_cache_status = clip_context.get('status', 'disabled')
 
-            if model_dir and personal_ref_dir and cache_dir:
-                scorer = CLIPScorer(model_dir, local_files_only=True, shadow_mode=shadow_mode)
+        if (
+            clip_context.get('enabled')
+            and clip_context.get('scorer') is not None
+            and clip_context.get('reference_dir')
+            and clip_context.get('cache_path')
+            and clip_context.get('model_id')
+        ):
+            scorer = clip_context['scorer']
 
-                cache_path = Path(cache_dir) / 'personal-clip-reference-cache.json'
-                model_id = 'clip-vit-base'
-
-                ref_embeddings, _ = load_or_build_reference_cache(
-                    reference_dir=personal_ref_dir,
-                    cache_path=cache_path,
-                    model_id=model_id,
-                    embed=lambda ref_path: scorer.compute_clip_score(str(ref_path), []),
-                )
-
-                clip_personal_score = scorer.compute_personal_score(str(path), list(ref_embeddings.keys()))
-
-        except Exception:
-            clip_personal_score = None
+            clip_personal_score = scorer.compute_personal_score(
+                image_path=str(path),
+                personal_references=clip_context.get('personal_references', []),
+                reference_dir=clip_context['reference_dir'],
+                cache_path=clip_context['cache_path'],
+                model_id=clip_context['model_id'],
+            )
+            clip_cache_status = scorer.last_personal_cache_status
 
     return {
         'generic_score': max(0.0, min(1.0, generic)),
@@ -719,6 +818,7 @@ def score_image(path: Path, cfg: dict, model: dict | None) -> dict:
         'personal_score': personal,
         'clip_personal_score': clip_personal_score,
         'clip_aesthetic_score': clip_aesthetic_score,
+        'clip_cache_status': clip_cache_status,
         'sharp_score': components.get('sharp'),
         'aesth_score': components.get('aesth'),
         'exposure_score': components.get('exposure'),
@@ -755,7 +855,7 @@ def combine_scores(base_score: float, eye_score: float | None, personal_score: f
 def cull_folder(workdir: Path, cfg: dict) -> dict:
     """
     Führt das AI-Culling für einen Batch durch.
-    
+
     98AP-Regeln:
       - AP2: MANUAL_KEEP hat Vorrang vor automatischer Bewertung
       - AP6: Face-Score nur bei ausreichender Referenzbasis
@@ -770,21 +870,41 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
 
     if cfg['culling'].get('create_rejected_folder', True):
         rejected_dir.mkdir(exist_ok=True)
+
     if cfg['culling'].get('create_review_folder', True):
         review_dir.mkdir(exist_ok=True)
 
     # ==========================================================================
-    # SCHRITT 1: Referenzprofile und Modelle laden
+    # SCHRITT 1: Referenzprofile und bestehende Modelle laden
     # ==========================================================================
     reference_profile, reference_info = ensure_reference_profile(cfg)
-    cfg.setdefault('culling', {}).setdefault('reference_scoring', {})['_runtime_profile'] = reference_profile
 
-    log(cfg, f"[REFERENCE PROFILE] status={reference_info.get('status')} images={reference_info.get('reference_image_count', 0)} cache_used={reference_info.get('used_cache', False)} cache_rebuilt={reference_info.get('rebuilt_cache', False)} preview_size={reference_info.get('preview_size')}")
+    cfg.setdefault('culling', {}).setdefault(
+        'reference_scoring',
+        {},
+    )['_runtime_profile'] = reference_profile
+
+    log(
+        cfg,
+        f"[REFERENCE PROFILE] status={reference_info.get('status')} "
+        f"images={reference_info.get('reference_image_count', 0)} "
+        f"cache_used={reference_info.get('used_cache', False)} "
+        f"cache_rebuilt={reference_info.get('rebuilt_cache', False)} "
+        f"preview_size={reference_info.get('preview_size')}",
+    )
 
     personal_model, personal_info = load_personal(cfg)
-    log(cfg, f"[PERSONAL MODEL] status={personal_info.get('status')} images={personal_info.get('source_image_count', 0)} cache_used={personal_info.get('used_cache', False)} cache_rebuilt={personal_info.get('rebuilt_cache', False)}")
+
+    log(
+        cfg,
+        f"[PERSONAL MODEL] status={personal_info.get('status')} "
+        f"images={personal_info.get('source_image_count', 0)} "
+        f"cache_used={personal_info.get('used_cache', False)} "
+        f"cache_rebuilt={personal_info.get('rebuilt_cache', False)}",
+    )
 
     family_model = load_family_model(cfg)
+
     family_info = {
         'status': family_model.get('status'),
         'used_cache': family_model.get('used_cache', False),
@@ -792,8 +912,32 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'person_count': family_model.get('person_count', 0),
         'cache_dir': family_model.get('cache_dir'),
     }
+
     LAST_FAMILY_RUN_INFO = family_info
-    log(cfg, f"[FAMILY MODEL] status={family_info['status']} people={family_info['person_count']} cache_used={family_info['used_cache']} cache_rebuilt={family_info['rebuilt_cache']}")
+
+    log(
+        cfg,
+        f"[FAMILY MODEL] status={family_info['status']} "
+        f"people={family_info['person_count']} "
+        f"cache_used={family_info['used_cache']} "
+        f"cache_rebuilt={family_info['rebuilt_cache']}",
+    )
+
+    # ==========================================================================
+    # SCHRITT 1B: Optionales lokales CLIP-Scoring vorbereiten
+    #
+    # Der CLIPScorer wird nur einmal pro Batch vorbereitet und anschließend an
+    # beide score_image()-Pfade übergeben. CLIP-Scores sind reine Diagnostik:
+    # Sie verändern weder combine_scores() noch Keep/Review/Reject.
+    # ==========================================================================
+    clip_context = prepare_clip_context(cfg)
+
+    log(
+        cfg,
+        f"[CLIP] status={clip_context['status']} "
+        f"enabled={clip_context['enabled']} "
+        f"references={len(clip_context['personal_references'])}",
+    )
 
     # ==========================================================================
     # SCHRITT 2: MANUAL_KEEP prüfen (mit Feature-Vektor-Matching)
@@ -820,12 +964,16 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             f"matched={manual_keep_status['matched_count']} "
             f"threshold={similarity_threshold}"
         )
+
         for image_path in manual_keep_images:
             print(f"  [MANUAL_KEEP] KEEP: {image_path.name}")
+
     elif manual_keep_status['status'] == 'no_inbox':
         print("[MANUAL_KEEP] inbox-Ordner fehlt oder leer")
+
     elif manual_keep_status['status'] == 'empty_inbox':
         print("[MANUAL_KEEP] inbox-Ordner leer")
+
     elif manual_keep_status['status'] == 'no_match':
         print(
             "[MANUAL_KEEP] keine ähnlichen Bilder gefunden "
@@ -844,8 +992,18 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     for jpg in top_level_jpgs(workdir):
         # MANUAL_KEEP hat Vorrang: Die finale Workflow-Entscheidung ist keep.
         if jpg in manual_keep_images:
-            scored = score_image(jpg, cfg, personal_model)
-            family = detect_family_members(jpg, cfg, family_model)
+            scored = score_image(
+                jpg,
+                cfg,
+                personal_model,
+                clip_context=clip_context,
+            )
+
+            family = detect_family_members(
+                jpg,
+                cfg,
+                family_model,
+            )
 
             # Keine freie KI-Prognose: Der Mensch hat den Keep-Fall erzwungen.
             prediction = build_prediction_record(
@@ -861,6 +1019,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 final_score=1.0,
                 predicted_at=datetime.now(timezone.utc).isoformat(),
             )
+
             predictions.append(prediction)
 
             rows.append({
@@ -909,7 +1068,11 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                     ''
                     if scored.get('clip_aesthetic_score') is None
                     else round(float(scored['clip_aesthetic_score']), 4)
-                ),              
+                ),
+                'clip_cache_status': scored.get(
+                    'clip_cache_status',
+                    'disabled',
+                ),
                 'family_score': (
                     ''
                     if family.get('family_score') is None
@@ -931,11 +1094,22 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 ),
                 'face_status': family.get('status', ''),
             })
+
             continue
 
         # Normales Scoring für alle Bilder ohne MANUAL_KEEP-Vorrang.
-        scored = score_image(jpg, cfg, personal_model)
-        family = detect_family_members(jpg, cfg, family_model)
+        scored = score_image(
+            jpg,
+            cfg,
+            personal_model,
+            clip_context=clip_context,
+        )
+
+        family = detect_family_members(
+            jpg,
+            cfg,
+            family_model,
+        )
 
         family_score = (
             float(family.get('family_score', 0.0))
@@ -943,6 +1117,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             else None
         )
 
+        # CLIP ist absichtlich kein Eingabewert von combine_scores().
         final = combine_scores(
             scored['base_score'],
             scored.get('eye_score'),
@@ -1028,6 +1203,20 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 if scored.get('personal_score') is None
                 else round(float(scored['personal_score']), 4)
             ),
+            'clip_personal_score': (
+                ''
+                if scored.get('clip_personal_score') is None
+                else round(float(scored['clip_personal_score']), 4)
+            ),
+            'clip_aesthetic_score': (
+                ''
+                if scored.get('clip_aesthetic_score') is None
+                else round(float(scored['clip_aesthetic_score']), 4)
+            ),
+            'clip_cache_status': scored.get(
+                'clip_cache_status',
+                'disabled',
+            ),
             'family_score': (
                 ''
                 if family_score is None
@@ -1072,9 +1261,15 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         jpg = row['_source_path']
         target_path = jpg
 
-        if row['decision'] == 'reject' and cfg['culling'].get('move_files', True):
+        if (
+            row['decision'] == 'reject'
+            and cfg['culling'].get('move_files', True)
+        ):
             target_path = rejected_dir / jpg.name
-        elif row['decision'] == 'review' and cfg['culling'].get('move_files', True):
+        elif (
+            row['decision'] == 'review'
+            and cfg['culling'].get('move_files', True)
+        ):
             target_path = review_dir / jpg.name
 
         if target_path != jpg:
@@ -1082,18 +1277,27 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
 
         # Family-Tags schreiben (wenn aktiviert)
         family_metadata_ok, family_metadata_status = False, 'not_attempted'
-        if family_cfg.get('enabled', False) and family_cfg.get('write_native_tags', True) and row.get('_family_tags'):
+
+        if (
+            family_cfg.get('enabled', False)
+            and family_cfg.get('write_native_tags', True)
+            and row.get('_family_tags')
+        ):
             family_metadata_ok, family_metadata_status = write_native_tags(
                 target_path,
                 row.get('_family_tags', []),
                 cfg,
                 row.get('_family_regions', []),
             )
+
             if family_metadata_ok:
                 family_tag_written += 1
 
         # Culling-Metadaten schreiben
-        culling_metadata_ok, culling_metadata_status = write_culling_metadata(target_path, row, cfg)
+        culling_metadata_ok, culling_metadata_status = (
+            write_culling_metadata(target_path, row, cfg)
+        )
+
         if culling_metadata_ok:
             culling_metadata_written += 1
 
@@ -1103,6 +1307,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         row['culling_metadata_written'] = culling_metadata_ok
         row['culling_metadata_status'] = culling_metadata_status
         row['final_path'] = str(target_path.relative_to(workdir))
+
         row.pop('_source_path', None)
         row.pop('_family_tags', None)
         row.pop('_family_regions', None)
@@ -1111,23 +1316,58 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     # SCHRITT 6: CSV-Scores schreiben
     # ==========================================================================
     csv_path = save_dir / 'culling_scores.csv'
+
     fieldnames = [
-        'file', 'generic_score', 'base_score', 'sharp_score', 'aesth_score', 'exposure_score',
-        'eye_score', 'reference_score', 'personal_score', 'family_score', 'final_score',
-        'score_decision', 'score_reason', 'decision', 'decision_reason',
-        'automation_mode', 'predicted_decision', 'prediction_reason',
-        'prediction_model_version', 'predicted_at', 'prediction_schema_version',
-        'prediction_producer_version',        
-        'series_id', 'series_size', 'series_rank', 'series_best', 'series_margin_to_best', 'star_rating',
-        'protected_by_family_rule', 'detected_people', 'face_status', 'family_metadata_written',
-        'family_metadata_status', 'culling_metadata_written', 'culling_metadata_status', 'final_path'
+        'file',
+        'generic_score',
+        'base_score',
+        'sharp_score',
+        'aesth_score',
+        'exposure_score',
+        'eye_score',
+        'reference_score',
+        'personal_score',
+        'clip_personal_score',
+        'clip_aesthetic_score',
+        'clip_cache_status',
+        'family_score',
+        'final_score',
+        'score_decision',
+        'score_reason',
+        'decision',
+        'decision_reason',
+        'automation_mode',
+        'predicted_decision',
+        'prediction_reason',
+        'prediction_model_version',
+        'predicted_at',
+        'prediction_schema_version',
+        'prediction_producer_version',
+        'series_id',
+        'series_size',
+        'series_rank',
+        'series_best',
+        'series_margin_to_best',
+        'star_rating',
+        'protected_by_family_rule',
+        'detected_people',
+        'face_status',
+        'family_metadata_written',
+        'family_metadata_status',
+        'culling_metadata_written',
+        'culling_metadata_status',
+        'final_path',
     ]
 
     with csv_path.open('w', newline='', encoding='utf-8') as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
+
         for row in rows:
-            writer.writerow({name: row.get(name, '') for name in fieldnames})
+            writer.writerow({
+                name: row.get(name, '')
+                for name in fieldnames
+            })
 
     # ==========================================================================
     # SCHRITT 7: Shadow-Prognosen atomar je Batch speichern
@@ -1148,10 +1388,12 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         item['predicted_decision'] == 'keep'
         for item in predictions
     )
+
     prediction_reject_count = sum(
         item['predicted_decision'] == 'reject'
         for item in predictions
     )
+
     prediction_review_count = sum(
         item['predicted_decision'] == 'review'
         for item in predictions
@@ -1160,32 +1402,87 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     # ==========================================================================
     # SCHRITT 8: Summary erstellen
     # ==========================================================================
-    clustered_rows = [r for r in rows if r.get('series_id') != 'single']
+    clustered_rows = [
+        row
+        for row in rows
+        if row.get('series_id') != 'single'
+    ]
+
     summary = {
         'created_at': now(),
-        'keep': sum(1 for r in rows if r['decision'] == 'keep'),
-        'review': sum(1 for r in rows if r['decision'] == 'review'),
-        'reject': sum(1 for r in rows if r['decision'] == 'reject'),
+        'keep': sum(1 for row in rows if row['decision'] == 'keep'),
+        'review': sum(1 for row in rows if row['decision'] == 'review'),
+        'reject': sum(1 for row in rows if row['decision'] == 'reject'),
         'total': len(rows),
         'keep_threshold': keep_threshold,
         'reject_threshold': reject_threshold,
-        'series_detection_enabled': bool(cfg.get('series_detection', {}).get('enabled', True)),
+        'series_detection_enabled': bool(
+            cfg.get('series_detection', {}).get('enabled', True)
+        ),
         'series_clustered_images': len(clustered_rows),
-        'series_cluster_count': len({r['series_id'] for r in clustered_rows}),
-        'series_best_images': sum(1 for r in rows if r.get('series_best')),
-        'family_recognition_enabled': bool(family_cfg.get('enabled', False)),
-        'family_tagged_images': sum(1 for r in rows if r['detected_people']),
-        'family_protected_images': sum(1 for r in rows if r.get('protected_by_family_rule')),
+        'series_cluster_count': len({
+            row['series_id']
+            for row in clustered_rows
+        }),
+        'series_best_images': sum(
+            1
+            for row in rows
+            if row.get('series_best')
+        ),
+        'family_recognition_enabled': bool(
+            family_cfg.get('enabled', False)
+        ),
+        'family_tagged_images': sum(
+            1
+            for row in rows
+            if row['detected_people']
+        ),
+        'family_protected_images': sum(
+            1
+            for row in rows
+            if row.get('protected_by_family_rule')
+        ),
         'family_cache_status': family_model.get('status'),
         'family_cache_used': family_model.get('used_cache', False),
         'family_cache_rebuilt': family_model.get('rebuilt_cache', False),
         'family_reference_people': family_model.get('person_count', 0),
         'family_metadata_written': family_tag_written,
         'culling_metadata_written': culling_metadata_written,
-        # NEU: MANUAL_KEEP-Statistik
-        'manual_keep_inbox_count': manual_keep_status.get('inbox_count', 0),
-        'manual_keep_matched_count': manual_keep_status.get('matched_count', 0),
-        'manual_keep_status': manual_keep_status.get('status', 'not_checked'),
+        'manual_keep_inbox_count': manual_keep_status.get(
+            'inbox_count',
+            0,
+        ),
+        'manual_keep_matched_count': manual_keep_status.get(
+            'matched_count',
+            0,
+        ),
+        'manual_keep_status': manual_keep_status.get(
+            'status',
+            'not_checked',
+        ),
+        'clip_scoring_enabled': bool(
+            clip_context.get('enabled', False)
+        ),
+        'clip_scoring_status': clip_context.get(
+            'status',
+            'disabled',
+        ),
+        'clip_personal_scored_images': sum(
+            row.get('clip_personal_score', '') != ''
+            for row in rows
+        ),
+        'clip_aesthetic_scored_images': sum(
+            row.get('clip_aesthetic_score', '') != ''
+            for row in rows
+        ),
+        'clip_cache_hit_images': sum(
+            row.get('clip_cache_status') == 'hit'
+            for row in rows
+        ),
+        'clip_cache_rebuilt_images': sum(
+            row.get('clip_cache_status') == 'rebuilt'
+            for row in rows
+        ),
         'prediction_artifact_path': str(prediction_artifact_path),
         'prediction_count': len(predictions),
         'prediction_keep_count': prediction_keep_count,
@@ -1193,14 +1490,20 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'prediction_review_count': prediction_review_count,
     }
 
-    (save_dir / 'culling_summary.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
+    (save_dir / 'culling_summary.json').write_text(
+        json.dumps(summary, indent=2),
+        encoding='utf-8',
+    )
 
     # ==========================================================================
-    # SCHRITT 9: MANUAL_KEEP Quellen nach used/ verschieben (erst nach vollständigem Erfolg)
+    # SCHRITT 9: MANUAL_KEEP Quellen nach used/ verschieben
+    # Erst nach vollständig erfolgreichem Batch-Lauf.
     # ==========================================================================
     if manual_keep_status['status'] == 'matched':
         move_result = move_manual_keep_sources_to_used(
-            matched_source_paths=manual_keep_status['matched_source_paths'],
+            matched_source_paths=manual_keep_status[
+                'matched_source_paths'
+            ],
             manual_keep_inbox=manual_keep_inbox,
             manual_keep_used=manual_keep_used,
         )
@@ -1215,10 +1518,15 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         for error in move_result['errors']:
             print(f"[MANUAL_KEEP] MOVE FAILED: {error}")
 
-        summary['manual_keep_used_moved_count'] = move_result['moved_count']
-        summary['manual_keep_used_failed_count'] = move_result['failed_count']
+        summary['manual_keep_used_moved_count'] = move_result[
+            'moved_count'
+        ]
+        summary['manual_keep_used_failed_count'] = move_result[
+            'failed_count'
+        ]
 
     return summary
+
     
 def prepare_folder_phase1(folder: Path, cfg: dict) -> Path:
     """Bereitet einen Batch-Ordner für Phase 1 vor."""

@@ -104,7 +104,7 @@ def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
         'paths', 'runtime', 'safety',
         'workflow', 'models', 'culling', 'training', 'reporting',
         'family_recognition', 'series_detection', 'metadata_culling',
-        'personal_scoring', 'reference_pools', 'pools', 'scoring',
+        'personal_scoring', 'clip_scoring', 'reference_pools', 'pools', 'scoring',
         'series', 'manual_keep', 'batch',
         'extensions',  # Explizit erlaubt laut 98AP
     }

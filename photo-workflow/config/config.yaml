@@ -190,6 +190,21 @@ workflow:
   # Auswirkung: true dokumentiert Abschluss vor dem Übergang; false reduziert Recovery-Sicherheit.
   create_done_marker_before_move: true
 
+  # Rekonstruktion des Datums aus historischen Ordnernamen.
+  date_reconstruction:
+
+    # legacy_bash: Bildet das Jahr aus decade_prefix plus Jahresziffer.
+    # full_year: Erwartet ein vollständiges vierstelliges Jahr im Ordnernamen.
+    mode: legacy_bash
+
+    # Dreistelliges Jahrzehnt-Präfix für legacy_bash.
+    # "202" erzeugt zusammen mit einer Jahresziffer ein Jahr von 2020 bis 2029.
+    decade_prefix: "202"
+
+    # Nullbasierter Index der Jahresziffer innerhalb des Ordnernamens.
+    # Bei "2025-11-02" verweist Index 3 auf "5".
+    year_digit_index: 3
+
 # -----------------------------------------------------------------------------
 # automation
 # Dieser Block steuert KI-Prognosen und eine optionale Automatisierung.
@@ -838,26 +853,35 @@ reporting:
 # -----------------------------------------------------------------------------
 # Optionales lokales CLIP-Scoring für den persönlichen Geschmack.
 # Standardmäßig deaktiviert: Aktivierung erst nach erfolgreichem Pilotbetrieb.
-clip_scoring:
 # -----------------------------------------------------------------------------
+clip_scoring:
 
-  # Aktiviert die optionale CLIP-Score-Berechnung im Workflow.
-  # false: bestehender persönlicher Score bleibt unverändert; keine CLIP-Inferenz.
-  # true: berechnet zusätzliche CLIP-basierte Score-Felder.
+  # Aktiviert zusätzliche CLIP-Diagnostik im Culling-Report.
+  # false: keine CLIP-Inferenz und keine Änderung bestehender Scores.
+  # true: berechnet clip_personal_score als zusätzliches Analysefeld.
   enabled: false
 
-  # Lokaler Ordner des CLIP-Modells. Es werden keine Modelle heruntergeladen.
-  # Der Ordner muss ein vollständiges, lokal ladbares Transformers-CLIP-Modell enthalten.
+  # Lokaler Pfad eines vollständig vorhandenen Transformers-CLIP-Modells.
+  # Der Workflow lädt nur lokal und führt keinen Modell-Download durch.
   model_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/clip
 
-  # Ordner mit Referenzbildern für eine optionale ästhetische CLIP-Bewertung.
-  # Fehlend oder leer: aesthetic_reference_score bleibt nicht verfügbar.
+  # Referenzordner für optionale ästhetische CLIP-Analysen.
+  # Fehlt oder ist er leer, bleibt clip_aesthetic_score nicht verfügbar.
   aesthetic_reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference
 
-  # Aktive persönliche Referenzbilder für personal_score.
-  # Jede Inhalts-, Pfad-, Hinzufügungs- oder Entfernungsänderung invalidiert
-  # den Referenz-Embedding-Cache.
-  personal_reference_dir:
+  # Aktive persönliche CLIP-Referenzbilder.
+  # Inhalts-, Pfad-, Hinzufügungs- und Entfernungsänderungen invalidieren
+  # den Referenz-Embedding-Cache automatisch.
+  personal_reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training/reference
+
+  # Kontrollierter Runtime-Ordner für den Referenz-Embedding-Cache.
+  # Der Cache liegt nicht im Repository und verändert keine Bilddateien.
+  cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/scoring
+
+  # true: Keine reale CLIP-Inferenz; Scores bleiben None.
+  # false: Das lokale CLIP-Modell erzeugt reale Bild-Embeddings.
+  # Für einen Shadow-Pilot zunächst auf true lassen.
+  shadow_mode: true
 
 # -----------------------------------------------------------------------------
 # extensions
