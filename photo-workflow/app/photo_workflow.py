@@ -44,6 +44,9 @@ from app.validate_reviews import validate_reviews
 from app.automation_readiness import aggregate_readiness
 from app.clip_scorer import CLIPScorer
 from app.personal_score_cache import load_or_build_reference_cache
+from app.pause_checkpoint import PauseCheckpointStore
+from app.runtime_control import RuntimeControl, install_signal_handlers
+from app.workflow_locks import WorkflowLockError, WorkflowLockManager
 
 from app.aesthetic import (
     base_score_components,
@@ -378,7 +381,86 @@ def require_within(cfg: dict, target: Path) -> None:
     base = Path(cfg['paths']['base_dir']).resolve()
     if not path_within(base, target):
         raise ValueError(f'Path escapes base_dir: {target}')
-        
+
+
+# === Runtime-Control und Pause-Checkpoints ===
+# Zweck: Leitet kontrollierte Runtime-Pfade ab und persistiert Pausen
+# ausschließlich an sicheren Checkpoints.
+# Hinweis: Diese Hilfen lösen selbst keine Dateioperationen oder Phasenwechsel aus.
+
+
+def get_runtime_paths(cfg: dict) -> tuple[Path, Path, Path]:
+    """
+    Leitet Runtime-, State- und Lock-Pfade ausschließlich aus paths.base_dir ab.
+
+    Die Funktion erzeugt noch keine Verzeichnisse und verändert keine Daten.
+    Sie hält die v1.2-Runtime-Daten unter WORKFLOW_DATA/runtime zusammen.
+    """
+    base_dir = Path(cfg["paths"]["base_dir"]).resolve()
+    runtime_dir = base_dir / "WORKFLOW_DATA" / "runtime"
+    state_dir = runtime_dir / "state"
+    locks_dir = runtime_dir / "locks"
+
+    require_within(cfg, runtime_dir)
+    require_within(cfg, state_dir)
+    require_within(cfg, locks_dir)
+
+    return runtime_dir, state_dir, locks_dir
+
+
+def config_fingerprint(cfg: dict) -> str:
+    """
+    Erzeugt einen stabilen SHA256-Fingerprint der effektiven Konfiguration.
+
+    Der Fingerprint enthält keine zusätzlichen Daten und wird nur als
+    Integritätsreferenz in Pause-Checkpoints gespeichert.
+    """
+    canonical = json.dumps(
+        cfg,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def persist_pause_if_requested(
+    *,
+    runtime: RuntimeControl,
+    pause_store: PauseCheckpointStore,
+    batch_id: str,
+    checkpoint: str,
+    config_fingerprint_value: str,
+    previous_state_hash: str = "",
+    workunit_id: str | None = None,
+) -> bool:
+    """
+    Persistiert eine Stop-Anforderung ausschließlich als atomaren Pause-State.
+
+    Diese Funktion darf nur zwischen sicheren Workflow-Operationen aufgerufen
+    werden. Sie führt keine Moves, Archivierungen, Metadaten- oder ARW-Aktionen
+    aus und markiert einen Batch niemals als abgeschlossen.
+    """
+    request = runtime.pause_request(
+        checkpoint=checkpoint,
+        workunit_id=workunit_id,
+    )
+    if request is None:
+        return False
+
+    pause_store.write(
+        batch_id=batch_id,
+        pause_reason=request.reason,
+        checkpoint=request.checkpoint,
+        workunit_id=request.workunit_id,
+        config_fingerprint=config_fingerprint_value,
+        previous_state_hash=previous_state_hash,
+    )
+
+    return True
+
+
 def run_pipeline(cfg: dict, folder: str | None = None) -> None:
     """
     Führt eine Pipeline von Phasen aus (konfigurierbar).
@@ -1865,6 +1947,18 @@ def main() -> int:
     args = parser.parse_args()
     cfg = load_config(args.config)
 
+    runtime = RuntimeControl()
+    install_signal_handlers(runtime)
+
+    _, state_dir, locks_dir = get_runtime_paths(cfg)
+
+    pause_store = PauseCheckpointStore(
+        state_dir=state_dir,
+        producer_version=SCRIPT_VERSION,
+    )
+    workflow_locks = WorkflowLockManager(locks_dir)
+    active_config_fingerprint = config_fingerprint(cfg)
+    
     # review-decision ist absichtlich kein Workflow-Lauf:
     # keine Ordneranlage, kein globaler Lock, keine Phase und keine Bildänderung.
     if args.command == 'review-decision':
@@ -1964,25 +2058,41 @@ def main() -> int:
     ensure_dir(Path(cfg['paths']['personal_model']).parent)
     ensure_dir(cfg['family_recognition']['cache_dir'])
 
-    status = 'success'
+    status = "success"
 
     try:
-        with file_lock(cfg):
-            if args.command == 'phase1':
+        # Der globale Run-Lock schützt ausschließlich produktive Workflow-Commands.
+        # review-decision, validate-reviews und readiness-report wurden oberhalb
+        # bereits beendet und benötigen daher keinen produktiven Run-Lock.
+        with workflow_locks.run_lock():
+            if not runtime.before_expensive_step(
+                "before_command_dispatch"
+            ):
+                status = "paused"
+                log(
+                    cfg,
+                    "[PAUSE] Stop-Anforderung vor produktivem Dispatch erkannt.",
+                )
+            elif args.command == "phase1":
                 run_phase1(cfg, args.folder)
-            elif args.command == 'phase2':
+            elif args.command == "phase2":
                 run_phase2(cfg, args.folder)
-            elif args.command in ('pipeline', 'phase12'):
+            elif args.command in ("pipeline", "phase12"):
                 run_pipeline(cfg, args.folder)
-            elif args.command == 'train-personal':
+            elif args.command == "train-personal":
                 run_training(cfg, args.images_dir, args.model_out)
-            elif args.command == 'rebuild-family-cache':
+            elif args.command == "rebuild-family-cache":
                 run_family_cache_rebuild(cfg)
+
+    except WorkflowLockError as exc:
+        COUNT_ERRORS += 1
+        status = "blocked"
+        log(cfg, f"[LOCK BLOCKED] {exc}", error=True)
 
     except Exception as exc:
         COUNT_ERRORS += 1
-        status = 'error'
-        log(cfg, f'[FATAL] {exc}', error=True)
+        status = "error"
+        log(cfg, f"[FATAL] {exc}", error=True)
 
     finally:
         finished_at = now()
