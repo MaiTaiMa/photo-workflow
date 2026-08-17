@@ -52,6 +52,35 @@ def test_transition_tracks_progress_and_completion(tmp_path) -> None:
     assert completed["state"] == "completed"
 
 
+def test_in_progress_transition_persists_next_image_index(tmp_path) -> None:
+    store = create_store(tmp_path)
+    initial = initialize(store)
+
+    started = store.transition(
+        batch_id=initial["batch_id"],
+        workunit_id=initial["workunit_id"],
+        new_state="in_progress",
+        next_image_index=0,
+    )
+    progressed = store.transition(
+        batch_id=initial["batch_id"],
+        workunit_id=initial["workunit_id"],
+        new_state="in_progress",
+        next_image_index=1,
+    )
+
+    assert progressed["state"] == "in_progress"
+    assert progressed["next_image_index"] == 1
+    assert progressed["previous_state_hash"] == started["hash"]
+    assert progressed["hash"] != started["hash"]
+
+    loaded = store.load(
+        initial["batch_id"],
+        initial["workunit_id"],
+    )
+    assert loaded == progressed
+
+
 def test_backward_transition_is_rejected(tmp_path) -> None:
     store = create_store(tmp_path)
     initial = initialize(store)

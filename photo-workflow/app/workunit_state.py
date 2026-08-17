@@ -27,7 +27,12 @@ class WorkUnitStateError(ValueError):
 
 _ALLOWED_TRANSITIONS = {
     "pending": {"in_progress", "paused", "failed"},
-    "in_progress": {"completed", "paused", "failed"},
+    "in_progress": {
+        "in_progress",
+        "completed",
+        "paused",
+        "failed",
+    },
     "paused": {"in_progress", "failed"},
     "completed": set(),
     "failed": {"pending", "in_progress"},
