@@ -190,6 +190,30 @@ workflow:
   # Auswirkung: true dokumentiert Abschluss vor dem Übergang; false reduziert Recovery-Sicherheit.
   create_done_marker_before_move: true
 
+  # batch_order: Reihenfolge für neue, noch nicht begonnene Batches.
+  # Mögliche Werte: oldest_first oder newest_first.
+  # Auswirkung: Resume-Kandidaten haben immer Vorrang; diese Einstellung
+  #              betrifft nur neue Batches in 01_TEMP_SD.
+  batch_order: oldest_first
+
+  # max_batches_per_run: Begrenzung vollständig neu begonnener Batches je Run.
+  # Mögliche Werte: null oder positive Ganzzahl.
+  # Auswirkung: null verarbeitet unbegrenzt; eine positive Zahl begrenzt neue
+  #              Batches. 0 ist ungültig und blockiert die Config.
+  max_batches_per_run: null
+
+  # max_images_per_run: Planungsgrenze für Bilder aller neuen Batches je Run.
+  # Mögliche Werte: null oder positive Ganzzahl.
+  # Auswirkung: null ist unbegrenzt; ein zu großer Batch wird vollständig
+  #              zurückgestellt und nie teilweise als fertig markiert.
+  max_images_per_run: null
+
+  # max_images_per_batch: Maximale Bildzahl einer internen geplanten WorkUnit.
+  # Mögliche Werte: null oder positive Ganzzahl.
+  # Auswirkung: null plant den gesamten Batch als eine WorkUnit; eine positive
+  #              Zahl teilt große Batches für die spätere Resume-Ausführung.
+  max_images_per_batch: null
+
   # Rekonstruktion des Datums aus historischen Ordnernamen.
   date_reconstruction:
 

@@ -47,6 +47,10 @@ from app.personal_score_cache import load_or_build_reference_cache
 from app.pause_checkpoint import PauseCheckpointStore
 from app.runtime_control import RuntimeControl, install_signal_handlers
 from app.workflow_locks import WorkflowLockError, WorkflowLockManager
+from app.series_culling import apply_series_culling
+from app.series_report import write_batch_series_reports
+from app.metadata_writer import write_culling_metadata
+from app.training import train_from_directory, load_or_rebuild_personal_model
 
 from app.aesthetic import (
     base_score_components,
@@ -69,10 +73,12 @@ from app.manual_keep import (
     move_manual_keep_sources_to_used,
 )
 
-from app.series_culling import apply_series_culling
-from app.series_report import write_batch_series_reports
-from app.metadata_writer import write_culling_metadata
-from app.training import train_from_directory, load_or_rebuild_personal_model
+from app.execution_plan import (
+    ExecutionPlanError,
+    build_run_plan,
+    make_batch_candidate,
+    validate_execution_limits,
+)
 
 # === Konstanten ===
 RAW_EXTS = {'.ARW', '.arw'}
@@ -147,6 +153,16 @@ def load_config(path: str | Path) -> dict:
     dr.setdefault('mode', 'legacy_bash')
     dr.setdefault('decade_prefix', '202')
     dr.setdefault('year_digit_index', 3)
+    # V12-03: Deterministische Auswahl und reine Mengenlimit-Planung.
+    # Resume-Kandidaten erhalten künftig Vorrang; diese Werte gelten nur für
+    # vollständig neue Batches aus TEMP_SD.
+    wf.setdefault('batch_order', 'oldest_first')
+    wf.setdefault('max_batches_per_run', None)
+    wf.setdefault('max_images_per_run', None)
+    wf.setdefault('max_images_per_batch', None)
+
+    # Fail-closed: ungültige Werte blockieren den Workflowstart.
+    validate_execution_limits(wf)
 
     # Family-Recognition-Defaults
     cfg.setdefault('family_recognition', {})
@@ -1683,38 +1699,94 @@ def prepare_folder_phase1(folder: Path, cfg: dict) -> Path:
 
 
 def run_phase1(cfg: dict, folder: str | None = None) -> None:
-    """Führt Phase 1 (Culling) für alle Batches in temp_sd aus."""
+    """Führt Phase 1 für vollständig ausgewählte neue Batches aus."""
     global COUNT_FOUND_SRC, COUNT_SKIPPED
 
     src_root = ensure_dir(cfg['paths']['temp_sd'])
-    folders = [Path(folder)] if folder else [p for p in sorted(src_root.iterdir()) if p.is_dir()]
+    limits = validate_execution_limits(cfg['workflow'])
 
-    for dir_path in folders:
+    #Die obige Variante wendet auch bei einem expliziten `--folder` die Validierung an. Soll `--folder` bewusst alle Mengenlimits ignorieren, ersetze vor `plan = build_run_plan(...)` den Limits-Wert lokal durch:
+    #limits = type(limits)(
+    #    batch_order=limits.batch_order,
+    #    max_batches_per_run=None,
+    #    max_images_per_run=None,
+    #    max_images_per_batch=limits.max_images_per_batch,
+    #)
+    
+    # Ein expliziter CLI-Ordner bleibt eine bewusste Einzelbatch-Anforderung.
+    # Die Konfigurationslimits für automatische Auswahl gelten nur ohne --folder.
+    discovered = [Path(folder)] if folder else sorted(src_root.iterdir())
+    completed_batches: list[Path] = []
+    candidates = []
+
+    for dir_path in discovered:
         if not dir_path.exists() or not dir_path.is_dir():
             continue
 
         COUNT_FOUND_SRC += 1
         name = dir_path.name
 
-        # Nur gültige Batch-Namen verarbeiten
         if not (is_valid_raw_folder(name) or is_valid_done_folder(name)):
             COUNT_SKIPPED += 1
             log(cfg, f'[SKIP TOP] Unsupported folder: {name}')
             continue
 
-        # Stabilitätsprüfung
-        if not (dir_path / '.DONE').exists() and not is_stable(dir_path, int(cfg['workflow']['wait_time_seconds'])):
+        # Bereits vollständig markierte Batches werden nicht neu geplant.
+        # Sie können wie bisher direkt in TEMP_IMAGES überführt werden.
+        if (dir_path / '.DONE').exists():
+            completed_batches.append(dir_path)
+            continue
+
+        if not is_stable(
+            dir_path,
+            int(cfg['workflow']['wait_time_seconds']),
+        ):
             COUNT_SKIPPED += 1
             log(cfg, f'[WAIT] Transfer still running: {name}')
             continue
 
-        # Bereits abgeschlossene Batches direkt verschieben
-        if (dir_path / '.DONE').exists():
-            merge_or_move_folder(dir_path, Path(cfg['paths']['temp_images']) / name, cfg)
-            continue
+        candidates.append(
+            make_batch_candidate(
+                dir_path,
+                [image.name for image in top_level_jpgs(dir_path)],
+            )
+        )
 
-        # Phase 1 ausführen
-        prepare_folder_phase1(dir_path, cfg)
+    # Ein bereits abgeschlossener Batch hat Vorrang vor neuen Batches.
+    for completed in completed_batches:
+        merge_or_move_folder(
+            completed,
+            Path(cfg['paths']['temp_images']) / completed.name,
+            cfg,
+        )
+
+    # --folder bleibt bewusst explizit und wird nicht durch die globale Auswahl
+    # anderer neuer Batches ergänzt.
+    if folder:
+        plan = build_run_plan(candidates, limits)
+    else:
+        plan = build_run_plan(candidates, limits)
+
+    log(
+        cfg,
+        f'[RUN PLAN] order={plan.batch_order} '
+        f'batches={plan.planned_batch_count} '
+        f'images={plan.planned_image_count} '
+        f'workunits={len(plan.workunits)}',
+    )
+
+    for skipped in plan.skipped_batches:
+        COUNT_SKIPPED += 1
+        log(
+            cfg,
+            f"[SKIP PLAN] {skipped['batch_id']} reason={skipped['reason']}",
+        )
+
+    for batch in plan.selected_batches:
+        # V12-03 verarbeitet weiterhin nur vollständige physische Batches.
+        # WorkUnits werden ausschließlich geplant. V12-05 ergänzt ihre
+        # persistente und resume-fähige Ausführung.
+        prepare_folder_phase1(batch.path, cfg)
 
 
 def process_done_folder(dir_path: Path, cfg: dict) -> None:
