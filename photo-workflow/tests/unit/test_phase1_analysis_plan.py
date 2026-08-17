@@ -62,3 +62,86 @@ def test_analysis_plan_requires_exact_workunit_image_membership(tmp_path) -> Non
     value["workunits"][1]["image_names"] = ["IMG_9999.JPG"]
     with pytest.raises(Phase1AnalysisPlanError, match="match analysis rows"):
         store.write(batch_id="batch-a", config_fingerprint="config-hash", **value)
+
+def test_analysis_plan_accepts_safe_execution_fields(tmp_path) -> None:
+    store = Phase1AnalysisPlanStore(tmp_path, "test-v1")
+    value = payload()
+
+    value["rows"][0]["family_tags"] = [
+        "family:match:true",
+        "person:kind1",
+    ]
+    value["rows"][0]["family_regions"] = [
+        {
+            "name": "kind1",
+            "left": 10,
+            "top": 20,
+            "right": 120,
+            "bottom": 180,
+            "distance": 0.21,
+        }
+    ]
+    value["rows"][0]["execution"] = {
+        "target_relative_path": "IMG_0001.JPG",
+        "moved": False,
+        "family_metadata_written": False,
+        "culling_metadata_written": False,
+    }
+
+    record = store.write(
+        batch_id="batch-a",
+        config_fingerprint="config-hash",
+        **value,
+    )
+
+    assert record["rows"][0]["execution"]["moved"] is False
+    assert record["rows"][0]["family_tags"] == [
+        "family:match:true",
+        "person:kind1",
+    ]
+
+def test_analysis_plan_rejects_unsafe_execution_target(tmp_path) -> None:
+    store = Phase1AnalysisPlanStore(tmp_path, "test-v1")
+    value = payload()
+
+    value["rows"][0]["execution"] = {
+        "target_relative_path": "../outside.JPG",
+        "moved": False,
+        "family_metadata_written": False,
+        "culling_metadata_written": False,
+    }
+
+    with pytest.raises(
+        Phase1AnalysisPlanError,
+        match="unsafe",
+    ):
+        store.write(
+            batch_id="batch-a",
+            config_fingerprint="config-hash",
+            **value,
+        )
+
+def test_analysis_plan_rejects_unsupported_region_payload(tmp_path) -> None:
+    store = Phase1AnalysisPlanStore(tmp_path, "test-v1")
+    value = payload()
+
+    value["rows"][0]["family_regions"] = [
+        {
+            "name": "kind1",
+            "left": 10,
+            "top": 20,
+            "right": 120,
+            "bottom": 180,
+            "embedding": [0.1, 0.2],
+        }
+    ]
+
+    with pytest.raises(
+        Phase1AnalysisPlanError,
+        match="unsupported fields",
+    ):
+        store.write(
+            batch_id="batch-a",
+            config_fingerprint="config-hash",
+            **value,
+        )
