@@ -50,7 +50,10 @@ from app.workflow_locks import WorkflowLockError, WorkflowLockManager
 from app.series_culling import apply_series_culling
 from app.series_report import write_batch_series_reports
 from app.metadata_writer import write_culling_metadata
+from app.phase1_analysis import analyze_rows
+from app.phase1_analysis_builder import build_persistable_analysis_rows
 from app.phase1_analysis_plan import Phase1AnalysisPlanStore
+from app.phase1_execution_initializer import initialize_execution_plan
 from app.phase1_workunit_runner import Phase1WorkUnitRunner
 from app.training import train_from_directory, load_or_rebuild_personal_model
 from app.workunit_state import WorkUnitStateStore
@@ -1854,6 +1857,139 @@ def run_phase1_workunit(
         f"message={result.message or '-'}",
         error=result.state == "failed",
     )
+def run_phase1_analyze(
+    cfg: dict,
+    *,
+    batch_id: str,
+    folder: str,
+) -> None:
+    """Erstellt nur einen persistierten Phase-1-Analyseplan."""
+    workdir = Path(folder).resolve()
+    require_within(cfg, workdir)
+
+    if not workdir.is_dir():
+        raise ValueError(
+            f"phase1 analysis folder is not a directory: {workdir}"
+        )
+
+    if workdir.name != batch_id:
+        raise ValueError(
+            "phase1 analysis batch_id must match the folder name"
+        )
+
+    images = top_level_jpgs(workdir)
+
+    if not images:
+        raise ValueError("phase1 analysis batch has no active JPGs")
+
+    limits = validate_execution_limits(cfg["workflow"])
+    candidate = make_batch_candidate(
+        workdir,
+        [image.name for image in images],
+    )
+    run_plan = build_run_plan([candidate], limits)
+    batch_workunits = [
+        unit
+        for unit in run_plan.workunits
+        if unit.batch_id == batch_id
+    ]
+
+    if not batch_workunits:
+        raise ValueError(
+            "phase1 analysis batch was not selected by execution limits"
+        )
+
+    personal_model, personal_info = load_personal(cfg)
+    family_model = load_family_model(cfg)
+    clip_context = prepare_clip_context(cfg)
+
+    manual_keep_images, manual_keep_status = detect_manual_keep_images(
+        batch_path=workdir,
+        manual_keep_inbox=Path(cfg["paths"]["manual_keep_inbox"]),
+        manual_keep_used=Path(cfg["paths"]["manual_keep_used"]),
+        similarity_threshold=float(
+            cfg.get("manual_keep", {}).get(
+                "similarity_threshold",
+                0.85,
+            )
+        ),
+    )
+
+    def predict_row(row: dict) -> dict:
+        predicted_decision, prediction_reason = predict_decision(
+            personal_score=row.get("personal_score"),
+            final_score=row["final_score"],
+            config=cfg,
+        )
+        return build_prediction_record(
+            producer_version=SCRIPT_VERSION,
+            batch_id=batch_id,
+            image_id=row["file"],
+            model_version=str(
+                personal_info.get(
+                    "model_version",
+                    "personal-score-v1",
+                )
+            ),
+            predicted_decision=predicted_decision,
+            prediction_reason=prediction_reason,
+            personal_score=row.get("personal_score"),
+            final_score=row["final_score"],
+            predicted_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    analysis = analyze_rows(
+        images=images,
+        cfg=cfg,
+        manual_keep_names={image.name for image in manual_keep_images},
+        score=lambda image: score_image(
+            image,
+            cfg,
+            personal_model,
+            clip_context=clip_context,
+        ),
+        detect_family=lambda image: detect_family_members(
+            image,
+            cfg,
+            family_model,
+        ),
+        predict=predict_row,
+        apply_series=lambda rows: apply_series_culling(rows, cfg),
+    )
+
+    persistable_rows = build_persistable_analysis_rows(
+        analysis.rows,
+        move_files=bool(cfg["culling"].get("move_files", True)),
+    )
+
+    _, state_dir, _ = get_runtime_paths(cfg)
+    analysis_plans = Phase1AnalysisPlanStore(
+        state_dir / "phase1_analysis_plans",
+        SCRIPT_VERSION,
+    )
+    workunit_states = WorkUnitStateStore(
+        state_dir / "phase1_workunits",
+        SCRIPT_VERSION,
+    )
+
+    initialize_execution_plan(
+        batch_id=batch_id,
+        rows=persistable_rows,
+        workunits=batch_workunits,
+        config_fingerprint=config_fingerprint(cfg),
+        analysis_plans=analysis_plans,
+        workunit_states=workunit_states,
+    )
+
+    log(
+        cfg,
+        f"[PHASE1 ANALYZE] batch={batch_id} "
+        f"images={len(persistable_rows)} "
+        f"workunits={len(batch_workunits)} "
+        f"manual_keep_status={manual_keep_status.get('status', '-')}",
+    )
+
+
 
 def process_done_folder(dir_path: Path, cfg: dict) -> None:
     """Verarbeitet einen abgeschlossenen Batch in temp_done (Phase 2)."""
@@ -2026,6 +2162,13 @@ def build_parser() -> argparse.ArgumentParser:
     # Phase 1
     p1 = sub.add_parser('phase1')
     p1.add_argument('--folder', default=None)
+
+    phase1_analyze = sub.add_parser(
+        'phase1-analyze',
+        help='Erstellt nur einen persistierten Phase-1-Analyseplan.',
+    )
+    phase1_analyze.add_argument('--batch', required=True)
+    phase1_analyze.add_argument('--folder', required=True)
 
     # Ein expliziter, resumierbarer Ein-Bild-Schritt.
     phase1_workunit = sub.add_parser(
@@ -2221,6 +2364,12 @@ def main() -> int:
                 )
             elif args.command == "phase1":
                 run_phase1(cfg, args.folder)
+            elif args.command == "phase1-analyze":
+                run_phase1_analyze(
+                    cfg,
+                    batch_id=args.batch,
+                    folder=args.folder,
+                )
             elif args.command == "phase1-workunit":
                 run_phase1_workunit(
                     cfg,
