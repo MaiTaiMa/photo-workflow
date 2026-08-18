@@ -81,10 +81,18 @@ class Phase1AnalysisPlanStore:
         if not config_fingerprint:
             raise Phase1AnalysisPlanError("config_fingerprint must not be empty")
         self._validate_rows_and_workunits(rows, workunits)
+        created_at = _utc_now()
+
         record = {
-            "schema_version": "1.0", "producer_version": self.producer_version,
-            "batch_id": batch_id, "created_at": _utc_now(),
-            "config_fingerprint": config_fingerprint, "rows": rows, "workunits": workunits,
+            "schema_version": "1.0",
+            "producer_version": self.producer_version,
+            "batch_id": batch_id,
+            "created_at": created_at,
+            "updated_at": created_at,
+            "config_fingerprint": config_fingerprint,
+            "rows": rows,
+            "workunits": workunits,
+            "previous_hash": "",
         }
         _reject_forbidden(record)
         record["hash"] = _digest(record)
@@ -103,10 +111,103 @@ class Phase1AnalysisPlanStore:
         self.validate(record)
         return record
 
+    def update_execution(
+        self,
+        *,
+        batch_id: str,
+        file_name: str,
+        moved: bool | None = None,
+        family_metadata_written: bool | None = None,
+        culling_metadata_written: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Aktualisiert ausschließlich erlaubte execution-Statusfelder einer Plan-Row.
+
+        Der Plan wird vollständig erneut validiert, mit einem neuen SHA256-Hash
+        versehen und anschließend atomar ersetzt. Nicht übergebene Statuswerte
+        bleiben unverändert.
+        """
+        if Path(file_name).name != file_name:
+            raise Phase1AnalysisPlanError(
+                "execution file_name must be a plain name"
+            )
+
+        record = self.load(batch_id)
+
+        if record is None:
+            raise Phase1AnalysisPlanError(
+                "analysis plan is not initialized"
+            )
+
+        row = next(
+            (
+                candidate
+                for candidate in record["rows"]
+                if candidate["file"] == file_name
+            ),
+            None,
+        )
+
+        if row is None:
+            raise Phase1AnalysisPlanError(
+                "execution file is not part of analysis plan"
+            )
+
+        execution = dict(row.get("execution", {}))
+
+        required_defaults = {
+            "target_relative_path": file_name,
+            "moved": False,
+            "family_metadata_written": False,
+            "culling_metadata_written": False,
+        }
+
+        for key, default_value in required_defaults.items():
+            execution.setdefault(key, default_value)
+
+        updates = {
+            "moved": moved,
+            "family_metadata_written": family_metadata_written,
+            "culling_metadata_written": culling_metadata_written,
+        }
+
+        for key, value in updates.items():
+            if value is None:
+                continue
+
+            if not isinstance(value, bool):
+                raise Phase1AnalysisPlanError(
+                    f"execution {key} must be boolean"
+                )
+
+            execution[key] = value
+
+        row["execution"] = execution
+
+        record["updated_at"] = _utc_now()
+        record["previous_hash"] = record["hash"]
+        record["hash"] = _digest(record)
+
+        self.validate(record)
+        self._atomic_write(self.path_for(batch_id), record)
+
+        return record
+
     @staticmethod
     def validate(record: dict[str, Any]) -> None:
         """Prüft Pflichtfelder, Sicherheitsgrenzen, Zuordnung und Hash-Integrität."""
-        required = {"schema_version", "producer_version", "batch_id", "created_at", "config_fingerprint", "rows", "workunits", "hash"}
+        required = {
+            "schema_version",
+            "producer_version",
+            "batch_id",
+            "created_at",
+            "updated_at",
+            "config_fingerprint",
+            "rows",
+            "workunits",
+            "previous_hash",
+            "hash",
+        }
         if not isinstance(record, dict) or required - record.keys():
             raise Phase1AnalysisPlanError("analysis plan is incomplete")
         _safe_identifier(record["batch_id"], "batch_id")

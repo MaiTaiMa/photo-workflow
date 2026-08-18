@@ -145,3 +145,54 @@ def test_analysis_plan_rejects_unsupported_region_payload(tmp_path) -> None:
             config_fingerprint="config-hash",
             **value,
         )
+
+    def test_analysis_plan_updates_execution_atomically(tmp_path) -> None:
+        store = Phase1AnalysisPlanStore(tmp_path, "test-v1")
+        value = payload()
+
+        value["rows"][0]["execution"] = {
+            "target_relative_path": "IMG_0001.JPG",
+            "moved": False,
+            "family_metadata_written": False,
+            "culling_metadata_written": False,
+        }
+
+        initial = store.write(
+            batch_id="batch-a",
+            config_fingerprint="config-hash",
+            **value,
+        )
+
+        updated = store.update_execution(
+            batch_id="batch-a",
+            file_name="IMG_0001.JPG",
+            moved=True,
+            family_metadata_written=True,
+        )
+
+        execution = updated["rows"][0]["execution"]
+
+        assert execution["moved"] is True
+        assert execution["family_metadata_written"] is True
+        assert execution["culling_metadata_written"] is False
+
+        assert updated["previous_hash"] == initial["hash"]
+        assert updated["hash"] != initial["hash"]
+        assert updated["updated_at"] >= initial["created_at"]
+
+        assert store.load("batch-a") == updated
+
+    def test_analysis_plan_rejects_execution_update_for_unknown_file(
+        tmp_path,
+    ) -> None:
+        store, _ = write_plan(tmp_path)
+
+        with pytest.raises(
+            Phase1AnalysisPlanError,
+            match="not part of analysis plan",
+        ):
+            store.update_execution(
+                batch_id="batch-a",
+                file_name="IMG_9999.JPG",
+                moved=True,
+            )
