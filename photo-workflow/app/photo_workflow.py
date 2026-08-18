@@ -50,7 +50,10 @@ from app.workflow_locks import WorkflowLockError, WorkflowLockManager
 from app.series_culling import apply_series_culling
 from app.series_report import write_batch_series_reports
 from app.metadata_writer import write_culling_metadata
+from app.phase1_analysis_plan import Phase1AnalysisPlanStore
+from app.phase1_workunit_runner import Phase1WorkUnitRunner
 from app.training import train_from_directory, load_or_rebuild_personal_model
+from app.workunit_state import WorkUnitStateStore
 
 from app.aesthetic import (
     base_score_components,
@@ -1788,6 +1791,69 @@ def run_phase1(cfg: dict, folder: str | None = None) -> None:
         # persistente und resume-fähige Ausführung.
         prepare_folder_phase1(batch.path, cfg)
 
+def run_phase1_workunit(
+    cfg: dict,
+    *,
+    batch_id: str,
+    folder: str,
+) -> None:
+    """
+    Führt bewusst genau einen bereits geplanten Phase-1-Bildschritt aus.
+
+    Dieser Opt-in-Pfad startet weder Legacy-Culling noch ZIP-/ARW-Operationen,
+    setzt kein .DONE und verschiebt keinen Batch nach TEMP_IMAGES.
+    """
+    workdir = Path(folder).resolve()
+    require_within(cfg, workdir)
+
+    if not workdir.is_dir():
+        raise ValueError(
+            f"phase1 workunit folder is not a directory: {workdir}"
+        )
+
+    _, state_dir, _ = get_runtime_paths(cfg)
+
+    analysis_plans = Phase1AnalysisPlanStore(
+        state_dir / "phase1_analysis_plans",
+        SCRIPT_VERSION,
+    )
+    workunit_states = WorkUnitStateStore(
+        state_dir / "phase1_workunits",
+        SCRIPT_VERSION,
+    )
+
+    # Fail-closed: Ohne vollständig persistierten Plan kein Bildschritt.
+    if analysis_plans.load(batch_id) is None:
+        raise ValueError(
+            f"phase1 analysis plan is not initialized: {batch_id}"
+        )
+
+    runner = Phase1WorkUnitRunner(
+        analysis_plans,
+        workunit_states,
+    )
+    result = runner.run_next(
+        root=workdir,
+        batch_id=batch_id,
+        cfg=cfg,
+    )
+
+    if result is None:
+        log(
+            cfg,
+            f"[PHASE1 WORKUNIT] batch={batch_id} "
+            "status=no_open_workunit",
+        )
+        return
+
+    log(
+        cfg,
+        f"[PHASE1 WORKUNIT] batch={batch_id} "
+        f"status={result.state} "
+        f"index={result.image_index} "
+        f"message={result.message or '-'}",
+        error=result.state == "failed",
+    )
 
 def process_done_folder(dir_path: Path, cfg: dict) -> None:
     """Verarbeitet einen abgeschlossenen Batch in temp_done (Phase 2)."""
@@ -1960,6 +2026,14 @@ def build_parser() -> argparse.ArgumentParser:
     # Phase 1
     p1 = sub.add_parser('phase1')
     p1.add_argument('--folder', default=None)
+
+    # Ein expliziter, resumierbarer Ein-Bild-Schritt.
+    phase1_workunit = sub.add_parser(
+        'phase1-workunit',
+        help='Führt genau einen bereits geplanten Phase-1-Bildschritt aus.',
+    )
+    phase1_workunit.add_argument('--batch', required=True)
+    phase1_workunit.add_argument('--folder', required=True)
     
     # Phase 2
     p2 = sub.add_parser('phase2')
@@ -2147,6 +2221,12 @@ def main() -> int:
                 )
             elif args.command == "phase1":
                 run_phase1(cfg, args.folder)
+            elif args.command == "phase1-workunit":
+                run_phase1_workunit(
+                    cfg,
+                    batch_id=args.batch,
+                    folder=args.folder,
+                )
             elif args.command == "phase2":
                 run_phase2(cfg, args.folder)
             elif args.command in ("pipeline", "phase12"):
