@@ -65,3 +65,36 @@ def test_budget_never_reports_negative_elapsed_time() -> None:
 def test_invalid_budget_values_are_rejected(limit_seconds: object) -> None:
     with pytest.raises(ValueError, match="positive integer"):
         RuntimeBudget(limit_seconds=limit_seconds)  # type: ignore[arg-type]
+
+
+def test_budget_includes_persisted_active_seconds() -> None:
+    clock = ManualClock(100.0)
+    budget = RuntimeBudget(
+        limit_seconds=10,
+        clock=clock,
+        consumed_seconds=8.0,
+    )
+
+    assert budget.elapsed_seconds == 8.0
+    assert budget.remaining_seconds == 2.0
+    assert budget.expired is False
+
+    clock.value = 102.0
+
+    assert budget.elapsed_seconds == 10.0
+    assert budget.remaining_seconds == 0.0
+    assert budget.expired is True
+
+
+@pytest.mark.parametrize(
+    "consumed_seconds",
+    (-1.0, True, "1.0", float("nan"), float("inf"), float("-inf")),
+)
+def test_invalid_persisted_active_seconds_are_rejected(
+    consumed_seconds: object,
+) -> None:
+    with pytest.raises(ValueError, match="consumed_seconds"):
+        RuntimeBudget(
+            limit_seconds=10,
+            consumed_seconds=consumed_seconds,  # type: ignore[arg-type]
+        )

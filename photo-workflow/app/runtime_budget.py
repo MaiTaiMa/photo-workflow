@@ -3,15 +3,17 @@ Skript: app/runtime_budget.py
 Zweck: Verwaltet zustandsfreie lokale Laufzeitbudgets ohne Workflow-Mutationen.
 Autor: MaiTaiMa
 Erstellt: 2026-08-20
-Version: 1.0.0
+Version: 1.1.0
 Requires: Python 3.11
 
 Änderungsprotokoll:
+  2026-08-20 | 1.1.0 | B2.1: Persistierte aktive Zeit im Budget berücksichtigt.
   2026-08-20 | 1.0.0 | B1: Monotones Zeitbudget für Run- und Batch-Grenzen ergänzt.
 """
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Callable
@@ -26,6 +28,7 @@ class RuntimeBudget:
 
     limit_seconds: int | None
     clock: Clock = time.monotonic
+    consumed_seconds: float = 0.0
     started_at: float = field(init=False)
 
     def __post_init__(self) -> None:
@@ -39,12 +42,25 @@ class RuntimeBudget:
                 raise ValueError(
                     "limit_seconds must be null or a positive integer"
                 )
+        if (
+            isinstance(self.consumed_seconds, bool)
+            or not isinstance(self.consumed_seconds, (int, float))
+            or not math.isfinite(float(self.consumed_seconds))
+            or float(self.consumed_seconds) < 0.0
+        ):
+            raise ValueError(
+                "consumed_seconds must be a finite non-negative number"
+            )
+        self.consumed_seconds = float(self.consumed_seconds)
         self.started_at = self.clock()
 
     @property
     def elapsed_seconds(self) -> float:
         """Liefert die seit Start vergangene, niemals negative Laufzeit."""
-        return max(0.0, self.clock() - self.started_at)
+        return self.consumed_seconds + max(
+            0.0,
+            self.clock() - self.started_at,
+        )
 
     @property
     def remaining_seconds(self) -> float | None:

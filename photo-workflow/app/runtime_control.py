@@ -3,11 +3,12 @@ Skript: app/runtime_control.py
 Zweck: Hält Stop-Anforderungen und sichere Pause-Checkpoints im Arbeitsspeicher.
 Autor: MaiTaiMa
 Erstellt: 2026-08-08
-Version: 1.1.0
+Version: 1.2.0
 Requires: Python 3.11
 
 Änderungsprotokoll:
   2026-08-08 | 1.0.0 | Initiale Runtime-Control ergänzt.
+  2026-08-20 | 1.2.0 | B2.1: Explizite Budget-Stop-Gründe ergänzt.
   2026-08-14 | 1.1.0 | V12-02: Strukturierte Stop- und Checkpoint-Daten ergänzt.
 """
 
@@ -43,6 +44,16 @@ class RuntimeControl:
             self.stop_reason = (
                 f"signal_{signal_number}" if signal_number is not None else "stop_requested"
             )
+
+    def request_budget_stop(self, reason: str) -> None:
+        """Registriert einen validierten Budget-Stop ohne State-Mutation."""
+        if reason not in {
+            "max_runtime_seconds_per_run",
+            "max_runtime_seconds_per_batch",
+        }:
+            raise ValueError("unsupported runtime budget stop reason")
+        self.stop_requested = True
+        self.stop_reason = reason
 
     def before_expensive_step(
         self,

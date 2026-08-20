@@ -1,3 +1,5 @@
+import pytest
+
 from app.runtime_control import RuntimeControl
 
 
@@ -28,3 +30,28 @@ def test_pause_request_is_absent_without_stop_request() -> None:
     control = RuntimeControl()
 
     assert control.pause_request("before_move") is None
+
+@pytest.mark.parametrize(
+    "reason",
+    (
+        "max_runtime_seconds_per_run",
+        "max_runtime_seconds_per_batch",
+    ),
+)
+def test_budget_stop_creates_pause_request(reason: str) -> None:
+    control = RuntimeControl()
+
+    control.request_budget_stop(reason)
+    request = control.pause_request("before_phase1_workunit", "wu-1")
+
+    assert request is not None
+    assert request.reason == reason
+    assert request.checkpoint == "before_phase1_workunit"
+    assert request.workunit_id == "wu-1"
+
+
+def test_unknown_budget_stop_reason_is_rejected() -> None:
+    control = RuntimeControl()
+
+    with pytest.raises(ValueError, match="unsupported"):
+        control.request_budget_stop("unknown_budget")

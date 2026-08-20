@@ -3,12 +3,13 @@ Skript: app/photo_workflow.py
 Zweck: Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 Autor: MaiTaiMa
 Erstellt: 2026-08-09
-Version: 1.4
+Version: 1.5
 Requires: Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 
 Änderungsprotokoll:
   2026-08-09 | 1.0 | Initiale Version mit Phase 1/2
   2026-08-09 | 1.3 | Face-Erkennung und AI Culling ergänzt
+  2026-08-20 | 1.5 | B2.1: Sichere Zeitlimit-Pause vor Phase-1-Workunits ergänzt
   2026-08-09 | 1.4 | MANUAL_KEEP-Integration, dynamische Face-Erkennung, Terminal-Ausgabe
 """
 
@@ -45,6 +46,10 @@ from app.automation_readiness import aggregate_readiness
 from app.clip_scorer import CLIPScorer
 from app.personal_score_cache import load_or_build_reference_cache
 from app.pause_checkpoint import PauseCheckpointStore
+from app.phase1_runtime_budget_state import (
+    Phase1RuntimeBudgetStateStore,
+)
+from app.runtime_budget import RuntimeBudget
 from app.runtime_control import RuntimeControl, install_signal_handlers
 from app.workflow_locks import WorkflowLockError, WorkflowLockManager
 from app.series_culling import apply_series_culling
@@ -1802,6 +1807,11 @@ def run_phase1_workunit(
     *,
     batch_id: str,
     folder: str,
+    runtime: RuntimeControl,
+    pause_store: PauseCheckpointStore,
+    config_fingerprint_value: str,
+    run_budget: RuntimeBudget,
+    clock=time.monotonic,
 ) -> None:
     """
     Führt bewusst genau einen bereits geplanten Phase-1-Bildschritt aus.
@@ -1827,6 +1837,10 @@ def run_phase1_workunit(
         state_dir / "phase1_workunits",
         SCRIPT_VERSION,
     )
+    runtime_budget_states = Phase1RuntimeBudgetStateStore(
+        state_dir / "phase1_runtime_budgets",
+        SCRIPT_VERSION,
+    )
 
     # Fail-closed: Ohne vollständig persistierten Plan kein Bildschritt.
     if analysis_plans.load(batch_id) is None:
@@ -1834,15 +1848,68 @@ def run_phase1_workunit(
             f"phase1 analysis plan is not initialized: {batch_id}"
         )
 
+    pending_workunit = workunit_states.next_pending(batch_id)
+    if pending_workunit is None:
+        log(
+            cfg,
+            f"[PHASE1 WORKUNIT] batch={batch_id} "
+            "status=no_open_workunit",
+        )
+        return
+
+    persisted_budget = runtime_budget_states.load(batch_id)
+    consumed_seconds = (
+        float(persisted_budget["active_seconds"])
+        if persisted_budget is not None
+        else 0.0
+    )
+    batch_budget = RuntimeBudget(
+        cfg["workflow"]["max_runtime_seconds_per_batch"],
+        clock=clock,
+        consumed_seconds=consumed_seconds,
+    )
+
+    pause_reason = None
+    if run_budget.expired:
+        pause_reason = "max_runtime_seconds_per_run"
+    elif batch_budget.expired:
+        pause_reason = "max_runtime_seconds_per_batch"
+
+    if pause_reason is not None:
+        runtime.request_budget_stop(pause_reason)
+        persist_pause_if_requested(
+            runtime=runtime,
+            pause_store=pause_store,
+            batch_id=batch_id,
+            checkpoint="before_phase1_workunit",
+            config_fingerprint_value=config_fingerprint_value,
+            previous_state_hash=pending_workunit["hash"],
+            workunit_id=pending_workunit["workunit_id"],
+        )
+        log(
+            cfg,
+            f"[PHASE1 WORKUNIT] batch={batch_id} "
+            f"status=paused reason={pause_reason} "
+            f"workunit={pending_workunit['workunit_id']}",
+        )
+        return
+
     runner = Phase1WorkUnitRunner(
         analysis_plans,
         workunit_states,
     )
-    result = runner.run_next(
-        root=workdir,
-        batch_id=batch_id,
-        cfg=cfg,
-    )
+    step_started_at = clock()
+    try:
+        result = runner.run_next(
+            root=workdir,
+            batch_id=batch_id,
+            cfg=cfg,
+        )
+    finally:
+        runtime_budget_states.add_active_seconds(
+            batch_id=batch_id,
+            seconds=max(0.0, clock() - step_started_at),
+        )
 
     if result is None:
         log(
@@ -2250,6 +2317,9 @@ def main() -> int:
     )
     workflow_locks = WorkflowLockManager(locks_dir)
     active_config_fingerprint = config_fingerprint(cfg)
+    run_budget = RuntimeBudget(
+        cfg["workflow"]["max_runtime_seconds_per_run"],
+    )
     
     # review-decision ist absichtlich kein Workflow-Lauf:
     # keine Ordneranlage, kein globaler Lock, keine Phase und keine Bildänderung.
@@ -2378,6 +2448,10 @@ def main() -> int:
                     cfg,
                     batch_id=args.batch,
                     folder=args.folder,
+                    runtime=runtime,
+                    pause_store=pause_store,
+                    config_fingerprint_value=active_config_fingerprint,
+                    run_budget=run_budget,
                 )
             elif args.command == "phase2":
                 run_phase2(cfg, args.folder)
