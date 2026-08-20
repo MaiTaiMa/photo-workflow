@@ -3,10 +3,11 @@ Skript: app/execution_plan.py
 Zweck: Plant deterministisch neue Batches und interne WorkUnits ohne Dateioperationen.
 Autor: MaiTaiMa
 Erstellt: 2026-08-17
-Version: 1.0.0
+Version: 1.1.0
 Requires: Python 3.11
 
 Änderungsprotokoll:
+  2026-08-20 | 1.1.0 | B1: Laufzeitlimits für Run und Batch validiert.
   2026-08-17 | 1.0.0 | V12-03: Batch-Reihenfolge und Mengenlimit-Planung ergänzt.
 """
 
@@ -30,6 +31,8 @@ class ExecutionLimits:
     max_batches_per_run: int | None
     max_images_per_run: int | None
     max_images_per_batch: int | None
+    max_runtime_seconds_per_run: int | None
+    max_runtime_seconds_per_batch: int | None
 
 
 @dataclass(frozen=True)
@@ -118,6 +121,14 @@ def validate_execution_limits(workflow_cfg: Mapping[str, Any]) -> ExecutionLimit
         max_images_per_batch=_positive_int_or_none(
             workflow_cfg.get("max_images_per_batch"),
             "max_images_per_batch",
+        ),
+        max_runtime_seconds_per_run=_positive_int_or_none(
+            workflow_cfg.get("max_runtime_seconds_per_run"),
+            "max_runtime_seconds_per_run",
+        ),
+        max_runtime_seconds_per_batch=_positive_int_or_none(
+            workflow_cfg.get("max_runtime_seconds_per_batch"),
+            "max_runtime_seconds_per_batch",
         ),
     )
 

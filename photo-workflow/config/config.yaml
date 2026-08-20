@@ -214,6 +214,18 @@ workflow:
   #              Zahl teilt große Batches für die spätere Resume-Ausführung.
   max_images_per_batch: null
 
+  # max_runtime_seconds_per_run: Zeitbudget für einen vollständigen Run.
+  # Mögliche Werte: null oder positive Ganzzahl in Sekunden.
+  # Auswirkung: null ist unbegrenzt; B1 validiert nur das Budget.
+  #              B2 pausiert später ausschließlich an sicheren Grenzen.
+  max_runtime_seconds_per_run: null
+
+  # max_runtime_seconds_per_batch: Zeitbudget für einen einzelnen Batch.
+  # Mögliche Werte: null oder positive Ganzzahl in Sekunden.
+  # Auswirkung: null ist unbegrenzt; B1 validiert nur das Budget.
+  #              B2 pausiert später ausschließlich an sicheren Grenzen.
+  max_runtime_seconds_per_batch: null
+
   # Rekonstruktion des Datums aus historischen Ordnernamen.
   date_reconstruction:
 

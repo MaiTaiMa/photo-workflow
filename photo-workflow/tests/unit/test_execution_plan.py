@@ -96,3 +96,34 @@ def test_max_images_per_batch_creates_pending_workunits() -> None:
 def test_invalid_execution_config_is_rejected(workflow_cfg: dict) -> None:
     with pytest.raises(ExecutionPlanError):
         validate_execution_limits(workflow_cfg)
+
+def test_runtime_limits_accept_positive_values_and_none() -> None:
+    limits = validate_execution_limits(
+        {
+            "max_runtime_seconds_per_run": 600,
+            "max_runtime_seconds_per_batch": None,
+        }
+    )
+
+    assert limits.max_runtime_seconds_per_run == 600
+    assert limits.max_runtime_seconds_per_batch is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("max_runtime_seconds_per_run", 0),
+        ("max_runtime_seconds_per_run", -1),
+        ("max_runtime_seconds_per_run", True),
+        ("max_runtime_seconds_per_run", 1.5),
+        ("max_runtime_seconds_per_run", "60"),
+        ("max_runtime_seconds_per_batch", 0),
+        ("max_runtime_seconds_per_batch", -1),
+        ("max_runtime_seconds_per_batch", True),
+        ("max_runtime_seconds_per_batch", 1.5),
+        ("max_runtime_seconds_per_batch", "60"),
+    ),
+)
+def test_invalid_runtime_limits_are_rejected(field: str, value: object) -> None:
+    with pytest.raises(ExecutionPlanError):
+        validate_execution_limits({field: value})

@@ -166,6 +166,8 @@ def load_config(path: str | Path) -> dict:
     wf.setdefault('max_batches_per_run', None)
     wf.setdefault('max_images_per_run', None)
     wf.setdefault('max_images_per_batch', None)
+    wf.setdefault('max_runtime_seconds_per_run', None)
+    wf.setdefault('max_runtime_seconds_per_batch', None)
 
     # Fail-closed: ungültige Werte blockieren den Workflowstart.
     validate_execution_limits(wf)
