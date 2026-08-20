@@ -275,6 +275,7 @@ def load_config(path: str | Path) -> dict:
     # Automation-Defaults und Validierung
     cfg.setdefault('automation', {})
     automation = cfg['automation']
+    automation.setdefault('policy_version', '1.0')
     automation.setdefault('mode', 'shadow')
     automation.setdefault('keep_score_min', 0.90)
     automation.setdefault('reject_score_max', 0.15)

@@ -1,7 +1,10 @@
 """
 Skript: app/automation_config.py
 Zweck: Validiert den automation-Block der Workflow-Konfiguration.
-Version: 1.0.0
+Version: 1.1.0
+
+Änderungsprotokoll:
+  2026-08-20 | 1.1.0 | A1: Policy-Version und Vertragsmodi validiert.
 """
 
 from typing import Any, Mapping
@@ -10,6 +13,7 @@ from app.auto_decision import VALID_AUTOMATION_MODES
 
 
 REQUIRED_AUTOMATION_FIELDS = frozenset({
+    "policy_version",
     "mode",
     "keep_score_min",
     "reject_score_max",
@@ -37,6 +41,7 @@ def validate_automation_config(config: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError(f"unsupported automation mode: {mode}")
 
     normalized = {
+        "policy_version": _policy_version(automation),
         "mode": mode,
         "keep_score_min": _score(automation, "keep_score_min"),
         "reject_score_max": _score(automation, "reject_score_max"),
@@ -52,6 +57,14 @@ def validate_automation_config(config: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("reject_score_max must be lower than keep_score_min")
 
     return normalized
+
+
+def _policy_version(values: Mapping[str, Any]) -> str:
+    """Validate a non-empty, versioned automation policy identifier."""
+    value = values["policy_version"]
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("policy_version must be a non-empty string")
+    return value.strip()
 
 
 def _score(values: Mapping[str, Any], field: str) -> float:

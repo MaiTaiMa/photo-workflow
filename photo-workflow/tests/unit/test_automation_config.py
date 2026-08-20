@@ -6,6 +6,7 @@ from app.automation_config import validate_automation_config
 def config() -> dict:
     return {
         "automation": {
+            "policy_version": "1.0",
             "mode": "shadow",
             "keep_score_min": 0.90,
             "reject_score_max": 0.15,
@@ -22,8 +23,45 @@ def config() -> dict:
 def test_valid_automation_config_is_normalized() -> None:
     validated = validate_automation_config(config())
 
+    assert validated["policy_version"] == "1.0"
     assert validated["mode"] == "shadow"
     assert validated["keep_score_min"] == 0.90
+
+
+def test_missing_policy_version_is_rejected() -> None:
+    value = config()
+    del value["automation"]["policy_version"]
+
+    with pytest.raises(ValueError, match="policy_version"):
+        validate_automation_config(value)
+
+
+def test_blank_policy_version_is_rejected() -> None:
+    value = config()
+    value["automation"]["policy_version"] = " "
+
+    with pytest.raises(ValueError, match="policy_version"):
+        validate_automation_config(value)
+
+
+@pytest.mark.parametrize(
+    "mode",
+    ("off", "shadow", "assisted", "autophase1", "autophase2", "fullauto"),
+)
+def test_contract_modes_are_accepted(mode: str) -> None:
+    value = config()
+    value["automation"]["mode"] = mode
+
+    assert validate_automation_config(value)["mode"] == mode
+
+
+@pytest.mark.parametrize("mode", ("auto_keep", "full_auto"))
+def test_legacy_modes_are_rejected(mode: str) -> None:
+    value = config()
+    value["automation"]["mode"] = mode
+
+    with pytest.raises(ValueError, match="unsupported"):
+        validate_automation_config(value)
 
 
 def test_missing_automation_block_is_rejected() -> None:

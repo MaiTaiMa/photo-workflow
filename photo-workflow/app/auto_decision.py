@@ -1,7 +1,10 @@
 """
 Skript: app/auto_decision.py
 Zweck: Erstellt sichere KI-Prognosen für den Review-Workflow.
-Version: 1.1.0
+Version: 1.2.0
+
+Änderungsprotokoll:
+  2026-08-20 | 1.2.0 | A1: Vertragskonforme, nicht-operative Automationsmodi.
 """
 
 from typing import Any, Mapping
@@ -11,8 +14,9 @@ VALID_AUTOMATION_MODES = frozenset({
     "off",
     "shadow",
     "assisted",
-    "auto_keep",
-    "full_auto",
+    "autophase1",
+    "autophase2",
+    "fullauto",
 })
 
 

@@ -3,10 +3,12 @@ Skript: app/config_schema.py
 Zweck: Striktes Config-Schema fuer photo-workflow mit 98AP-Validierung
 Autor: Matzethias
 Erstellt: 2026-08-09
-Version: 2.0.0
+Version: 2.2.0
 Requires: Python 3.12+, typing
 
 Aenderungsprotokoll:
+  2026-08-20 | 2.2.0 | A1.7: pipeline und phase2 als aktive Config-Sektionen ergänzt
+  2026-08-20 | 2.1.0 | A1: automation als kanonische Config-Sektion ergänzt
   2026-08-09 | 2.0.0 | 98AP-konforme Validierung mit allen Sektionen
   2026-08-09 | 1.0.0 | Initiale Implementierung mit validate_config()
 """
@@ -105,7 +107,7 @@ def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
         'workflow', 'models', 'culling', 'training', 'reporting',
         'family_recognition', 'series_detection', 'metadata_culling',
         'personal_scoring', 'clip_scoring', 'reference_pools', 'pools', 'scoring',
-        'series', 'manual_keep', 'batch',
+        'series', 'manual_keep', 'batch', 'automation', 'pipeline', 'phase2',
         'extensions',  # Explizit erlaubt laut 98AP
     }
     
@@ -253,35 +255,3 @@ def get_test_config(base_dir: str) -> Dict[str, Any]:
             'never_delete_outside_arw_dir': True,
         },
     }
-    
-    
-AUTOMATION_SCHEMA = {
-    'type': 'dict',
-    'required': False,
-    'schema': {
-        'auto_mode': {
-            'type': 'bool',
-            'default': False,
-            'description': 'Vollautomatik-Modus aktivieren'
-        },
-        'confidence_threshold': {
-            'type': 'float',
-            'default': 0.85,
-            'min': 0.0,
-            'max': 1.0,
-            'description': 'Mindest-Übereinstimmungsrate für Auto-Entscheidungen'
-        },
-        'min_batches_for_auto': {
-            'type': 'int',
-            'default': 10,
-            'min': 1,
-            'description': 'Mindestanzahl Batches vor Aktivierung'
-        },
-        'review_window_days': {
-            'type': 'int',
-            'default': 30,
-            'min': 1,
-            'description': 'Zeitfenster für Review-Feedback'
-        }
-    }
-}

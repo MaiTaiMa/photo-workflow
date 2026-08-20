@@ -231,15 +231,19 @@ workflow:
 
 # -----------------------------------------------------------------------------
 # automation
-# Dieser Block steuert KI-Prognosen und eine optionale Automatisierung.
-# Die Aktivierung einer Stufe erfolgt ausschließlich durch bewusste Konfiguration.
+# Dieser Block steuert ausschließlich lokale KI-Prognosen und ihre Policy.
+# Readiness aktiviert keinen Modus; shadow bleibt der sichere Standard.
 # -----------------------------------------------------------------------------
 automation:
-  # mode: Betriebsmodus der KI-Entscheidungslogik.
-  # Mögliche Werte: off, shadow, assisted, auto_keep, full_auto.
-  # Auswirkung: off schreibt keine Prognosen; shadow bewertet nur;
-  # assisted markiert Vorschläge; auto_keep automatisiert nur sichere Keep-Fälle;
-  # full_auto darf erst nach manueller Freigabe verwendet werden.
+  # policy_version: Version der validierten lokalen Automations-Policy.
+  # Mögliche Werte: Nicht-leerer versionsierter String, zum Beispiel "1.0".
+  # Auswirkung: Eine leere oder fehlende Version wird fail-closed abgelehnt.
+  policy_version: "1.0"
+
+  # mode: Explizit gewählter Betriebsmodus der Automations-Policy.
+  # Mögliche Werte: off, shadow, assisted, autophase1, autophase2, fullauto.
+  # Auswirkung: shadow und assisted bleiben diagnostisch; operative Modi werden
+  # erst in späteren, separat abgesicherten Arbeitspaketen verdrahtet.
   mode: shadow
 
   # keep_score_min: Mindestwert für eine automatische Keep-Prognose.
@@ -274,12 +278,12 @@ automation:
 
   # min_keep_precision: Mindestpräzision automatischer Keep-Prognosen.
   # Mögliche Werte: 0.0 bis 1.0.
-  # Auswirkung: Unterhalb dieses Werts ist auto_keep gesperrt.
+  # Auswirkung: Unterhalb dieses Werts bleibt operative Automation gesperrt.
   min_keep_precision: 0.95
 
   # min_reject_precision: Mindestpräzision automatischer Reject-Prognosen.
   # Mögliche Werte: 0.0 bis 1.0.
-  # Auswirkung: Unterhalb dieses Werts ist full_auto gesperrt.
+  # Auswirkung: Unterhalb dieses Werts bleibt operative Automation gesperrt.
   min_reject_precision: 0.98
 
 # -----------------------------------------------------------------------------

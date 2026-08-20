@@ -6,6 +6,7 @@ from app.auto_decision import AutoDecider, predict_decision
 def automation_config(mode: str = "shadow") -> dict:
     return {
         "automation": {
+            "policy_version": "1.0",
             "mode": mode,
             "keep_score_min": 0.90,
             "reject_score_max": 0.15,
@@ -33,6 +34,17 @@ def test_shadow_mode_predicts_high_confidence_reject() -> None:
 
     assert decision == "reject"
     assert reason == "high_confidence_reject"
+
+
+@pytest.mark.parametrize("mode", ("autophase1", "autophase2", "fullauto"))
+def test_contract_operational_modes_remain_prediction_only(mode: str) -> None:
+    decision, reason = predict_decision(
+        personal_score=0.95,
+        final_score=0.92,
+        config=automation_config(mode),
+    )
+
+    assert (decision, reason) == ("keep", "high_confidence_keep")
 
 
 def test_scores_in_middle_zone_require_manual_review() -> None:
