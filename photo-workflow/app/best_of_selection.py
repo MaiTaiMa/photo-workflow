@@ -17,7 +17,7 @@
 
 from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass
-from series_detection import Series
+from app.series_detection import Series
 
 
 # =============================================================================
