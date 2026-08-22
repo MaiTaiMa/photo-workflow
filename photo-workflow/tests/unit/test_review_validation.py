@@ -1,7 +1,11 @@
 """
 Skript: tests/unit/test_review_validation.py
 Zweck: Prüft die Validierung von Predictions gegen menschliche Reviews.
-Version: 1.1.0
+Version: 1.2.0
+
+Änderungsprotokoll:
+  2026-08-22 | 1.2.0 | C1.2.4: Test für gemischte Policy-Versionen ergänzt.
+  2026-08-22 | 1.1.0 | C1.2.2: Test-Predictions an Policy-Version gebunden.
 
 Änderungsprotokoll:
   2026-08-22 | 1.1.0 | C1.2.2: Test-Predictions an Policy-Version gebunden.
@@ -83,6 +87,32 @@ def test_validation_without_human_reviews_is_not_evaluable(tmp_path) -> None:
     assert report["evaluated_predictions"] == 0
     assert report["unreviewed_predictions"] == 3
     assert report["status"] == "not_evaluable"
+
+
+def test_mixed_policy_versions_in_one_batch_are_rejected(tmp_path) -> None:
+    from pytest import raises
+
+    from app.automation_store import write_prediction_batch
+
+    batch_id = "2025-11-02"
+    predictions = [
+        build_prediction_record(
+            producer_version="v1.4", batch_id=batch_id, image_id="keep.jpg",
+            model_version="personal-score-v1", policy_version="1.0", predicted_decision="keep",
+            prediction_reason="high_confidence_keep", personal_score=0.95,
+            final_score=0.92, predicted_at="2026-08-11T00:00:00Z",
+        ),
+        build_prediction_record(
+            producer_version="v1.4", batch_id=batch_id, image_id="reject.jpg",
+            model_version="personal-score-v1", policy_version="1.1", predicted_decision="reject",
+            prediction_reason="high_confidence_reject", personal_score=0.10,
+            final_score=0.12, predicted_at="2026-08-11T00:00:00Z",
+        ),
+    ]
+    write_prediction_batch(tmp_path, batch_id, predictions)
+
+    with raises(ValueError, match="exactly one policy_version"):
+        validate_batch_predictions(tmp_path, batch_id, "v1.4")
 
 
 def test_missing_prediction_artifact_is_rejected(tmp_path) -> None:

@@ -1,15 +1,22 @@
 """
 Skript: app/automation_readiness.py
 Zweck: Aggregiert Batch-Validierungsreports zu einer rein auswertenden Readiness-Metrik.
-Version: 1.0.0
+Version: 1.2.0
+
+Änderungsprotokoll:
+  2026-08-22 | 1.2.0 | C1.2.4: Fullauto-Gate (fail-closed, ohne operative Wirkung) ergänzt.
+  2026-08-22 | 1.1.0 | C1.2.4: Readiness filterbar nach Policy-Version.
+
+Änderungsprotokoll:
+  2026-08-22 | 1.1.0 | C1.2.4: Readiness filterbar nach Policy-Version.
 """
 
 import json
 import os
 import tempfile
 from datetime import datetime, timezone
+from typing import Any, Iterable, Mapping
 from pathlib import Path
-from typing import Any, Iterable
 
 
 READINESS_POLICY = {
@@ -32,8 +39,16 @@ def _ratio(numerator: int, denominator: int) -> float | None:
     return None if denominator == 0 else numerator / denominator
 
 
-def build_readiness_report(reports: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    """Build a sample-weighted readiness report from validation report payloads."""
+def build_readiness_report(
+    reports: Iterable[dict[str, Any]],
+    *,
+    expected_policy_version: str | None = None,
+) -> dict[str, Any]:
+    """Build a sample-weighted readiness report from validation report payloads.
+
+    Only reports whose policy_version matches expected_policy_version are counted
+    as sufficient evidence. If expected_policy_version is None, all reports are used.
+    """
     report_list = list(reports)
     totals = {
         "evaluated_predictions": 0,
@@ -50,6 +65,9 @@ def build_readiness_report(reports: Iterable[dict[str, Any]]) -> dict[str, Any]:
     for report in report_list:
         if not isinstance(report, dict):
             raise ValueError("validation reports must be mappings")
+        policy = report.get("policy_version")
+        if expected_policy_version is not None and policy != expected_policy_version:
+            continue
         evaluated = _non_negative_int(report, "evaluated_predictions")
         for field in totals:
             totals[field] += _non_negative_int(report, field)
@@ -128,7 +146,70 @@ def write_readiness_report(runtime_path: str | Path, report: dict[str, Any]) -> 
     return target
 
 
-def aggregate_readiness(runtime_path: str | Path) -> tuple[dict[str, Any], Path]:
-    """Aggregate validation reports and persist the resulting diagnostic report."""
-    report = build_readiness_report(load_validation_reports(runtime_path))
+def aggregate_readiness(
+    runtime_path: str | Path,
+    *,
+    expected_policy_version: str | None = None,
+) -> tuple[dict[str, Any], Path]:
+    """Aggregate validation reports and persist the resulting diagnostic report.
+
+    Only reports whose policy_version matches expected_policy_version are counted
+    as sufficient evidence for readiness.
+    """
+    report = build_readiness_report(
+        load_validation_reports(runtime_path),
+        expected_policy_version=expected_policy_version,
+    )
     return report, write_readiness_report(runtime_path, report)
+
+
+def is_fullauto_ready(
+    config: Mapping[str, Any],
+    runtime_path: str | Path,
+) -> tuple[bool, dict[str, Any]]:
+    """Determine whether fullauto is ready for the active policy.
+
+    Returns (is_ready, readiness_report). The gate is fail-closed:
+    - mode must be exactly "fullauto"
+    - automation.policy_version must be a non-empty string
+    - readiness for that exact policy_version must report status "ready"
+    """
+    automation = config.get("automation")
+    if not isinstance(automation, Mapping):
+        raise ValueError("automation configuration is required")
+
+    mode = automation.get("mode")
+    if mode != "fullauto":
+        report = {
+            "schema_version": "1.0",
+            "status": "not_ready",
+            "gate_reason": "mode_is_not_fullauto",
+            "mode": mode,
+            "aggregated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        return False, report
+
+    policy_version = automation.get("policy_version")
+    if not isinstance(policy_version, str) or not policy_version.strip():
+        report = {
+            "schema_version": "1.0",
+            "status": "not_ready",
+            "gate_reason": "policy_version_missing",
+            "mode": mode,
+            "aggregated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        return False, report
+
+    report, _ = aggregate_readiness(
+        runtime_path,
+        expected_policy_version=policy_version,
+    )
+    if report.get("status") == "ready":
+        report["expected_policy_version"] = policy_version
+        report["mode"] = mode
+        return True, report
+
+    report["gate_reason"] = "readiness_not_ready_for_policy"
+    report["mode"] = mode
+    report["expected_policy_version"] = policy_version
+    return False, report

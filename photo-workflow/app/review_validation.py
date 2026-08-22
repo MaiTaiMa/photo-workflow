@@ -1,7 +1,10 @@
 """
 Skript: app/review_validation.py
 Zweck: Vergleicht KI-Prognosen mit menschlichen Keep-/Reject-Entscheidungen.
-Version: 2.0.0
+Version: 2.1.0
+
+Änderungsprotokoll:
+  2026-08-22 | 2.1.0 | C1.2.4: Validierungsreports an eine Prediction-Policy gebunden.
 """
 
 import json
@@ -27,6 +30,15 @@ def validate_batch_predictions(
     prediction_payload = _load_prediction_payload(runtime_path, batch_id)
     review_payload = _load_review_payload(runtime_path, batch_id)
     reviews = {record["image_id"]: record for record in review_payload["reviews"]}
+    policy_versions = {
+        prediction["policy_version"]
+        for prediction in prediction_payload["predictions"]
+    }
+    if len(policy_versions) != 1:
+        raise ValueError(
+            "prediction batch must contain exactly one policy_version"
+        )
+    policy_version = policy_versions.pop()
 
     eligible_predictions = 0
     excluded_review_predictions = 0
@@ -74,6 +86,7 @@ def validate_batch_predictions(
     report = {
         "schema_version": VALIDATION_SCHEMA_VERSION,
         "producer_version": producer_version,
+        "policy_version": policy_version,
         "batch_id": batch_id,
         "validated_at": datetime.now(timezone.utc).isoformat(),
         "prediction_count": len(prediction_payload["predictions"]),
@@ -134,7 +147,7 @@ def write_validation_report(
 def validate_validation_report(report: Mapping[str, Any]) -> None:
     """Raise ValueError when a validation report is incomplete or inconsistent."""
     required = {
-        "schema_version", "producer_version", "batch_id", "validated_at",
+        "schema_version", "producer_version", "policy_version", "batch_id", "validated_at",
         "prediction_count", "eligible_predictions", "excluded_review_predictions",
         "unreviewed_predictions", "evaluated_predictions", "matching_predictions",
         "overall_agreement", "predicted_keep", "predicted_reject",
@@ -151,7 +164,7 @@ def validate_validation_report(report: Mapping[str, Any]) -> None:
         raise ValueError("unsupported validation status")
     if not isinstance(report["batch_id"], str) or not report["batch_id"].strip():
         raise ValueError("batch_id must be a non-empty string")
-    for field in ("producer_version", "validated_at"):
+    for field in ("producer_version", "policy_version", "validated_at"):
         if not isinstance(report[field], str) or not report[field].strip():
             raise ValueError(f"{field} must be a non-empty string")
     for field in required.intersection({
