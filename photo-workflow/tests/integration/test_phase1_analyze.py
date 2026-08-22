@@ -1,3 +1,12 @@
+"""
+Skript: tests/integration/test_phase1_analyze.py
+Zweck: Testet den kanonischen Review-/Rejected-Ordnervertrag.
+Version: 1.0.0
+
+Änderungsprotokoll:
+  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+"""
+
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -40,7 +49,7 @@ def test_phase1_analyze_persists_plan_and_states_without_touching_images(
             "family_tags": [],
             "family_regions": [],
             "execution": {
-                "target_relative_path": "_Review/b.jpg",
+                "target_relative_path": "Review/b.jpg",
                 "moved": False,
                 "family_metadata_written": False,
                 "culling_metadata_written": False,
@@ -158,7 +167,7 @@ def test_phase1_analyze_persists_plan_and_states_without_touching_images(
     assert image_a.read_bytes() == b"image-a"
     assert image_b.read_bytes() == b"image-b"
     assert not (batch_dir / "_Keep").exists()
-    assert not (batch_dir / "_Review").exists()
+    assert not (batch_dir / "Review").exists()
 
     workflow.run_phase1_analyze(
         cfg,

@@ -7,9 +7,10 @@ Version: 1.6
 Requires: Python 3.11, pathlib, shutil
 
 Änderungsprotokoll:
+  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
   2026-08-09 | 1.0 | Initiale Version mit Archive-Vertrag
   2026-08-09 | 1.5 | Review/Rejected-Bereinigung + Move nach temp_final
-  2026-08-09 | 1.6 | Korrekte Ordner-Namen (_Review, _Rejected) + robuste Erweiterungen
+  2026-08-09 | 1.6 | Korrekte Ordner-Namen (Review, Rejected) + robuste Erweiterungen
 
 98AP-Regeln:
   - AP2: Review-Entscheidungen bleiben nachvollziehbar
@@ -26,7 +27,7 @@ from automation_metrics import AutomationMetrics
 
 def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -> Dict[str, Any]:
     """
-    Bereinigt _Review und _Rejected Ordner nach Phase 2.
+    Bereinigt Review und Rejected Ordner nach Phase 2.
     
     Review-Dateien:
     - Keep-Entscheidungen: Nach 03_TEMP_DONE (für spätere manuelle Prüfung)
@@ -36,7 +37,7 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
     - Alle nach 00_TEMP_ERROR (keine automatische Löschung)
     
     Ordner-Logik:
-    - _Review und _Rejected werden nach dem Verschieben GELÖSCHT (auch wenn nicht leer)
+    - Review und Rejected werden nach dem Verschieben GELÖSCHT (auch wenn nicht leer)
     - Dies erfolgt unabhängig von move_to_temp_final
     - Nicht verschobene Dateien im Ordner gehen dabei verloren (geplantes Verhalten)
     
@@ -59,8 +60,8 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
             - status: 'ok', 'partial', 'failed'
     """
     batch = Path(batch_path)
-    review_path = batch / "_Review"
-    rejected_path = batch / "_Rejected"
+    review_path = batch / "Review"
+    rejected_path = batch / "Rejected"
     
     # Phase-2-Config auslesen (konsistent mit Repo-Stil)
     phase2_cfg = cfg.get('phase2', {})
@@ -80,7 +81,7 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
     }
     
     # ==========================================================================
-    # SCHRITT 1: _Review bereinigen
+    # SCHRITT 1: Review bereinigen
     # ==========================================================================
     if review_path.exists():
         for img in review_path.iterdir():
@@ -114,7 +115,7 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
                 result['errors'].append(f"Review {img.name}: {e}")
     
     # ==========================================================================
-    # SCHRITT 2: _Rejected bereinigen
+    # SCHRITT 2: Rejected bereinigen
     # ==========================================================================
     if rejected_path.exists():
         for img in rejected_path.iterdir():
@@ -140,23 +141,23 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
     # SCHRITT 3: Ordner löschen (IMMER nach dem Verschieben, auch wenn nicht leer)
     # ==========================================================================
     try:
-        # _Review-Ordner löschen (auch wenn nicht leer)
+        # Review-Ordner löschen (auch wenn nicht leer)
         if review_path.exists():
             remaining_review = list(review_path.glob("*"))
             if remaining_review and not dry_run:
                 # Warnung: Es sind noch Dateien im Ordner
-                result['errors'].append(f"_Review-Ordner nicht leer: {[f.name for f in remaining_review]}")
+                result['errors'].append(f"Review-Ordner nicht leer: {[f.name for f in remaining_review]}")
             
             if not dry_run:
                 shutil.rmtree(review_path)
             print(f"[CLEANUP] Ordner gelöscht: {review_path}")
         
-        # _Rejected-Ordner löschen (auch wenn nicht leer)
+        # Rejected-Ordner löschen (auch wenn nicht leer)
         if rejected_path.exists():
             remaining_rejected = list(rejected_path.glob("*"))
             if remaining_rejected and not dry_run:
                 # Warnung: Es sind noch Dateien im Ordner
-                result['errors'].append(f"_Rejected-Ordner nicht leer: {[f.name for f in remaining_rejected]}")
+                result['errors'].append(f"Rejected-Ordner nicht leer: {[f.name for f in remaining_rejected]}")
             
             if not dry_run:
                 shutil.rmtree(rejected_path)
@@ -282,7 +283,7 @@ def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dic
 
 def verify_cleanup_complete(batch_path: str) -> Dict[str, Any]:
     """
-    Prüft, ob _Review/_Rejected vollständig bereinigt wurden.
+    Prüft, ob Review/Rejected vollständig bereinigt wurden.
     
     Args:
         batch_path: Pfad zum Batch-Ordner
@@ -296,8 +297,8 @@ def verify_cleanup_complete(batch_path: str) -> Dict[str, Any]:
             - rejected_remaining: list[str]
     """
     batch = Path(batch_path)
-    review_path = batch / "_Review"
-    rejected_path = batch / "_Rejected"
+    review_path = batch / "Review"
+    rejected_path = batch / "Rejected"
     
     result = {
         'review_empty': False,
@@ -307,7 +308,7 @@ def verify_cleanup_complete(batch_path: str) -> Dict[str, Any]:
         'rejected_remaining': [],
     }
     
-    # _Review prüfen
+    # Review prüfen
     if review_path.exists():
         remaining = [
             item.name
@@ -319,7 +320,7 @@ def verify_cleanup_complete(batch_path: str) -> Dict[str, Any]:
     else:
         result['review_empty'] = True
     
-    # _Rejected prüfen
+    # Rejected prüfen
     if rejected_path.exists():
         remaining = [
             item.name
@@ -364,7 +365,7 @@ def run_phase2_with_cleanup(batch_path: str, cfg: dict, dry_run: bool = False) -
     }
     
     # ==========================================================================
-    # SCHRITT 1: _Review/_Rejected bereinigen
+    # SCHRITT 1: Review/Rejected bereinigen
     # ==========================================================================
     cleanup_result = cleanup_review_rejected(batch_path, cfg, dry_run=dry_run)
     result['cleanup_result'] = cleanup_result

@@ -7,6 +7,7 @@ Version: 1.0.0
 Requires: Python 3.11, pytest
 
 Änderungsprotokoll:
+  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
   2026-08-20 | 1.0.0 | B2.1: Integrationstests für Run- und Batch-Zeitlimits ergänzt.
 """
 
@@ -72,7 +73,7 @@ def _initialize_batch(base_dir: Path, batch_id: str) -> tuple[Path, Path]:
                 "family_tags": [],
                 "family_regions": [],
                 "execution": {
-                    "target_relative_path": "_Review/a.jpg",
+                    "target_relative_path": "Review/a.jpg",
                     "moved": False,
                     "family_metadata_written": False,
                     "culling_metadata_written": False,
@@ -148,7 +149,7 @@ def test_expired_budget_pauses_before_image_operation(
     pause = pause_store.load(batch_id)
 
     assert (workdir / "a.jpg").exists()
-    assert not (workdir / "_Review" / "a.jpg").exists()
+    assert not (workdir / "Review" / "a.jpg").exists()
     assert states.load(batch_id, f"{batch_id}:wu-0001")["state"] == "pending"
     assert plan["rows"][0]["execution"]["moved"] is False
     assert pause["pause_reason"] == reason

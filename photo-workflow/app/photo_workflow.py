@@ -7,6 +7,7 @@ Version: 1.5
 Requires: Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 
 Änderungsprotokoll:
+  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
   2026-08-09 | 1.0 | Initiale Version mit Phase 1/2
   2026-08-09 | 1.3 | Face-Erkennung und AI Culling ergänzt
   2026-08-20 | 1.5 | B2.1: Sichere Zeitlimit-Pause vor Phase-1-Workunits ergänzt
@@ -978,8 +979,8 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     global LAST_FAMILY_RUN_INFO
 
     save_dir = ensure_dir(workdir / 'SAVE')
-    rejected_dir = workdir / '_Rejected'
-    review_dir = workdir / '_Review'
+    rejected_dir = workdir / 'Rejected'
+    review_dir = workdir / 'Review'
 
     if cfg['culling'].get('create_rejected_folder', True):
         rejected_dir.mkdir(exist_ok=True)
@@ -2118,7 +2119,7 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
       1. ARW-Zip erstellen (process_done_folder)
       2. State-Update (bereits in process_done_folder)
       3. Review/Rejected bereinigen (cleanup_review_rejected)
-      4. Ordner löschen (_Review, _Rejected)
+      4. Ordner löschen (Review, Rejected)
       5. Move nach temp_final (move_to_temp_final)
     """
     global COUNT_FOUND_DONE

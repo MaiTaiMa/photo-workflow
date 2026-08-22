@@ -1,4 +1,12 @@
-"""Build safe, persisted Phase-1 analysis rows from final culling rows."""
+"""
+Skript: app/phase1_analysis_builder.py
+Zweck: Erzeugt sichere, persistierbare Phase-1-Analysezeilen aus finalen Culling-Zeilen.
+Version: 1.1.0
+Requires: Python 3.11
+
+Änderungsprotokoll:
+  2026-08-22 | 1.1.0 | C1.2.3: Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+"""
 from __future__ import annotations
 from pathlib import Path
 from typing import Any
@@ -13,7 +21,7 @@ def _target_relative_path(file_name: str, decision: str, move_files: bool) -> st
         raise Phase1AnalysisBuildError("analysis row decision is invalid")
     if not move_files or decision == "keep":
         return file_name
-    directory = "_Review" if decision == "review" else "_Rejected"
+    directory = "Review" if decision == "review" else "Rejected"
     return str(Path(directory) / file_name)
 
 def build_persistable_analysis_rows(rows: list[dict[str, Any]], *, move_files: bool) -> list[dict[str, Any]]:

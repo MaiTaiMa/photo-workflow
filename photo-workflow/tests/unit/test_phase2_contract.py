@@ -6,6 +6,7 @@ Erstellt: 2026-08-09
 Version: 2.0 (angepasst an neue phase2_contract.py)
 
 Änderungsprotokoll:
+  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
   2026-08-09 | 1.0 | Initiale Version mit Phase2GateError
   2026-08-09 | 2.0 | Umstellung auf cleanup_review_rejected + move_to_temp_final
 """
@@ -30,8 +31,8 @@ def test_dirs():
         tmpdir = Path(tmpdir)
         
         batch = tmpdir / "2025-11-01"
-        review = batch / "_Review"
-        rejected = batch / "_Rejected"
+        review = batch / "Review"
+        rejected = batch / "Rejected"
         temp_done = tmpdir / "03_TEMP_DONE"
         temp_error = tmpdir / "00_TEMP_ERROR"
         temp_final = tmpdir / "04_TEMP_FINAL"
@@ -72,7 +73,7 @@ def test_dirs():
 
 
 def test_cleanup_review_rejected(test_dirs):
-    """Testet cleanup_review_rejected() mit _Review und _Rejected."""
+    """Testet cleanup_review_rejected() mit Review und Rejected."""
     result = cleanup_review_rejected(
         batch_path=str(test_dirs['batch']),
         cfg=test_dirs['cfg'],
