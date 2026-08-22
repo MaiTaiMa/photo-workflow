@@ -3,10 +3,11 @@ Skript: app/photo_workflow.py
 Zweck: Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 Autor: MaiTaiMa
 Erstellt: 2026-08-09
-Version: 1.5
+Version: 1.6
 Requires: Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 
 Änderungsprotokoll:
+  2026-08-22 | 1.6 | C1.2.2: Prediction-Records an aktive Policy gebunden.
   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
   2026-08-09 | 1.0 | Initiale Version mit Phase 1/2
   2026-08-09 | 1.3 | Face-Erkennung und AI Culling ergänzt
@@ -1127,6 +1128,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 model_version=str(
                     personal_info.get('model_version', 'personal-score-v1')
                 ),
+                policy_version=str(cfg["automation"]["policy_version"]),
                 predicted_decision='review',
                 prediction_reason='manual_keep_override',
                 personal_score=scored.get('personal_score'),
@@ -1255,6 +1257,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             model_version=str(
                 personal_info.get('model_version', 'personal-score-v1')
             ),
+            policy_version=str(cfg["automation"]["policy_version"]),
             predicted_decision=predicted_decision,
             prediction_reason=prediction_reason,
             personal_score=scored.get('personal_score'),
@@ -2002,6 +2005,7 @@ def run_phase1_analyze(
                     "personal-score-v1",
                 )
             ),
+            policy_version=str(cfg["automation"]["policy_version"]),
             predicted_decision=predicted_decision,
             prediction_reason=prediction_reason,
             personal_score=row.get("personal_score"),

@@ -1,3 +1,12 @@
+"""
+Skript: tests/unit/test_review_validation.py
+Zweck: Prüft die Validierung von Predictions gegen menschliche Reviews.
+Version: 1.1.0
+
+Änderungsprotokoll:
+  2026-08-22 | 1.1.0 | C1.2.2: Test-Predictions an Policy-Version gebunden.
+"""
+
 import json
 
 from app.automation_contract import build_prediction_record
@@ -12,25 +21,25 @@ def seed_predictions(runtime_path) -> None:
     predictions = [
         build_prediction_record(
             producer_version="v1.4", batch_id=batch_id, image_id="keep.jpg",
-            model_version="personal-score-v1", predicted_decision="keep",
+            model_version="personal-score-v1", policy_version="1.0", predicted_decision="keep",
             prediction_reason="high_confidence_keep", personal_score=0.95,
             final_score=0.92, predicted_at="2026-08-11T00:00:00Z",
         ),
         build_prediction_record(
             producer_version="v1.4", batch_id=batch_id, image_id="reject.jpg",
-            model_version="personal-score-v1", predicted_decision="reject",
+            model_version="personal-score-v1", policy_version="1.0", predicted_decision="reject",
             prediction_reason="high_confidence_reject", personal_score=0.10,
             final_score=0.12, predicted_at="2026-08-11T00:00:00Z",
         ),
         build_prediction_record(
             producer_version="v1.4", batch_id=batch_id, image_id="review.jpg",
-            model_version="personal-score-v1", predicted_decision="review",
+            model_version="personal-score-v1", policy_version="1.0", predicted_decision="review",
             prediction_reason="manual_review_zone", personal_score=0.50,
             final_score=0.50, predicted_at="2026-08-11T00:00:00Z",
         ),
         build_prediction_record(
             producer_version="v1.4", batch_id=batch_id, image_id="unreviewed.jpg",
-            model_version="personal-score-v1", predicted_decision="reject",
+            model_version="personal-score-v1", policy_version="1.0", predicted_decision="reject",
             prediction_reason="high_confidence_reject", personal_score=0.10,
             final_score=0.12, predicted_at="2026-08-11T00:00:00Z",
         ),

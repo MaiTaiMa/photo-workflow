@@ -1,3 +1,12 @@
+"""
+Skript: tests/unit/test_validate_reviews.py
+Zweck: Prüft die CLI-nahe Validierung menschlicher Review-Entscheidungen.
+Version: 1.1.0
+
+Änderungsprotokoll:
+  2026-08-22 | 1.1.0 | C1.2.2: Test-Prediction an Policy-Version gebunden.
+"""
+
 from app.automation_contract import build_prediction_record
 from app.automation_store import write_prediction_batch
 from app.human_review_contract import build_human_review_record
@@ -11,6 +20,7 @@ def test_validate_reviews_creates_report_for_evaluable_batch(tmp_path) -> None:
         batch_id="2025-11-02",
         image_id="MST06972.JPG",
         model_version="personal-score-v1",
+        policy_version="1.0",
         predicted_decision="keep",
         prediction_reason="high_confidence_keep",
         personal_score=0.95,

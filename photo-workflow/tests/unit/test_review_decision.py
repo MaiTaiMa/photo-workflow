@@ -1,3 +1,12 @@
+"""
+Skript: tests/unit/test_review_decision.py
+Zweck: Prüft Human-Review-Entscheidungen für versionierte Predictions.
+Version: 1.1.0
+
+Änderungsprotokoll:
+  2026-08-22 | 1.1.0 | C1.2.2: Test-Prediction an Policy-Version gebunden.
+"""
+
 import pytest
 
 from app.automation_contract import build_prediction_record
@@ -12,6 +21,7 @@ def seed_prediction(runtime_path, batch_id: str = "2025-11-02") -> None:
         batch_id=batch_id,
         image_id="MST06972.JPG",
         model_version="personal-score-v1",
+        policy_version="1.0",
         predicted_decision="review",
         prediction_reason="manual_review_zone",
         personal_score=0.42,
