@@ -61,6 +61,7 @@ def build_readiness_report(
         "unreviewed_predictions": 0,
     }
     evaluable_batch_count = 0
+    batch_agreements: list[dict[str, Any]] = []
 
     for report in report_list:
         if not isinstance(report, dict):
@@ -73,6 +74,21 @@ def build_readiness_report(
             totals[field] += _non_negative_int(report, field)
         if evaluated > 0:
             evaluable_batch_count += 1
+            batch_agreements.append(
+                {
+                    "batch_id": report.get("batch_id"),
+                    "policy_version": policy,
+                    "evaluated_predictions": evaluated,
+                    "matching_predictions": _non_negative_int(
+                        report,
+                        "matching_predictions",
+                    ),
+                    "agreement": _ratio(
+                        _non_negative_int(report, "matching_predictions"),
+                        evaluated,
+                    ),
+                }
+            )
 
     overall_agreement = _ratio(
         totals["matching_predictions"], totals["evaluated_predictions"]
@@ -103,6 +119,15 @@ def build_readiness_report(
         "policy": READINESS_POLICY.copy(),
         "report_count": len(report_list),
         "evaluable_batch_count": evaluable_batch_count,
+        "batch_agreements": batch_agreements,
+        "minimum_batch_agreement": min(
+            (
+                item["agreement"]
+                for item in batch_agreements
+                if item["agreement"] is not None
+            ),
+            default=None,
+        ),
         **totals,
         "overall_agreement": overall_agreement,
         "keep_precision": keep_precision,
@@ -163,6 +188,42 @@ def aggregate_readiness(
     return report, write_readiness_report(runtime_path, report)
 
 
+def evaluate_fullauto_thresholds(
+    automation: Mapping[str, Any],
+    readiness_report: Mapping[str, Any],
+) -> tuple[bool, list[str]]:
+    """Evaluate Fullauto-specific thresholds without side effects."""
+    reasons: list[str] = []
+    gate = automation.get("fullauto_gate")
+
+    if not isinstance(gate, Mapping):
+        return False, ["fullauto_gate_missing"]
+
+    if gate.get("enabled") is not True:
+        reasons.append("fullauto_gate_disabled")
+
+    overall = readiness_report.get("overall_agreement")
+    minimum_batch = readiness_report.get("minimum_batch_agreement")
+
+    required_overall = gate.get("min_overall_agreement", 0.95)
+    required_batch = gate.get("min_batch_agreement", 0.90)
+
+    if not isinstance(overall, (int, float)) or isinstance(overall, bool):
+        reasons.append("overall_agreement_missing")
+    elif overall < required_overall:
+        reasons.append("fullauto_overall_agreement_below_threshold")
+
+    if not isinstance(minimum_batch, (int, float)) or isinstance(
+        minimum_batch,
+        bool,
+    ):
+        reasons.append("minimum_batch_agreement_missing")
+    elif minimum_batch < required_batch:
+        reasons.append("fullauto_batch_agreement_below_threshold")
+
+    return not reasons, reasons
+
+
 def is_fullauto_ready(
     config: Mapping[str, Any],
     runtime_path: str | Path,
@@ -205,9 +266,20 @@ def is_fullauto_ready(
         expected_policy_version=policy_version,
     )
     if report.get("status") == "ready":
+        gate_ready, gate_reasons = evaluate_fullauto_thresholds(
+            automation,
+            report,
+        )
         report["expected_policy_version"] = policy_version
         report["mode"] = mode
-        return True, report
+        report["fullauto_gate_ready"] = gate_ready
+
+        if gate_ready:
+            return True, report
+
+        report["gate_reason"] = gate_reasons[0]
+        report["gate_reasons"] = gate_reasons
+        return False, report
 
     report["gate_reason"] = "readiness_not_ready_for_policy"
     report["mode"] = mode

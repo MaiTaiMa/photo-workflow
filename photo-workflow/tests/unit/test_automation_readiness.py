@@ -1,6 +1,7 @@
 from app.automation_readiness import (
     READINESS_POLICY,
     build_readiness_report,
+    evaluate_fullauto_thresholds,
     is_fullauto_ready,
 )
 
@@ -265,6 +266,13 @@ def test_fullauto_gate_rejects_wrong_mode(tmp_path) -> None:
             "mode": "assisted",
             "keep_score_min": 0.90,
             "reject_score_max": 0.15,
+            "fullauto_gate": {
+                "enabled": True,
+                "auto_execute": False,
+                "fallback_mode": "assisted",
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            },
         }
     }
 
@@ -299,6 +307,13 @@ def test_fullauto_gate_passes_when_ready_for_policy(tmp_path) -> None:
             "mode": "fullauto",
             "keep_score_min": 0.90,
             "reject_score_max": 0.15,
+            "fullauto_gate": {
+                "enabled": True,
+                "auto_execute": False,
+                "fallback_mode": "assisted",
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            },
         }
     }
 
@@ -307,3 +322,211 @@ def test_fullauto_gate_passes_when_ready_for_policy(tmp_path) -> None:
     assert is_ready is True
     assert report["status"] == "ready"
     assert report["expected_policy_version"] == "1.0"
+
+
+def test_readiness_reports_per_batch_agreement() -> None:
+    report = build_readiness_report(
+        [
+            _report(
+                batch_id="batch-good",
+                evaluated_predictions=100,
+                matching_predictions=95,
+            ),
+            _report(
+                batch_id="batch-borderline",
+                evaluated_predictions=100,
+                matching_predictions=90,
+            ),
+        ]
+    )
+
+    assert report["minimum_batch_agreement"] == 0.90
+    assert report["batch_agreements"] == [
+        {
+            "batch_id": "batch-good",
+            "policy_version": "1.0",
+            "evaluated_predictions": 100,
+            "matching_predictions": 95,
+            "agreement": 0.95,
+        },
+        {
+            "batch_id": "batch-borderline",
+            "policy_version": "1.0",
+            "evaluated_predictions": 100,
+            "matching_predictions": 90,
+            "agreement": 0.90,
+        },
+    ]
+
+
+def test_fullauto_threshold_data_detects_overall_below_target() -> None:
+    report = build_readiness_report(
+        [
+            _report(
+                batch_id="batch-a",
+                evaluated_predictions=100,
+                matching_predictions=94,
+            ),
+            _report(
+                batch_id="batch-b",
+                evaluated_predictions=100,
+                matching_predictions=94,
+            ),
+            _report(
+                batch_id="batch-c",
+                evaluated_predictions=100,
+                matching_predictions=94,
+            ),
+        ]
+    )
+
+    assert report["overall_agreement"] == 0.94
+    assert report["minimum_batch_agreement"] == 0.94
+    assert report["overall_agreement"] < 0.95
+
+
+def test_fullauto_threshold_data_detects_weakest_batch() -> None:
+    report = build_readiness_report(
+        [
+            _report(
+                batch_id="batch-good-a",
+                evaluated_predictions=100,
+                matching_predictions=100,
+            ),
+            _report(
+                batch_id="batch-good-b",
+                evaluated_predictions=100,
+                matching_predictions=100,
+            ),
+            _report(
+                batch_id="batch-weak",
+                evaluated_predictions=100,
+                matching_predictions=89,
+            ),
+        ]
+    )
+
+    assert report["overall_agreement"] == 0.9633333333333334
+    assert report["minimum_batch_agreement"] == 0.89
+    assert report["overall_agreement"] >= 0.95
+    assert report["minimum_batch_agreement"] < 0.90
+
+
+def test_evaluate_fullauto_thresholds_accepts_ready_report() -> None:
+    allowed, reasons = evaluate_fullauto_thresholds(
+        {
+            "fullauto_gate": {
+                "enabled": True,
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            }
+        },
+        {
+            "overall_agreement": 0.95,
+            "minimum_batch_agreement": 0.90,
+        },
+    )
+
+    assert allowed is True
+    assert reasons == []
+
+
+def test_evaluate_fullauto_thresholds_rejects_weak_overall_agreement() -> None:
+    allowed, reasons = evaluate_fullauto_thresholds(
+        {
+            "fullauto_gate": {
+                "enabled": True,
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            }
+        },
+        {
+            "overall_agreement": 0.94,
+            "minimum_batch_agreement": 0.94,
+        },
+    )
+
+    assert allowed is False
+    assert reasons == ["fullauto_overall_agreement_below_threshold"]
+
+
+def test_evaluate_fullauto_thresholds_rejects_weak_batch_agreement() -> None:
+    allowed, reasons = evaluate_fullauto_thresholds(
+        {
+            "fullauto_gate": {
+                "enabled": True,
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            }
+        },
+        {
+            "overall_agreement": 0.96,
+            "minimum_batch_agreement": 0.89,
+        },
+    )
+
+    assert allowed is False
+    assert reasons == ["fullauto_batch_agreement_below_threshold"]
+
+
+
+
+def test_evaluate_fullauto_thresholds_rejects_missing_gate() -> None:
+    allowed, reasons = evaluate_fullauto_thresholds(
+        {},
+        {
+            "overall_agreement": 1.0,
+            "minimum_batch_agreement": 1.0,
+        },
+    )
+
+    assert allowed is False
+    assert reasons == ["fullauto_gate_missing"]
+
+
+def test_is_fullauto_ready_rejects_overall_threshold(tmp_path) -> None:
+    _seed_ready_reports(tmp_path, policy_version="1.0")
+
+    config = {
+        "automation": {
+            "policy_version": "1.0",
+            "mode": "fullauto",
+            "fullauto_gate": {
+                "enabled": True,
+                "min_overall_agreement": 1.01,
+                "min_batch_agreement": 0.90,
+            },
+        }
+    }
+
+    is_ready, report = is_fullauto_ready(config, tmp_path)
+
+    assert is_ready is False
+    assert report["gate_reason"] == (
+        "fullauto_overall_agreement_below_threshold"
+    )
+
+
+def test_is_fullauto_ready_rejects_batch_threshold(tmp_path) -> None:
+    _seed_ready_reports(tmp_path, policy_version="1.0")
+
+    config = {
+        "automation": {
+            "policy_version": "1.0",
+            "mode": "fullauto",
+            "fullauto_gate": {
+                "enabled": True,
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 1.01,
+            },
+        }
+    }
+
+    is_ready, report = is_fullauto_ready(config, tmp_path)
+
+    assert is_ready is False
+    assert report["gate_reason"] == (
+        "fullauto_batch_agreement_below_threshold"
+    )
+
+
