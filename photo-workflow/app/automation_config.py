@@ -1,9 +1,13 @@
 """
 Skript: app/automation_config.py
 Zweck: Validiert den automation-Block der Workflow-Konfiguration.
-Version: 1.1.0
+Autor: Matthias Streser
+Datum: 2026-08-23
+Version: 1.2.0
+Requires: Python 3.11, app.auto_decision
 
 Änderungsprotokoll:
+  2026-08-23 | 1.2.0 | C1.2.5: Optionalen Fullauto-Gate-Vertrag validiert.
   2026-08-20 | 1.1.0 | A1: Policy-Version und Vertragsmodi validiert.
 """
 
@@ -51,12 +55,55 @@ def validate_automation_config(config: Mapping[str, Any]) -> dict[str, Any]:
         "min_overall_agreement": _score(automation, "min_overall_agreement"),
         "min_keep_precision": _score(automation, "min_keep_precision"),
         "min_reject_precision": _score(automation, "min_reject_precision"),
+        "fullauto_gate": _validate_fullauto_gate(automation.get("fullauto_gate")),
     }
 
     if normalized["reject_score_max"] >= normalized["keep_score_min"]:
         raise ValueError("reject_score_max must be lower than keep_score_min")
 
     return normalized
+
+
+def _validate_fullauto_gate(value: Any) -> dict[str, Any]:
+    """Validate and normalize the optional Fullauto gate configuration."""
+    if value is None:
+        return {
+            "enabled": False,
+            "auto_execute": False,
+            "fallback_mode": "assisted",
+            "min_overall_agreement": 0.95,
+            "min_batch_agreement": 0.90,
+        }
+
+    if not isinstance(value, Mapping):
+        raise ValueError("fullauto_gate must be a mapping")
+
+    enabled = value.get("enabled", False)
+    auto_execute = value.get("auto_execute", False)
+    fallback_mode = value.get("fallback_mode", "assisted")
+
+    if not isinstance(enabled, bool):
+        raise ValueError("fullauto_gate.enabled must be a boolean")
+    if not isinstance(auto_execute, bool):
+        raise ValueError("fullauto_gate.auto_execute must be a boolean")
+    if fallback_mode != "assisted":
+        raise ValueError("fullauto_gate.fallback_mode must be assisted")
+
+    return {
+        "enabled": enabled,
+        "auto_execute": auto_execute,
+        "fallback_mode": fallback_mode,
+        "min_overall_agreement": _score(
+            value,
+            "min_overall_agreement",
+            default=0.95,
+        ),
+        "min_batch_agreement": _score(
+            value,
+            "min_batch_agreement",
+            default=0.90,
+        ),
+    }
 
 
 def _policy_version(values: Mapping[str, Any]) -> str:
@@ -67,7 +114,16 @@ def _policy_version(values: Mapping[str, Any]) -> str:
     return value.strip()
 
 
-def _score(values: Mapping[str, Any], field: str) -> float:
+def _score(
+    values: Mapping[str, Any],
+    field: str,
+    *,
+    default: float | None = None,
+) -> float:
+    if field not in values:
+        if default is None:
+            raise ValueError(f"{field} is required")
+        return default
     value = values[field]
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{field} must be a number between 0.0 and 1.0")

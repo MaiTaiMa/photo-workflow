@@ -26,6 +26,11 @@ def test_valid_automation_config_is_normalized() -> None:
     assert validated["policy_version"] == "1.0"
     assert validated["mode"] == "shadow"
     assert validated["keep_score_min"] == 0.90
+    assert validated["fullauto_gate"]["enabled"] is False
+    assert validated["fullauto_gate"]["auto_execute"] is False
+    assert validated["fullauto_gate"]["fallback_mode"] == "assisted"
+    assert validated["fullauto_gate"]["min_overall_agreement"] == 0.95
+    assert validated["fullauto_gate"]["min_batch_agreement"] == 0.90
 
 
 def test_missing_policy_version_is_rejected() -> None:
@@ -98,4 +103,43 @@ def test_minimum_counts_must_be_positive_integers() -> None:
     value["automation"]["min_evaluated_images"] = 0
 
     with pytest.raises(ValueError, match="positive integer"):
+        validate_automation_config(value)
+
+
+def test_fullauto_gate_is_normalized() -> None:
+    value = config()
+    value["automation"]["fullauto_gate"] = {
+        "enabled": True,
+        "auto_execute": False,
+        "fallback_mode": "assisted",
+        "min_overall_agreement": 0.95,
+        "min_batch_agreement": 0.90,
+    }
+
+    validated = validate_automation_config(value)
+
+    assert validated["fullauto_gate"]["enabled"] is True
+    assert validated["fullauto_gate"]["auto_execute"] is False
+    assert validated["fullauto_gate"]["fallback_mode"] == "assisted"
+    assert validated["fullauto_gate"]["min_overall_agreement"] == 0.95
+    assert validated["fullauto_gate"]["min_batch_agreement"] == 0.90
+
+
+def test_fullauto_gate_rejects_invalid_fallback_mode() -> None:
+    value = config()
+    value["automation"]["fullauto_gate"] = {
+        "fallback_mode": "fullauto",
+    }
+
+    with pytest.raises(ValueError, match="fallback_mode"):
+        validate_automation_config(value)
+
+
+def test_fullauto_gate_rejects_invalid_threshold() -> None:
+    value = config()
+    value["automation"]["fullauto_gate"] = {
+        "min_batch_agreement": 1.01,
+    }
+
+    with pytest.raises(ValueError, match="between"):
         validate_automation_config(value)

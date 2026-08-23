@@ -247,6 +247,13 @@ workflow:
 # Readiness aktiviert keinen Modus; shadow bleibt der sichere Standard.
 # -----------------------------------------------------------------------------
 automation:
+  fullauto_gate:
+    # C1.2.5: Strengere Kriterien ausschließlich für Fullauto.
+    enabled: true
+    auto_execute: false
+    fallback_mode: assisted
+    min_overall_agreement: 0.95
+    min_batch_agreement: 0.90
   # policy_version: Version der validierten lokalen Automations-Policy.
   # Mögliche Werte: Nicht-leerer versionsierter String, zum Beispiel "1.0".
   # Auswirkung: Eine leere oder fehlende Version wird fail-closed abgelehnt.
