@@ -411,6 +411,93 @@ def test_fullauto_gate_passes_when_ready_for_policy(tmp_path) -> None:
 
 
 # -----------------------------------------------------------------------------
+# Testfall: aktiver Trust-Override blockiert Fullauto fail-closed.
+# -----------------------------------------------------------------------------
+
+def test_fullauto_gate_rejects_active_trust_override(tmp_path) -> None:
+    from app.trust_override import TrustOverrideStore
+
+    _seed_ready_reports(tmp_path, policy_version="1.0")
+    TrustOverrideStore(tmp_path, "1.0").write("manueller Vertrauenswiderruf")
+
+    config = {
+        "automation": {
+            "policy_version": "1.0",
+            "mode": "full_auto",
+            "fullauto_gate": {
+                "enabled": True,
+                "auto_execute": False,
+                "fallback_mode": "assisted",
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            },
+        }
+    }
+
+    is_ready, report = is_fullauto_ready(config, tmp_path)
+
+    assert is_ready is False
+    assert report["gate_reason"] == "trust_override_active"
+
+
+# -----------------------------------------------------------------------------
+# Testfall: beschädigter Trust-Override blockiert Fullauto fail-closed.
+# -----------------------------------------------------------------------------
+
+def test_fullauto_gate_rejects_invalid_trust_override(tmp_path) -> None:
+    _seed_ready_reports(tmp_path, policy_version="1.0")
+    target = tmp_path / "automation" / "trust_override.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("{ invalid", encoding="utf-8")
+
+    config = {
+        "automation": {
+            "policy_version": "1.0",
+            "mode": "full_auto",
+            "fullauto_gate": {
+                "enabled": True,
+                "auto_execute": False,
+                "fallback_mode": "assisted",
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            },
+        }
+    }
+
+    is_ready, report = is_fullauto_ready(config, tmp_path)
+
+    assert is_ready is False
+    assert report["gate_reason"] == "trust_override_invalid"
+
+
+# -----------------------------------------------------------------------------
+# Testfall: fehlender Trust-Override lässt bestehendes Gate-Verhalten unverändert.
+# -----------------------------------------------------------------------------
+
+def test_fullauto_gate_allows_missing_trust_override(tmp_path) -> None:
+    _seed_ready_reports(tmp_path, policy_version="1.0")
+
+    config = {
+        "automation": {
+            "policy_version": "1.0",
+            "mode": "full_auto",
+            "fullauto_gate": {
+                "enabled": True,
+                "auto_execute": False,
+                "fallback_mode": "assisted",
+                "min_overall_agreement": 0.95,
+                "min_batch_agreement": 0.90,
+            },
+        }
+    }
+
+    is_ready, report = is_fullauto_ready(config, tmp_path)
+
+    assert is_ready is True
+    assert report["status"] == "ready"
+
+
+# -----------------------------------------------------------------------------
 # Batch-Diagnostik: Der schwächste bestätigte Batch wird separat nachvollziehbar geführt.
 # Diese Kennzahl ergänzt die Gesamtübereinstimmung für spätere strenge Gates.
 # -----------------------------------------------------------------------------

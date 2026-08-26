@@ -17,6 +17,7 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
+from app.trust_override import TrustOverrideError, TrustOverrideStore
 from pathlib import Path
 
 
@@ -376,6 +377,22 @@ def is_fullauto_ready(
         report["fullauto_gate_ready"] = gate_ready
 
         if gate_ready:
+            try:
+                override_store = TrustOverrideStore(
+                    runtime_path,
+                    str(automation.get("policy_version")),
+                )
+                override_active = override_store.is_active()
+            except TrustOverrideError:
+                report["gate_reason"] = "trust_override_invalid"
+                report["gate_reasons"] = ["trust_override_invalid"]
+                return False, report
+
+            if override_active:
+                report["gate_reason"] = "trust_override_active"
+                report["gate_reasons"] = ["trust_override_active"]
+                return False, report
+
             return True, report
 
         report["gate_reason"] = gate_reasons[0]
