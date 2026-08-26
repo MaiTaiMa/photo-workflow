@@ -93,7 +93,7 @@ def test_blank_policy_version_is_rejected() -> None:
 
 @pytest.mark.parametrize(
     "mode",
-    ("off", "shadow", "assisted", "autophase1", "autophase2", "fullauto"),
+    ("off", "shadow", "assisted", "auto_phase1", "auto_phase2", "full_auto"),
 )
 def test_contract_modes_are_accepted(mode: str) -> None:
     value = config()
@@ -108,7 +108,10 @@ def test_contract_modes_are_accepted(mode: str) -> None:
 # Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
 # -----------------------------------------------------------------------------
 
-@pytest.mark.parametrize("mode", ("auto_keep", "full_auto"))
+@pytest.mark.parametrize(
+    "mode",
+    ("autophase1", "autophase2", "fullauto", "auto_keep"),
+)
 def test_legacy_modes_are_rejected(mode: str) -> None:
     value = config()
     value["automation"]["mode"] = mode
@@ -218,7 +221,7 @@ def test_fullauto_gate_is_normalized() -> None:
 def test_fullauto_gate_rejects_invalid_fallback_mode() -> None:
     value = config()
     value["automation"]["fullauto_gate"] = {
-        "fallback_mode": "fullauto",
+        "fallback_mode": "full_auto",
     }
 
     with pytest.raises(ValueError, match="fallback_mode"):

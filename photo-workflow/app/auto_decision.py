@@ -22,9 +22,9 @@ VALID_AUTOMATION_MODES = frozenset({
     "off",
     "shadow",
     "assisted",
-    "autophase1",
-    "autophase2",
-    "fullauto",
+    "auto_phase1",
+    "auto_phase2",
+    "full_auto",
 })
 
 
@@ -51,10 +51,6 @@ def predict_decision(
     mode = automation.get("mode", "off")
     if mode not in VALID_AUTOMATION_MODES:
         raise ValueError(f"unsupported automation mode: {mode}")
-    # -------------------------------------------------------------------------
-    # Der deaktivierte Modus darf nie eine operative Vorhersage ermöglichen.
-    # Rückgabe review hält die nachgelagerte menschliche Entscheidung zwingend offen.
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     # Der deaktivierte Modus darf nie eine operative Vorhersage ermöglichen.
     # Rückgabe review hält die nachgelagerte menschliche Entscheidung zwingend offen.

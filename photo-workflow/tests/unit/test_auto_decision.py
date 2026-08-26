@@ -72,7 +72,7 @@ def test_shadow_mode_predicts_high_confidence_reject() -> None:
 # Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
 # -----------------------------------------------------------------------------
 
-@pytest.mark.parametrize("mode", ("autophase1", "autophase2", "fullauto"))
+@pytest.mark.parametrize("mode", ("auto_phase1", "auto_phase2", "full_auto"))
 def test_contract_operational_modes_remain_prediction_only(mode: str) -> None:
     decision, reason = predict_decision(
         personal_score=0.95,

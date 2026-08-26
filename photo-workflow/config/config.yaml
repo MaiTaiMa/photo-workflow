@@ -278,7 +278,7 @@ automation:
   policy_version: "1.0"
 
   # mode: Explizit gewählter Betriebsmodus der Automations-Policy.
-  # Mögliche Werte: off, shadow, assisted, autophase1, autophase2, fullauto.
+  # Mögliche Werte: off, shadow, assisted, auto_phase1, auto_phase2, full_auto.
   # Auswirkung: shadow und assisted bleiben diagnostisch; operative Modi werden
   # erst in späteren, separat abgesicherten Arbeitspaketen verdrahtet.
   mode: shadow

@@ -353,7 +353,7 @@ def test_fullauto_gate_rejects_wrong_mode(tmp_path) -> None:
     is_ready, report = is_fullauto_ready(config, tmp_path)
 
     assert is_ready is False
-    assert report["gate_reason"] == "mode_is_not_fullauto"
+    assert report["gate_reason"] == "mode_is_not_full_auto"
     assert report["mode"] == "assisted"
 
 
@@ -367,7 +367,7 @@ def test_fullauto_gate_rejects_missing_policy_version(tmp_path) -> None:
     _seed_ready_reports(tmp_path, policy_version="1.0")
     config = {
         "automation": {
-            "mode": "fullauto",
+            "mode": "full_auto",
             "keep_score_min": 0.90,
             "reject_score_max": 0.15,
         }
@@ -390,7 +390,7 @@ def test_fullauto_gate_passes_when_ready_for_policy(tmp_path) -> None:
     config = {
         "automation": {
             "policy_version": "1.0",
-            "mode": "fullauto",
+            "mode": "full_auto",
             "keep_score_min": 0.90,
             "reject_score_max": 0.15,
             "fullauto_gate": {
@@ -636,7 +636,7 @@ def test_is_fullauto_ready_rejects_overall_threshold(tmp_path) -> None:
     config = {
         "automation": {
             "policy_version": "1.0",
-            "mode": "fullauto",
+            "mode": "full_auto",
             "fullauto_gate": {
                 "enabled": True,
                 "min_overall_agreement": 1.01,
@@ -665,7 +665,7 @@ def test_is_fullauto_ready_rejects_batch_threshold(tmp_path) -> None:
     config = {
         "automation": {
             "policy_version": "1.0",
-            "mode": "fullauto",
+            "mode": "full_auto",
             "fullauto_gate": {
                 "enabled": True,
                 "min_overall_agreement": 0.95,

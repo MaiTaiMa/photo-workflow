@@ -157,10 +157,6 @@ def build_readiness_report(
     # Der Rückgabereport enthält nur aggregierte Diagnosedaten ohne Bildinhalte.
     # Der Zeitstempel beschreibt den Auswertezeitpunkt, nicht eine operative Aktion.
     # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Der Rückgabereport enthält nur aggregierte Diagnosedaten ohne Bildinhalte.
-    # Der Zeitstempel beschreibt den Auswertezeitpunkt, nicht eine operative Aktion.
-    # -------------------------------------------------------------------------
     return {
         "schema_version": "1.0",
         "status": status,
@@ -317,10 +313,10 @@ def is_fullauto_ready(
     config: Mapping[str, Any],
     runtime_path: str | Path,
 ) -> tuple[bool, dict[str, Any]]:
-    """Determine whether fullauto is ready for the active policy.
+    """Determine whether full_auto is ready for the active policy.
 
     Returns (is_ready, readiness_report). The gate is fail-closed:
-    - mode must be exactly "fullauto"
+    - mode must be exactly "full_auto"
     - automation.policy_version must be a non-empty string
     - readiness for that exact policy_version must report status "ready"
     """
@@ -337,11 +333,11 @@ def is_fullauto_ready(
         raise ValueError("automation configuration is required")
 
     mode = automation.get("mode")
-    if mode != "fullauto":
+    if mode != "full_auto":
         report = {
             "schema_version": "1.0",
             "status": "not_ready",
-            "gate_reason": "mode_is_not_fullauto",
+            "gate_reason": "mode_is_not_full_auto",
             "mode": mode,
             "aggregated_at": datetime.now(timezone.utc).isoformat(),
         }
