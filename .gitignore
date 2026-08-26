@@ -34,3 +34,9 @@ NAS_EXAMPLE/
 *.pt
 *.pth
 *.bin
+
+# Eingabe fuer patches
+paste.txt
+
+# Lokaler Trust-Override-Laufzeitstatus
+photo-workflow/config/automation/trust_override.json

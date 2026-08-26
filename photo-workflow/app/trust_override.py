@@ -3,11 +3,11 @@ Skript: app/trust_override.py
 Zweck: Persistiert den projektweiten manuellen Vertrauenswiderruf atomar.
 Autor: Matthias Streser
 Erstellt: 2026-08-26
-Version: 1.0.0
+Version: 1.1.0
 Requires: Python 3.11, hashlib, json, pathlib
 
 Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Trust-Override-Store für späteren Gate-Anschluss ergänzt.
+  2026-08-26 | 1.1.0 | Widerruf, manueller Restore und Zustandszeitpunkte ergänzt.
 """
 
 from __future__ import annotations
@@ -88,7 +88,8 @@ class TrustOverrideStore:
             "schema_version",
             "active",
             "reason",
-            "created_at",
+            "set_at",
+            "cleared_at",
             "producer_version",
             "hash",
         }
@@ -104,8 +105,14 @@ class TrustOverrideStore:
         if not isinstance(payload["reason"], str) or not payload["reason"].strip():
             raise TrustOverrideError("reason must be non-empty")
 
-        if not isinstance(payload["created_at"], str) or not payload["created_at"]:
-            raise TrustOverrideError("created_at must be non-empty")
+        if not isinstance(payload["set_at"], str) or not payload["set_at"]:
+            raise TrustOverrideError("set_at must be non-empty")
+
+        if payload["cleared_at"] is not None and not isinstance(
+            payload["cleared_at"],
+            str,
+        ):
+            raise TrustOverrideError("cleared_at must be string or null")
 
         if payload["producer_version"] != self.producer_version:
             raise TrustOverrideError("producer version mismatch")
@@ -127,7 +134,8 @@ class TrustOverrideStore:
             "schema_version": SCHEMA_VERSION,
             "active": True,
             "reason": reason.strip(),
-            "created_at": _utc_now(),
+            "set_at": _utc_now(),
+            "cleared_at": None,
             "producer_version": self.producer_version,
         }
         payload["hash"] = _digest(payload)
@@ -163,6 +171,47 @@ class TrustOverrideStore:
             raise
 
         return payload
+
+    def restore(self) -> dict[str, Any]:
+        """Deaktiviert den Override atomar und protokolliert den Restore."""
+        payload = self.load()
+        if payload is None:
+            raise TrustOverrideError("trust override does not exist")
+
+        restored = dict(payload)
+        restored["active"] = False
+        restored["cleared_at"] = _utc_now()
+        restored["hash"] = _digest(restored)
+
+        target = self.path
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=target.parent,
+                prefix=f".{target.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as handle:
+                temporary = Path(handle.name)
+                json.dump(
+                    restored,
+                    handle,
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, target)
+        except Exception:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+            raise
+
+        return restored
 
 
 def create_store(runtime_path: str | Path, producer_version: str) -> TrustOverrideStore:

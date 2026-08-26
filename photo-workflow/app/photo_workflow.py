@@ -64,6 +64,7 @@ from app.phase1_execution_initializer import initialize_execution_plan
 from app.phase1_workunit_runner import Phase1WorkUnitRunner
 from app.training import train_from_directory, load_or_rebuild_personal_model
 from app.workunit_state import WorkUnitStateStore
+from app.trust_override import TrustOverrideStore, TrustOverrideError
 
 from app.aesthetic import (
     base_score_components,
@@ -2299,6 +2300,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Aggregiert Validierungsreports zu einer Automation-Readiness-Metrik.",
     )
     
+    trust_revoke = sub.add_parser(
+        'trust-revoke',
+        help='Setzt den manuellen Trust-Override.',
+    )
+    trust_revoke.add_argument(
+        '--reason',
+        required=True,
+        help='Begründung für den manuellen Widerruf.',
+    )
+
+    sub.add_parser(
+        'trust-restore',
+        help='Hebt den manuellen Trust-Override auf.',
+    )
+
     return parser
     
 
@@ -2309,6 +2325,23 @@ def main() -> int:
     reset_counters()
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.command in ("trust-revoke", "trust-restore"):
+        try:
+            store = TrustOverrideStore(
+                Path(args.config).resolve().parent,
+                SCRIPT_VERSION,
+            )
+            if args.command == "trust-revoke":
+                payload = store.write(args.reason)
+            else:
+                payload = store.restore()
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+            return 0
+        except TrustOverrideError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+
     cfg = load_config(args.config)
 
     runtime = RuntimeControl()
