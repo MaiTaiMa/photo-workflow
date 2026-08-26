@@ -39,6 +39,23 @@ def analyze_rows(*, images: Iterable[Path], cfg: dict[str, Any], manual_keep_nam
         row["prediction_reason"] = prediction.get("prediction_reason")
         rows.append(row); predictions.append(prediction)
     rows = apply_series(rows)
+
+    # -------------------------------------------------------------------------
+    # Paket A.3.2: Serienfelder in predictions nachträglich einfügen
+    # (Master-Prompt 4.6: erweiterte Auditfelder)
+    # -------------------------------------------------------------------------
+    enriched_predictions = []
+    for row, pred in zip(rows, predictions):
+        enriched = dict(pred)
+        series_id = row.get("series_id")
+        if series_id not in (None, "", "single"):
+            enriched["series_id"] = series_id
+            enriched["series_rank"] = row.get("series_rank")
+            enriched["series_best"] = row.get("series_best")
+        from app.automation_contract import build_prediction_id
+        enriched["prediction_id"] = build_prediction_id(enriched)
+        enriched_predictions.append(enriched)
+    predictions = enriched_predictions
     for row in rows:
         if row.get("manual_keep"):
             row["decision"] = "keep"; row["decision_reason"] = "manual_keep_match"; row["final_score"] = 1.0

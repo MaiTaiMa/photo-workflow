@@ -272,6 +272,19 @@ automation:
     # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
     # Auswirkung: Ein kleinerer Wert blockiert full_auto fail-closed.
     min_batch_agreement: 0.90
+
+    # trust_override: Konfigurierbare Rückstufungs-/Wiederaufstiegs-Logik.
+    # Mögliche Werte: Mapping mit den unten dokumentierten Feldern.
+    # Auswirkung: auto_restore=true ermöglicht automatisches Löschen nach min_new_confirmed_batches_since_override.
+    trust_override:
+      # auto_restore: Automatisches Löschen des Override nach neuen bestätigten Batches.
+      # Mögliche Werte: true oder false.
+      # Auswirkung: false (Default) erfordert manuellen Restore; true ermöglicht automatisches Löschen.
+      auto_restore: true
+      # min_new_confirmed_batches_since_override: Mindestanzahl neuer bestätigter Batches.
+      # Mögliche Werte: Integer >= 1.
+      # Auswirkung: Bei auto_restore=true wird der Override erst nach dieser Anzahl gelöscht.
+      min_new_confirmed_batches_since_override: 3
   # policy_version: Version der validierten lokalen Automations-Policy.
   # Mögliche Werte: Nicht-leerer versionsierter String, zum Beispiel "1.0".
   # Auswirkung: Eine leere oder fehlende Version wird fail-closed abgelehnt.

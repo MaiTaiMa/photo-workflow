@@ -18,10 +18,10 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 
 # -----------------------------------------------------------------------------
@@ -92,6 +92,10 @@ class TrustOverrideStore:
             "cleared_at",
             "producer_version",
             "hash",
+            "auto_restore",
+            "min_new_confirmed_batches_since_override",
+            "confirmed_batches_since_override",
+            "override_set_at",
         }
         if not isinstance(payload, dict) or set(payload) != required:
             raise TrustOverrideError("invalid trust override schema")
@@ -117,6 +121,18 @@ class TrustOverrideStore:
         if payload["producer_version"] != self.producer_version:
             raise TrustOverrideError("producer version mismatch")
 
+        if not isinstance(payload["auto_restore"], bool):
+            raise TrustOverrideError("auto_restore must be boolean")
+
+        if not isinstance(payload["min_new_confirmed_batches_since_override"], int):
+            raise TrustOverrideError("min_new_confirmed_batches_since_override must be integer")
+
+        if not isinstance(payload["confirmed_batches_since_override"], int):
+            raise TrustOverrideError("confirmed_batches_since_override must be integer")
+
+        if payload["override_set_at"] is not None and not isinstance(payload["override_set_at"], str):
+            raise TrustOverrideError("override_set_at must be string or null")
+
         if not isinstance(payload["hash"], str) or payload["hash"] != _digest(payload):
             raise TrustOverrideError("trust override hash mismatch")
 
@@ -125,7 +141,14 @@ class TrustOverrideStore:
         payload = self.load()
         return payload is not None and payload["active"] is True
 
-    def write(self, reason: str) -> dict[str, Any]:
+    def write(
+        self,
+        reason: str,
+        auto_restore: bool = False,
+        min_new_confirmed_batches: int = 3,
+        confirmed_batches: int = 0,
+        override_set_at: str | None = None,
+    ) -> dict[str, Any]:
         """Schreibt einen aktivierten Override atomar und gibt ihn zurück."""
         if not isinstance(reason, str) or not reason.strip():
             raise TrustOverrideError("reason must be non-empty")
@@ -137,6 +160,10 @@ class TrustOverrideStore:
             "set_at": _utc_now(),
             "cleared_at": None,
             "producer_version": self.producer_version,
+            "auto_restore": auto_restore,
+            "min_new_confirmed_batches_since_override": min_new_confirmed_batches,
+            "confirmed_batches_since_override": confirmed_batches,
+            "override_set_at": override_set_at,
         }
         payload["hash"] = _digest(payload)
 
@@ -212,6 +239,38 @@ class TrustOverrideStore:
             raise
 
         return restored
+
+    def increment_confirmed_batches(self, config: Mapping[str, Any]) -> bool:
+        """Inkrementiert den Zähler für neue bestätigte Batches seit dem Override.
+
+        Returns True, wenn der Override dadurch automatisch gelöscht wurde.
+        """
+        data = self.load()
+        if data is None or not data.get("active", False):
+            return False
+
+        auto_restore = bool(data.get("auto_restore", False))
+        if not auto_restore:
+            return False
+
+        min_batches = int(data.get("min_new_confirmed_batches_since_override", 3))
+        confirmed = int(data.get("confirmed_batches_since_override", 0)) + 1
+        override_set_at = data.get("override_set_at")
+
+        # Neuen Stand schreiben
+        self.write(
+            reason=data.get("reason", ""),
+            auto_restore=auto_restore,
+            min_new_confirmed_batches=min_batches,
+            confirmed_batches=confirmed,
+            override_set_at=override_set_at,
+        )
+
+        # Automatisch löschen, wenn Mindestanzahl erreicht
+        if confirmed >= min_batches:
+            self.restore()
+            return True
+        return False
 
 
 def create_store(runtime_path: str | Path, producer_version: str) -> TrustOverrideStore:

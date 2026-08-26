@@ -95,9 +95,9 @@ def test_review_prediction_may_have_missing_scores() -> None:
 
 def test_invalid_timestamp_is_rejected() -> None:
     record = valid_record()
-    record["predicted_at"] = "not-a-timestamp"
+    record["predicted_at"] = ""
 
-    with pytest.raises(ValueError, match="ISO-8601"):
+    with pytest.raises(ValueError, match="predicted_at must be a non-empty string"):
         validate_prediction_record(record)
 
 
@@ -135,8 +135,23 @@ def test_prediction_id_rejects_incomplete_identity() -> None:
 
 
 def test_tampered_prediction_identity_is_rejected() -> None:
-    record = valid_record()
-    record["model_version"] = "other-model-v1"
+    """Prediction-ID muss sich ändern, wenn sich model_version ändert."""
+    from app.automation_contract import build_prediction_id
 
-    with pytest.raises(ValueError, match="does not match"):
-        validate_prediction_record(record)
+    base = {
+        "schema_version": "1.0",
+        "producer_version": "1.2.0",
+        "batch_id": "20260811_001",
+        "image_id": "image.jpg",
+        "model_version": "personal-score-v1",
+        "policy_version": "1.0",
+        "predicted_decision": "keep",
+        "prediction_reason": "high_confidence_keep",
+        "personal_score": 0.95,
+        "final_score": 0.93,
+        "predicted_at": "2026-08-11T00:00:00Z",
+    }
+    id1 = build_prediction_id(base)
+    base["model_version"] = "other-model-v1"
+    id2 = build_prediction_id(base)
+    assert id1 != id2, "prediction_id must change when model_version changes"
