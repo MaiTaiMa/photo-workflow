@@ -52,8 +52,11 @@ def analyze_rows(*, images: Iterable[Path], cfg: dict[str, Any], manual_keep_nam
             enriched["series_id"] = series_id
             enriched["series_rank"] = row.get("series_rank")
             enriched["series_best"] = row.get("series_best")
-        from app.automation_contract import build_prediction_id
-        enriched["prediction_id"] = build_prediction_id(enriched)
+        # prediction_id nur für vollständige Production-Predictions
+        required_fields = ("schema_version","producer_version","batch_id","image_id","model_version","policy_version","predicted_decision","prediction_reason","personal_score","final_score","predicted_at")
+        if all(k in enriched for k in required_fields):
+            from app.automation_contract import build_prediction_id
+            enriched["prediction_id"] = build_prediction_id(enriched)
         enriched_predictions.append(enriched)
     predictions = enriched_predictions
     for row in rows:

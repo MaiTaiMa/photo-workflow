@@ -14,6 +14,7 @@ from typing import Any, Iterable, Mapping
 from app.automation_contract import (
     PREDICTION_SCHEMA_VERSION,
     REQUIRED_FIELDS,
+    build_prediction_id,
     validate_prediction_record,
 )
 
@@ -122,6 +123,10 @@ def _validate_predictions(
         if extra:
             raise ValueError(f"unexpected prediction fields: {sorted(extra)}")
         validate_prediction_record(record)
+        # prediction_id muss zur aktuellen Record-Identität passen
+        expected_id = build_prediction_id(record)
+        if record.get("prediction_id") != expected_id:
+            raise ValueError("prediction_id does not match prediction identity")
         if record["batch_id"] != batch_id:
             raise ValueError("prediction batch_id does not match artifact batch_id")
 
