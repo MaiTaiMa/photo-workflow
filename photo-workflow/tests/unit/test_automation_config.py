@@ -1,7 +1,25 @@
+"""
+Skript: tests/unit/test_automation_config.py
+Zweck: Prüft die strikte Validierung der Automation-Konfiguration.
+Autor: Matthias Streser
+Erstellt: 2026-08-26
+Version: 1.0.0
+Requires: pytest, app.automation_config
+
+Änderungsprotokoll:
+  2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
+"""
+
 import pytest
 
 from app.automation_config import validate_automation_config
 
+
+# -----------------------------------------------------------------------------
+# Testfall: config.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
 
 def config() -> dict:
     return {
@@ -20,6 +38,12 @@ def config() -> dict:
     }
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test valid automation config is normalized.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_valid_automation_config_is_normalized() -> None:
     validated = validate_automation_config(config())
 
@@ -33,6 +57,12 @@ def test_valid_automation_config_is_normalized() -> None:
     assert validated["fullauto_gate"]["min_batch_agreement"] == 0.90
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test missing policy version is rejected.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_missing_policy_version_is_rejected() -> None:
     value = config()
     del value["automation"]["policy_version"]
@@ -41,6 +71,12 @@ def test_missing_policy_version_is_rejected() -> None:
         validate_automation_config(value)
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test blank policy version is rejected.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_blank_policy_version_is_rejected() -> None:
     value = config()
     value["automation"]["policy_version"] = " "
@@ -48,6 +84,12 @@ def test_blank_policy_version_is_rejected() -> None:
     with pytest.raises(ValueError, match="policy_version"):
         validate_automation_config(value)
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test contract modes are accepted.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
 
 @pytest.mark.parametrize(
     "mode",
@@ -60,6 +102,12 @@ def test_contract_modes_are_accepted(mode: str) -> None:
     assert validate_automation_config(value)["mode"] == mode
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test legacy modes are rejected.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 @pytest.mark.parametrize("mode", ("auto_keep", "full_auto"))
 def test_legacy_modes_are_rejected(mode: str) -> None:
     value = config()
@@ -69,10 +117,22 @@ def test_legacy_modes_are_rejected(mode: str) -> None:
         validate_automation_config(value)
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test missing automation block is rejected.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_missing_automation_block_is_rejected() -> None:
     with pytest.raises(ValueError, match="mapping"):
         validate_automation_config({})
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test unknown mode is rejected.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_unknown_mode_is_rejected() -> None:
     value = config()
@@ -82,6 +142,12 @@ def test_unknown_mode_is_rejected() -> None:
         validate_automation_config(value)
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test reject threshold must be lower than keep threshold.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_reject_threshold_must_be_lower_than_keep_threshold() -> None:
     value = config()
     value["automation"]["reject_score_max"] = 0.90
@@ -89,6 +155,12 @@ def test_reject_threshold_must_be_lower_than_keep_threshold() -> None:
     with pytest.raises(ValueError, match="lower"):
         validate_automation_config(value)
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test scores must stay inside unit interval.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_scores_must_stay_inside_unit_interval() -> None:
     value = config()
@@ -98,6 +170,12 @@ def test_scores_must_stay_inside_unit_interval() -> None:
         validate_automation_config(value)
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test minimum counts must be positive integers.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_minimum_counts_must_be_positive_integers() -> None:
     value = config()
     value["automation"]["min_evaluated_images"] = 0
@@ -105,6 +183,12 @@ def test_minimum_counts_must_be_positive_integers() -> None:
     with pytest.raises(ValueError, match="positive integer"):
         validate_automation_config(value)
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto gate is normalized.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_fullauto_gate_is_normalized() -> None:
     value = config()
@@ -125,6 +209,12 @@ def test_fullauto_gate_is_normalized() -> None:
     assert validated["fullauto_gate"]["min_batch_agreement"] == 0.90
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto gate rejects invalid fallback mode.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_fullauto_gate_rejects_invalid_fallback_mode() -> None:
     value = config()
     value["automation"]["fullauto_gate"] = {
@@ -134,6 +224,12 @@ def test_fullauto_gate_rejects_invalid_fallback_mode() -> None:
     with pytest.raises(ValueError, match="fallback_mode"):
         validate_automation_config(value)
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto gate rejects invalid threshold.
+# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
+# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_fullauto_gate_rejects_invalid_threshold() -> None:
     value = config()

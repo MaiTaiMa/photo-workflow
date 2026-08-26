@@ -1,3 +1,15 @@
+"""
+Skript: tests/unit/test_automation_readiness.py
+Zweck: Prüft Readiness-Aggregation und fail-closed Fullauto-Gates.
+Autor: Matthias Streser
+Erstellt: 2026-08-26
+Version: 1.0.0
+Requires: pytest, app.automation_readiness, Automation-Teststores
+
+Änderungsprotokoll:
+  2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
+"""
+
 from app.automation_readiness import (
     READINESS_POLICY,
     build_readiness_report,
@@ -5,6 +17,16 @@ from app.automation_readiness import (
     is_fullauto_ready,
 )
 
+
+# -----------------------------------------------------------------------------
+# Fixture für minimale, schema-konforme Validation-Report-Payloads.
+# Alle Testfälle überschreiben nur die für ihren Vertragsfall relevanten Felder.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall:  report.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def _report(*, policy_version: str = "1.0", **overrides) -> dict:
     report = {
@@ -34,6 +56,16 @@ def _report(*, policy_version: str = "1.0", **overrides) -> dict:
     return report
 
 
+# -----------------------------------------------------------------------------
+# Kernmetriken: Aggregation wird nach Prediction-Anzahl und nicht nach Batch gewichtet.
+# Damit kann ein kleiner Batch keine große, bestätigte Evidenz unzulässig überstimmen.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall: test readiness uses prediction weighted metrics.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_readiness_uses_prediction_weighted_metrics() -> None:
     report = build_readiness_report(
         [
@@ -62,6 +94,12 @@ def test_readiness_uses_prediction_weighted_metrics() -> None:
     assert report["status"] == "not_ready"
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test readiness is not evaluable without evaluated predictions.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_readiness_is_not_evaluable_without_evaluated_predictions() -> None:
     report = build_readiness_report([_report(excluded_review_predictions=3)])
 
@@ -69,6 +107,12 @@ def test_readiness_is_not_evaluable_without_evaluated_predictions() -> None:
     assert report["overall_agreement"] is None
     assert report["readiness_reasons"] == ["no evaluated predictions are available"]
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test readiness is ready when all policy thresholds are met.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_readiness_is_ready_when_all_policy_thresholds_are_met() -> None:
     count = READINESS_POLICY["minimum_evaluated_predictions"]
@@ -110,6 +154,16 @@ def test_readiness_is_ready_when_all_policy_thresholds_are_met() -> None:
     assert report["evaluable_batch_count"] == 3
     assert report["evaluated_predictions"] == count
 
+
+# -----------------------------------------------------------------------------
+# Policy-Isolation: Historische oder fremde Policy-Evidenz darf nicht mitgezählt werden.
+# Readiness bleibt dadurch an die konkrete, versionierte Automation-Policy gebunden.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall: test readiness filters by expected policy version.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_readiness_filters_by_expected_policy_version() -> None:
     min_preds = READINESS_POLICY["minimum_evaluated_predictions"]  # 100
@@ -196,6 +250,16 @@ def test_readiness_filters_by_expected_policy_version() -> None:
     assert report_any["evaluated_predictions"] == min_preds * 2
 
 
+# -----------------------------------------------------------------------------
+# Integration-Fixture: Persistiert bestätigte Predictions über die echten Store-Verträge.
+# Sie erzeugt nur Testdaten im temporären pytest-Pfad und keine Produktivartefakte.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall:  seed ready reports.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def _seed_ready_reports(tmp_path, policy_version: str = "1.0") -> None:
     """Persist three evaluable batches with perfect agreement for one policy."""
     from app.automation_contract import build_prediction_record
@@ -258,6 +322,16 @@ def _seed_ready_reports(tmp_path, policy_version: str = "1.0") -> None:
         validate_batch_predictions(tmp_path, batch_id, "v1.4")
 
 
+# -----------------------------------------------------------------------------
+# Gate-Grundbedingungen: Ein anderer Modus darf niemals Fullauto-Bereitschaft erhalten.
+# Der erwartete Rückgabewert bleibt diagnostisch und strikt fail-closed.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto gate rejects wrong mode.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_fullauto_gate_rejects_wrong_mode(tmp_path) -> None:
     _seed_ready_reports(tmp_path, policy_version="1.0")
     config = {
@@ -283,6 +357,12 @@ def test_fullauto_gate_rejects_wrong_mode(tmp_path) -> None:
     assert report["mode"] == "assisted"
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto gate rejects missing policy version.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_fullauto_gate_rejects_missing_policy_version(tmp_path) -> None:
     _seed_ready_reports(tmp_path, policy_version="1.0")
     config = {
@@ -298,6 +378,12 @@ def test_fullauto_gate_rejects_missing_policy_version(tmp_path) -> None:
     assert is_ready is False
     assert report["gate_reason"] == "policy_version_missing"
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto gate passes when ready for policy.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_fullauto_gate_passes_when_ready_for_policy(tmp_path) -> None:
     _seed_ready_reports(tmp_path, policy_version="1.0")
@@ -323,6 +409,16 @@ def test_fullauto_gate_passes_when_ready_for_policy(tmp_path) -> None:
     assert report["status"] == "ready"
     assert report["expected_policy_version"] == "1.0"
 
+
+# -----------------------------------------------------------------------------
+# Batch-Diagnostik: Der schwächste bestätigte Batch wird separat nachvollziehbar geführt.
+# Diese Kennzahl ergänzt die Gesamtübereinstimmung für spätere strenge Gates.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall: test readiness reports per batch agreement.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_readiness_reports_per_batch_agreement() -> None:
     report = build_readiness_report(
@@ -359,6 +455,12 @@ def test_readiness_reports_per_batch_agreement() -> None:
     ]
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto threshold data detects overall below target.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_fullauto_threshold_data_detects_overall_below_target() -> None:
     report = build_readiness_report(
         [
@@ -384,6 +486,12 @@ def test_fullauto_threshold_data_detects_overall_below_target() -> None:
     assert report["minimum_batch_agreement"] == 0.94
     assert report["overall_agreement"] < 0.95
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test fullauto threshold data detects weakest batch.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_fullauto_threshold_data_detects_weakest_batch() -> None:
     report = build_readiness_report(
@@ -412,6 +520,16 @@ def test_fullauto_threshold_data_detects_weakest_batch() -> None:
     assert report["minimum_batch_agreement"] < 0.90
 
 
+# -----------------------------------------------------------------------------
+# Schwellenprüfung: Vollständige Evidenz muss alle konfigurierten Grenzwerte erfüllen.
+# Die Funktion bewertet nur Diagnosewerte und führt keine operative Aktion aus.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall: test evaluate fullauto thresholds accepts ready report.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_evaluate_fullauto_thresholds_accepts_ready_report() -> None:
     allowed, reasons = evaluate_fullauto_thresholds(
         {
@@ -431,6 +549,12 @@ def test_evaluate_fullauto_thresholds_accepts_ready_report() -> None:
     assert reasons == []
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test evaluate fullauto thresholds rejects weak overall agreement.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_evaluate_fullauto_thresholds_rejects_weak_overall_agreement() -> None:
     allowed, reasons = evaluate_fullauto_thresholds(
         {
@@ -449,6 +573,12 @@ def test_evaluate_fullauto_thresholds_rejects_weak_overall_agreement() -> None:
     assert allowed is False
     assert reasons == ["fullauto_overall_agreement_below_threshold"]
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test evaluate fullauto thresholds rejects weak batch agreement.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_evaluate_fullauto_thresholds_rejects_weak_batch_agreement() -> None:
     allowed, reasons = evaluate_fullauto_thresholds(
@@ -471,6 +601,12 @@ def test_evaluate_fullauto_thresholds_rejects_weak_batch_agreement() -> None:
 
 
 
+# -----------------------------------------------------------------------------
+# Testfall: test evaluate fullauto thresholds rejects missing gate.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
+
 def test_evaluate_fullauto_thresholds_rejects_missing_gate() -> None:
     allowed, reasons = evaluate_fullauto_thresholds(
         {},
@@ -483,6 +619,16 @@ def test_evaluate_fullauto_thresholds_rejects_missing_gate() -> None:
     assert allowed is False
     assert reasons == ["fullauto_gate_missing"]
 
+
+# -----------------------------------------------------------------------------
+# End-to-End-Gate: Readiness und zusätzliche Schwellen werden gemeinsam fail-closed geprüft.
+# Ein einzelner nicht erfüllter Grenzwert verhindert die behauptete Freigabe.
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Testfall: test is fullauto ready rejects overall threshold.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_is_fullauto_ready_rejects_overall_threshold(tmp_path) -> None:
     _seed_ready_reports(tmp_path, policy_version="1.0")
@@ -506,6 +652,12 @@ def test_is_fullauto_ready_rejects_overall_threshold(tmp_path) -> None:
         "fullauto_overall_agreement_below_threshold"
     )
 
+
+# -----------------------------------------------------------------------------
+# Testfall: test is fullauto ready rejects batch threshold.
+# Prüft den abgegrenzten Readiness- oder Gate-Vertragsfall kontrolliert.
+# Die Assertions sichern diagnostisches und fail-closed Verhalten.
+# -----------------------------------------------------------------------------
 
 def test_is_fullauto_ready_rejects_batch_threshold(tmp_path) -> None:
     _seed_ready_reports(tmp_path, policy_version="1.0")

@@ -4,9 +4,10 @@
 # Funktion: Zentrale, secrets-freie Betriebs-Konfiguration für AP2 bis AP8.
 # Hinweis: Pfade bilden die NAS_EXAMPLE-Struktur ab; Credentials gehören nur in
 #          Umgebungsvariablen und niemals in diese Datei.
-# Version: 2.1.0
+# Version: 2.1.1
 # =============================================================================
 # Änderungsprotokoll:
+#   2026-08-26 | 2.1.1 | Automation-Gate vollständig dokumentiert.
 #   2026-08-09 | 2.1.0 | NAS_EXAMPLE-Struktur, Pool-Pfade und Cache-Rebuild ergänzt
 #   2026-08-09 | 2.0.0 | Strikte 98AP-Konfiguration für AP2 bis AP8
 # =============================================================================
@@ -247,12 +248,29 @@ workflow:
 # Readiness aktiviert keinen Modus; shadow bleibt der sichere Standard.
 # -----------------------------------------------------------------------------
 automation:
+  # fullauto_gate: Zusätzliche, strengere Readiness-Grenze für full_auto.
+  # Mögliche Werte: Mapping mit den unten dokumentierten Gate-Feldern.
+  # Auswirkung: Ein unvollständiges oder nicht bestandenes Gate bleibt fail-closed.
   fullauto_gate:
-    # C1.2.5: Strengere Kriterien ausschließlich für Fullauto.
+    # enabled: Aktiviert die zusätzliche Fullauto-Readiness-Prüfung.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true fordert alle Gate-Schwellen; false blockiert full_auto.
     enabled: true
+    # auto_execute: Reserviert die explizite operative Gate-Freigabe.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true aktiviert noch keine Dateioperation; false löst nichts aus.
     auto_execute: false
+    # fallback_mode: Sicherer Rückfallmodus bei fehlender Gate-Freigabe.
+    # Mögliche Werte: assisted.
+    # Auswirkung: assisted erzwingt menschliche Entscheidung statt Automatik.
     fallback_mode: assisted
+    # min_overall_agreement: Untergrenze für die Gesamtübereinstimmung.
+    # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
+    # Auswirkung: Ein kleinerer Wert blockiert full_auto fail-closed.
     min_overall_agreement: 0.95
+    # min_batch_agreement: Untergrenze für den schwächsten bewerteten Batch.
+    # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
+    # Auswirkung: Ein kleinerer Wert blockiert full_auto fail-closed.
     min_batch_agreement: 0.90
   # policy_version: Version der validierten lokalen Automations-Policy.
   # Mögliche Werte: Nicht-leerer versionsierter String, zum Beispiel "1.0".

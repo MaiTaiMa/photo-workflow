@@ -1,14 +1,15 @@
 """
 Skript: app/automation_readiness.py
-Zweck: Aggregiert Batch-Validierungsreports zu einer rein auswertenden Readiness-Metrik.
-Version: 1.2.0
+Zweck: Aggregiert Batch-Validierungen zu einer rein diagnostischen Readiness-Metrik.
+Autor: Matthias Streser
+Erstellt: 2026-08-22
+Version: 1.2.1
+Requires: Python 3.11, JSON, pathlib
 
 Änderungsprotokoll:
-  2026-08-22 | 1.2.0 | C1.2.4: Fullauto-Gate (fail-closed, ohne operative Wirkung) ergänzt.
-  2026-08-22 | 1.1.0 | C1.2.4: Readiness filterbar nach Policy-Version.
-
-Änderungsprotokoll:
-  2026-08-22 | 1.1.0 | C1.2.4: Readiness filterbar nach Policy-Version.
+  2026-08-26 | 1.2.1 | Header und Funktionsdokumentation gemäß Implementierungsregeln ergänzt.
+  2026-08-22 | 1.2.0 | C1.2.4: Fullauto-Gate fail-closed und nicht-operativ ergänzt.
+  2026-08-22 | 1.1.0 | C1.2.4: Readiness nach Policy-Version filterbar gemacht.
 """
 
 import json
@@ -28,6 +29,11 @@ READINESS_POLICY = {
 }
 
 
+# -----------------------------------------------------------------------------
+# Validiert numerische Zähler aus unvertrauenswürdigen Report-Payloads.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
+
 def _non_negative_int(report: dict[str, Any], field: str) -> int:
     value = report.get(field)
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
@@ -35,9 +41,19 @@ def _non_negative_int(report: dict[str, Any], field: str) -> int:
     return value
 
 
+# -----------------------------------------------------------------------------
+# Berechnet sichere Quoten und vermeidet Division durch null.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
+
 def _ratio(numerator: int, denominator: int) -> float | None:
     return None if denominator == 0 else numerator / denominator
 
+
+# -----------------------------------------------------------------------------
+# Aggregiert nur validierte Batch-Evidenz zu einem Diagnosebericht.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
 
 def build_readiness_report(
     reports: Iterable[dict[str, Any]],
@@ -49,6 +65,14 @@ def build_readiness_report(
     Only reports whose policy_version matches expected_policy_version are counted
     as sufficient evidence. If expected_policy_version is None, all reports are used.
     """
+    # -------------------------------------------------------------------------
+    # Eingabereports werden erst gesammelt und danach deterministisch ausgewertet.
+    # So bleibt die Diagnose unabhängig von der Art des gelieferten Iterables.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Eingabereports werden erst gesammelt und danach deterministisch ausgewertet.
+    # So bleibt die Diagnose unabhängig von der Art des gelieferten Iterables.
+    # -------------------------------------------------------------------------
     report_list = list(reports)
     totals = {
         "evaluated_predictions": 0,
@@ -63,6 +87,14 @@ def build_readiness_report(
     evaluable_batch_count = 0
     batch_agreements: list[dict[str, Any]] = []
 
+    # -------------------------------------------------------------------------
+    # Nur strukturell gültige Reports derselben aktiven Policy zählen als Evidenz.
+    # Abweichende Policy-Versionen werden nicht still mit aktuellen Daten vermischt.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Nur strukturell gültige Reports derselben aktiven Policy zählen als Evidenz.
+    # Abweichende Policy-Versionen werden nicht still mit aktuellen Daten vermischt.
+    # -------------------------------------------------------------------------
     for report in report_list:
         if not isinstance(report, dict):
             raise ValueError("validation reports must be mappings")
@@ -90,6 +122,14 @@ def build_readiness_report(
                 }
             )
 
+    # -------------------------------------------------------------------------
+    # Gesamt- und Klassenpräzision werden getrennt berechnet und nachweisbar geführt.
+    # Fehlende Nenner liefern None und verhindern später eine unzulässige Freigabe.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Gesamt- und Klassenpräzision werden getrennt berechnet und nachweisbar geführt.
+    # Fehlende Nenner liefern None und verhindern später eine unzulässige Freigabe.
+    # -------------------------------------------------------------------------
     overall_agreement = _ratio(
         totals["matching_predictions"], totals["evaluated_predictions"]
     )
@@ -113,6 +153,14 @@ def build_readiness_report(
             reasons.append("reject precision is below policy minimum")
         status = "ready" if not reasons else "not_ready"
 
+    # -------------------------------------------------------------------------
+    # Der Rückgabereport enthält nur aggregierte Diagnosedaten ohne Bildinhalte.
+    # Der Zeitstempel beschreibt den Auswertezeitpunkt, nicht eine operative Aktion.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Der Rückgabereport enthält nur aggregierte Diagnosedaten ohne Bildinhalte.
+    # Der Zeitstempel beschreibt den Auswertezeitpunkt, nicht eine operative Aktion.
+    # -------------------------------------------------------------------------
     return {
         "schema_version": "1.0",
         "status": status,
@@ -137,8 +185,21 @@ def build_readiness_report(
     }
 
 
+# -----------------------------------------------------------------------------
+# Lädt kontrollierte Validation-JSONs aus dem Runtime-Bereich.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
+
 def load_validation_reports(runtime_path: str | Path) -> list[dict[str, Any]]:
     """Load every validation report from the controlled runtime directory."""
+    # -------------------------------------------------------------------------
+    # Ausschließlich der kontrollierte Validation-Unterordner wird als Quelle akzeptiert.
+    # Fehlende Verzeichnisse bedeuten fehlende Evidenz und nicht eine implizite Freigabe.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Ausschließlich der kontrollierte Validation-Unterordner wird als Quelle akzeptiert.
+    # Fehlende Verzeichnisse bedeuten fehlende Evidenz und nicht eine implizite Freigabe.
+    # -------------------------------------------------------------------------
     validation_dir = Path(runtime_path) / "automation" / "validation"
     if not validation_dir.exists():
         return []
@@ -157,8 +218,21 @@ def load_validation_reports(runtime_path: str | Path) -> list[dict[str, Any]]:
     return reports
 
 
+# -----------------------------------------------------------------------------
+# Persistiert den Diagnosebericht atomar ohne Entscheidungswirkung.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
+
 def write_readiness_report(runtime_path: str | Path, report: dict[str, Any]) -> Path:
     """Atomically write the aggregate readiness report below controlled runtime data."""
+    # -------------------------------------------------------------------------
+    # Die Diagnose wird über eine temporäre Datei atomar veröffentlicht.
+    # Ein Abbruch darf daher keinen teilweise geschriebenen Readiness-Report erzeugen.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Die Diagnose wird über eine temporäre Datei atomar veröffentlicht.
+    # Ein Abbruch darf daher keinen teilweise geschriebenen Readiness-Report erzeugen.
+    # -------------------------------------------------------------------------
     target = Path(runtime_path) / "automation" / "readiness.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -170,6 +244,11 @@ def write_readiness_report(runtime_path: str | Path, report: dict[str, Any]) -> 
     os.replace(temporary_path, target)
     return target
 
+
+# -----------------------------------------------------------------------------
+# Verbindet Laden, Aggregation und atomare Diagnose-Persistenz.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
 
 def aggregate_readiness(
     runtime_path: str | Path,
@@ -187,6 +266,11 @@ def aggregate_readiness(
     )
     return report, write_readiness_report(runtime_path, report)
 
+
+# -----------------------------------------------------------------------------
+# Prüft zusätzliche Fullauto-Schwellen ohne Seiteneffekte.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
 
 def evaluate_fullauto_thresholds(
     automation: Mapping[str, Any],
@@ -224,6 +308,11 @@ def evaluate_fullauto_thresholds(
     return not reasons, reasons
 
 
+# -----------------------------------------------------------------------------
+# Ermittelt fail-closed die Gate-Bereitschaft der aktiven Policy.
+# Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.
+# -----------------------------------------------------------------------------
+
 def is_fullauto_ready(
     config: Mapping[str, Any],
     runtime_path: str | Path,
@@ -235,6 +324,14 @@ def is_fullauto_ready(
     - automation.policy_version must be a non-empty string
     - readiness for that exact policy_version must report status "ready"
     """
+    # -------------------------------------------------------------------------
+    # Ein fehlender Automation-Block ist keine Bereitschaft und wird explizit abgelehnt.
+    # Die Gate-Prüfung startet erst nach erfolgreicher struktureller Konfigurationsprüfung.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Ein fehlender Automation-Block ist keine Bereitschaft und wird explizit abgelehnt.
+    # Die Gate-Prüfung startet erst nach erfolgreicher struktureller Konfigurationsprüfung.
+    # -------------------------------------------------------------------------
     automation = config.get("automation")
     if not isinstance(automation, Mapping):
         raise ValueError("automation configuration is required")
@@ -261,6 +358,14 @@ def is_fullauto_ready(
         }
         return False, report
 
+    # -------------------------------------------------------------------------
+    # Readiness wird aus den Rohdaten neu aggregiert, nie aus manipulierten Altberichten.
+    # Nur ein positiver Report der erwarteten Policy kann die nächste Gate-Prüfung erreichen.
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Readiness wird aus den Rohdaten neu aggregiert, nie aus manipulierten Altberichten.
+    # Nur ein positiver Report der erwarteten Policy kann die nächste Gate-Prüfung erreichen.
+    # -------------------------------------------------------------------------
     report, _ = aggregate_readiness(
         runtime_path,
         expected_policy_version=policy_version,
