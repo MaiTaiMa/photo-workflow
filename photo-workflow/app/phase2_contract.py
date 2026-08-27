@@ -20,6 +20,8 @@ Requires: Python 3.11, pathlib, shutil
 
 from pathlib import Path
 import shutil
+from .phase_state import transition, PhaseTransitionError
+from .state_store import StateStore
 from datetime import datetime
 from typing import Dict, Any
 from automation_metrics import AutomationMetrics
@@ -364,6 +366,29 @@ def run_phase2_with_cleanup(batch_path: str, cfg: dict, dry_run: bool = False) -
         'status': 'ok',
     }
     
+
+    # ==========================================================================
+    # SCHRITT 0: Phase 2 als gestartet markieren
+    # ==========================================================================
+    from app.config_schema import config_fingerprint
+    
+    try:
+        state_dir = Path(cfg['runtime']['state_dir'])
+        store = StateStore(state_dir)
+        batch_id = Path(batch_path).name
+        producer_version = "1.2.1"
+        
+        transition(
+            store,
+            batch_id,
+            "phase2_started",
+            producer_version=producer_version,
+            config_fingerprint=config_fingerprint(cfg),
+        )
+    except Exception as e:
+        # State-Update ist nicht kritisch für den Betrieb
+        result['state_warning'] = f"phase2_started failed: {e}"
+
     # ==========================================================================
     # SCHRITT 1: Review/Rejected bereinigen
     # ==========================================================================
@@ -379,6 +404,27 @@ def run_phase2_with_cleanup(batch_path: str, cfg: dict, dry_run: bool = False) -
         result['status'] = 'partial'
         # Bei unvollständiger Bereinigung KEIN Move nach temp_final!
         return result
+    # Phase 2 als abgeschlossen markieren
+    # State-Update: phase2_completed setzen
+    
+    try:
+        state_dir = Path(cfg['runtime']['state_dir'])
+        store = StateStore(state_dir)
+        batch_id = Path(batch_path).name
+        producer_version = "1.2.1"  # Muss mit der tatsächlichen Version übereinstimmen
+        
+        transition(
+            store,
+            batch_id,
+            "phase2_completed",
+            producer_version=producer_version,
+            config_fingerprint=config_fingerprint(cfg),
+        )
+    except Exception as e:
+        # State-Update ist nicht kritisch für den Betrieb
+        # Fehler wird geloggt, aber Phase 2 läuft weiter
+        result['status'] = 'partial'
+        result['state_error'] = str(e)
     
     # ==========================================================================
     # SCHRITT 3: Move nach temp_final (nur bei vollständiger Bereinigung)
