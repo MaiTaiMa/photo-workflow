@@ -214,6 +214,11 @@ def read_decision(image_path: Path) -> str:
 def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dict[str, Any]:
     """
     Verschiebt den bereinigten Batch nach temp_final.
+
+    Move-Logik (98AP-Vertrag):
+    - copy: Batch wird zuerst kopiert (shutil.move verwendet intern copy2)
+    - verify: Ziel wird nach dem Move validiert (Dateiliste, Größe)
+    - source removal: Quelle wird nach erfolgreichem Move entfernt
     
     Voraussetzung:
     - Review/Rejected bereinigt
