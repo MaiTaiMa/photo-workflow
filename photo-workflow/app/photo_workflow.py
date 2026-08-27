@@ -2109,6 +2109,78 @@ def process_done_folder(dir_path: Path, cfg: dict) -> None:
     log(cfg, f'[DONE MARKED] {dir_path.name}')
 
 
+
+def automatic_handoff(batch_path: Path, cfg: dict) -> bool:
+    """
+    Führt automatischen Handoff von 02_TEMP_IMAGES nach 03_TEMP_DONE aus.
+
+    Prüft das Gate, führt bei positivem Ergebnis den atomaren Move durch
+    und persistiert den Handoff-State.
+
+    Returns:
+        True bei erfolgreichem Handoff, False bei Gate-Fehler oder Skip.
+    """
+    from app.automatic_handoff_gate import check_automatic_handoff_gate
+    from app.handoff_state import write_handoff_state_atomically
+    from app.config_schema import config_fingerprint
+
+    automation = cfg.get("automation", {})
+    mode = automation.get("mode", "off")
+
+    # Nur für auto_phase2 oder full_auto
+    if mode not in ("auto_phase2", "full_auto"):
+        log(cfg, f'[HANDOFF SKIP] mode={mode} batch={batch_path.name}')
+        return False
+
+    workdir = batch_path
+    runtime_path = Path(cfg['paths']['base_dir']) / 'WORKFLOW_DATA' / 'runtime'
+    temp_done_dir = Path(cfg['paths']['temp_done'])
+
+    # Gate prüfen
+    gate_ok, gate_report = check_automatic_handoff_gate(
+        config=cfg,
+        workdir=workdir,
+        runtime_path=runtime_path,
+        policy_version=str(automation.get("policy_version", "")),
+        model_version=str(automation.get("model_version", "")),
+    )
+
+    if not gate_ok:
+        reason = gate_report.get("gate_reason", "unknown")
+        log(cfg, f'[HANDOFF GATE FAILED] batch={batch_path.name} reason={reason}')
+        return False
+
+    # Handoff-State persistieren (vor dem Move)
+    batch_id = batch_path.name
+    config_fp = config_fingerprint(cfg)
+    try:
+        write_handoff_state_atomically(
+            state_dir=runtime_path / "state",
+            batch_id=batch_id,
+            config_fingerprint=config_fp,
+            producer_version=SCRIPT_VERSION,
+        )
+    except Exception as exc:
+        log(cfg, f'[HANDOFF STATE ERROR] batch={batch_path.name} error={exc}', error=True)
+        return False
+
+    # Atomarer Move nach 03_TEMP_DONE
+    try:
+        target_path = temp_done_dir / batch_path.name
+        if target_path.exists():
+            log(cfg, f'[HANDOFF SKIP] target exists: {target_path}')
+            return False
+
+        shutil.move(str(batch_path), str(target_path))
+        COUNT_MOVED += 1
+        log(cfg, f'[HANDOFF SUCCESS] {batch_path} -> {target_path}')
+        return True
+
+    except Exception as exc:
+        log(cfg, f'[HANDOFF MOVE ERROR] batch={batch_path.name} error={exc}', error=True)
+        return False
+
+
 def process_container_done(dir_path: Path, cfg: dict) -> None:
     """Verarbeitet einen Container-Ordner mit mehreren Batches."""
     for sub in sorted(dir_path.iterdir()):
@@ -2129,6 +2201,25 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
     """
     global COUNT_FOUND_DONE
     
+
+    # ==========================================================================
+    # SCHRITT 0: Automatic Handoff für geeignete Batches in 02_TEMP_IMAGES
+    # ==========================================================================
+    automation = cfg.get("automation", {})
+    mode = automation.get("mode", "off")
+    if mode in ("auto_phase2", "full_auto"):
+        temp_images_dir = Path(cfg['paths']['temp_images'])
+        if temp_images_dir.exists():
+            for batch_path in sorted(temp_images_dir.iterdir()):
+                if batch_path.is_dir() and not batch_path.name.startswith('.'):
+                    log(cfg, f'[HANDOFF CHECK] batch={batch_path.name} mode={mode}')
+                    try:
+                        success = automatic_handoff(batch_path, cfg)
+                        if success:
+                            log(cfg, f'[HANDOFF COMPLETED] batch={batch_path.name}')
+                    except Exception as exc:
+                        log(cfg, f'[HANDOFF ERROR] batch={batch_path.name} error={exc}', error=True)
+
     done_root = ensure_dir(cfg['paths']['temp_done'])
     folders = [Path(folder)] if folder else [p for p in sorted(done_root.iterdir()) if p.is_dir()]
     
