@@ -65,6 +65,11 @@ def analyze_rows(*, images: Iterable[Path], cfg: dict[str, Any], manual_keep_nam
         if not manual_keep and mode == "auto_phase1" and not gate_ok:
             decision, reason = "review", "auto_phase1_gate_failed"
 
+        # known_person_match_count: nur bekannte, gepflegte Personen zählen (Spec 4.5)
+        # Unbekannte Gesichter nie zählen oder protokollieren (Master-Prompt 3.4)
+        detected_people = family.get("detected_people", [])
+        known_person_match_count = len(detected_people) if detected_people else 0
+
         row = {
             "file": image.name,
             "generic_score": scored.get("generic_score"),
@@ -77,8 +82,9 @@ def analyze_rows(*, images: Iterable[Path], cfg: dict[str, Any], manual_keep_nam
             "decision_reason": reason,
             "manual_keep": manual_keep,
             "protected_by_family_rule": protected,
-            "detected_people": "|".join(family.get("detected_people", [])),
+            "detected_people": "|".join(detected_people),
             "face_status": family.get("status", ""),
+            "known_person_match_count": known_person_match_count,
             "_family_tags": family.get("tags", []),
             "_family_regions": family.get("regions", []),
         }

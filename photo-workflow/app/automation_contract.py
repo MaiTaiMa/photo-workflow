@@ -85,6 +85,7 @@ def build_prediction_record(
     series_id: str | None = None,
     series_rank: int | None = None,
     series_best: bool | None = None,
+    known_person_match_count: int | None = None,
 ) -> dict[str, Any]:
     """Build and validate one immutable, non-operative prediction record.
 
@@ -94,6 +95,7 @@ def build_prediction_record(
     - series_id: string oder None (Spec 4.3)
     - series_rank: int oder None (Spec 4.3)
     - series_best: bool oder None (Spec 4.3)
+    - known_person_match_count: int >= 0 oder None (Spec 4.5, zählt nur bekannte Personen)
     """
     record = {
         "schema_version": PREDICTION_SCHEMA_VERSION,
@@ -119,6 +121,11 @@ def build_prediction_record(
         record["series_rank"] = series_rank
     if series_best is not None:
         record["series_best"] = series_best
+
+    # known_person_match_count: zählt ausschließlich bekannte, gepflegte Personen (Spec 4.5)
+    # Unbekannte Gesichter dürfen nie gezählt oder protokolliert werden (Master-Prompt 3.4)
+    if known_person_match_count is not None:
+        record["known_person_match_count"] = known_person_match_count
 
     record["prediction_id"] = build_prediction_id(record)
     validate_prediction_record(record)
@@ -204,3 +211,9 @@ def validate_prediction_record(record: Mapping[str, Any]) -> None:
         val = record["series_best"]
         if val is not None and not isinstance(val, bool):
             raise ValueError("series_best must be None or a boolean")
+
+    # known_person_match_count: int >= 0 oder None
+    if "known_person_match_count" in record:
+        val = record["known_person_match_count"]
+        if val is not None and (not isinstance(val, int) or val < 0):
+            raise ValueError("known_person_match_count must be None or a non-negative integer")
