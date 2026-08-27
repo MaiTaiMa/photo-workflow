@@ -3,10 +3,11 @@ Skript: app/photo_workflow.py
 Zweck: Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 Autor: MaiTaiMa
 Erstellt: 2026-08-09
-Version: 1.6
+Version: 1.7
 Requires: Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 
 Änderungsprotokoll:
+  2026-08-27 | 1.7 | G7: 04_TEMP_FINAL nur für full_auto freigegeben.
   2026-08-22 | 1.6 | C1.2.2: Prediction-Records an aktive Policy gebunden.
   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
   2026-08-09 | 1.0 | Initiale Version mit Phase 1/2
@@ -2286,9 +2287,9 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                     continue
                 
                 # ==========================================================================
-                # SCHRITT 4: Move nach temp_final (nur wenn aktiviert + cleanup OK)
+                # SCHRITT 4: Move nach temp_final (nur full_auto + cleanup OK)
                 # ==========================================================================
-                if move_enabled:
+                if move_enabled and mode == 'full_auto':
                     move_result = move_to_temp_final(
                         batch_path=str(dir_path),
                         cfg=cfg,
@@ -2301,6 +2302,12 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                         log(cfg, f'[PHASE2 OK] {dir_path.name} move_to_temp_final deaktiviert')
                     else:
                         log(cfg, f'[PHASE2 FAILED] {dir_path.name} {move_result["error"]}', error=True)
+                elif mode != 'full_auto':
+                    log(
+                        cfg,
+                        f'[PHASE2 OK] {dir_path.name} cleanup abgeschlossen; '
+                        '04_TEMP_FINAL nur bei full_auto',
+                    )
                 else:
                     log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup abgeschlossen, move deaktiviert')
             else:
