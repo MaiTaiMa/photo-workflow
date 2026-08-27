@@ -68,7 +68,7 @@ Requires: <Abhängigkeiten>
 ### 3.3 Versionsverwaltung
 
 - Jede Skript-Datei braucht eine **Versionsnummer im Header**.
-- Jede Änderung wird im Header **und** zusätzlich in `CHANGELOG.md` dokumentiert.
+- Jede Änderung wird im Header dokumentiert.
 
 ---
 
@@ -114,7 +114,7 @@ Jede Variable MUSS vollständig erklärt sein:
 ### 4.5 Versionsverwaltung
 
 - Jede Config-Datei braucht eine **Versionsnummer im Header**.
-- Jede Änderung wird im Header **und** zusätzlich in `CHANGELOG.md` dokumentiert.
+- Jede Änderung wird im Header dokumentiert.
 
 ---
 
@@ -144,6 +144,6 @@ Bei jeder Änderung MUSS folgendes geprüft werden:
 - [ ] Konsistente Formatierung eingehalten
 - [ ] Max. 80–100 Zeichen pro Zeile
 - [ ] Versionsnummer im Header aktualisiert
-- [ ] Änderung in `CHANGELOG.md` dokumentiert
+- [ ] Header-Änderungsprotokoll aktuell
 
 **Bei Fehlern gilt die Datei als ungültig und erfordert manuelle Korrektur.**
