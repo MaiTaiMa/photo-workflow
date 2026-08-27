@@ -1484,6 +1484,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'protected_by_family_rule',
         'detected_people',
         'face_status',
+        'known_person_match_count',
         'family_metadata_written',
         'family_metadata_status',
         'culling_metadata_written',
