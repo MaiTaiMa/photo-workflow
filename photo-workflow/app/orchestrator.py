@@ -7,7 +7,7 @@ from typing import Any
 from .batch_layout import assert_review_state_valid, ensure_layout
 from .batch_identity import batch_id
 from .config_schema import config_fingerprint, effective_base_dir
-from .phase1_state import assert_phase1_completed, transition
+from .phase_state import assert_phase1_completed, transition
 from .path_security import ensure_within, validate_publish_target
 from .state_store import StateStore
 

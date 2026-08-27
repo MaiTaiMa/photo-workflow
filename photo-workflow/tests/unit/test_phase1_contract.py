@@ -6,7 +6,7 @@ import pytest
 
 from app.batch_layout import assert_review_state_valid, ensure_layout, validate_pairings
 from app.inventory import collect_inventory, stable_inventory
-from app.phase1_state import Phase1TransitionError, transition
+from app.phase_state import PhaseTransitionError, transition
 from app.state_store import StateStore
 
 
@@ -14,7 +14,7 @@ def test_phase1_state_machine_rejects_backward_transition(tmp_path: Path):
     store = StateStore(tmp_path / "state")
     transition(store, "batch+12345678", "phase1_started", producer_version="test")
     transition(store, "batch+12345678", "phase1_moving", producer_version="test")
-    with pytest.raises(Phase1TransitionError):
+    with pytest.raises(PhaseTransitionError):
         transition(store, "batch+12345678", "phase1_started", producer_version="test")
 
 
