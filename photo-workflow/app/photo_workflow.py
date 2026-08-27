@@ -2401,6 +2401,15 @@ def build_parser() -> argparse.ArgumentParser:
     review_decision.add_argument('--reason', default=None)
 
     # KI-gegen-Mensch-Validierung
+    
+    # ==========================================================================
+    # phase3: Transfer und Resume für Phase 3
+    # ==========================================================================
+    phase3 = sub.add_parser('phase3', help='Phase 3: Transfer und Resume')
+    phase3.add_argument('--folder', default=None, help='Batch-Ordner')
+    phase3.add_argument('--target', required=False, default=None, help='Zielpfad für Transfer')
+    phase3.add_argument('--dry-run', action='store_true', help='Nur simulieren')
+
     validate_reviews_parser = sub.add_parser(
         'validate-reviews',
         help='Vergleicht KI-Prognosen mit menschlichen Entscheidungen.',
@@ -2605,6 +2614,14 @@ def main() -> int:
                 )
             elif args.command == "phase2":
                 run_phase2(cfg, args.folder)
+            elif args.command == "phase3":
+                from app.phase3_transfer import transfer_batch
+                from app.phase3_resume import write_correlation, load_correlation
+
+                # Phase 3: Transfer und Resume
+                # TODO: Implementierung nach Bedarf
+                print("[PHASE3] Not yet fully implemented")
+
             elif args.command in ("pipeline", "phase12"):
                 run_pipeline(cfg, args.folder)
             elif args.command == "train-personal":
@@ -2630,6 +2647,7 @@ def main() -> int:
         print_scheduler_summary(cfg, payload)
 
     return 0 if status == 'success' else 1
+
 
 
 if __name__ == '__main__':
