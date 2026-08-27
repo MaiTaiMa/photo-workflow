@@ -15,12 +15,34 @@ def combine_scores(base_score: float, eye_score: float | None, personal_score: f
     if total_weight <= 0:
         return max(0.0, min(1.0, float(base_score)))
     return max(0.0, min(1.0, sum(float(active[key]) * weighted[key] for key in weighted) / total_weight))
-def analyze_rows(*, images: Iterable[Path], cfg: dict[str, Any], manual_keep_names: set[str], score: Callable[[Path], dict[str, Any]], detect_family: Callable[[Path], dict[str, Any]], predict: Callable[[dict[str, Any]], dict[str, Any]], apply_series: Callable[[list[dict[str, Any]]], list[dict[str, Any]]]) -> Phase1AnalysisResult:
-    """Build final analysis rows without any filesystem mutation."""
+def analyze_rows(*, images: Iterable[Path], cfg: dict[str, Any], manual_keep_names: set[str], score: Callable[[Path], dict[str, Any]], detect_family: Callable[[Path], dict[str, Any]], predict: Callable[[dict[str, Any]], dict[str, Any]], apply_series: Callable[[list[dict[str, Any]]], list[dict[str, Any]]], runtime_path: Path | None = None) -> Phase1AnalysisResult:
+    """Build final analysis rows without any filesystem mutation.
+
+    Bei mode=auto_phase1 wird das Gate vor der automatischen Entscheidung geprüft.
+    Bei Gate-Fehler wird die Entscheidung auf review zurückgestuft.
+    MANUAL_KEEP bleibt immer keep.
+    """
+    from app.auto_phase1_gate import check_auto_phase1_gate
+
     culling = cfg["culling"]
     keep_threshold = float(culling["keep_threshold"])
     reject_threshold = float(culling["reject_threshold"])
     family_enabled = bool(cfg.get("family_recognition", {}).get("enabled", False))
+    automation = cfg.get("automation", {})
+    mode = automation.get("mode", "off")
+    policy_version = str(automation.get("policy_version", ""))
+    model_version = str(automation.get("model_version", ""))
+
+    # Gate nur für auto_phase1 prüfen
+    gate_ok = True
+    if mode == "auto_phase1" and runtime_path is not None:
+        gate_ok, gate_info = check_auto_phase1_gate(
+            config=cfg,
+            runtime_path=runtime_path,
+            policy_version=policy_version,
+            model_version=model_version,
+        )
+
     rows, predictions = [], []
     for image in images:
         scored = score(image)
@@ -28,16 +50,43 @@ def analyze_rows(*, images: Iterable[Path], cfg: dict[str, Any], manual_keep_nam
         manual_keep = image.name in manual_keep_names
         family_score = float(family.get("family_score", 0.0)) if family_enabled else None
         final = 1.0 if manual_keep else combine_scores(scored["base_score"], scored.get("eye_score"), scored.get("personal_score"), family_score, cfg)
+
+        # Entscheidung zunächst normal berechnen
         decision, reason, protected = "keep", "manual_keep_match" if manual_keep else "score_keep", False
         if not manual_keep and final < reject_threshold:
-            if family.get("protected_by_family_rule", False): decision, reason, protected = "review", "family_protected_score", True
-            else: decision, reason = "reject", "score_reject"
-        elif not manual_keep and final < keep_threshold: decision, reason = "review", "score_review"
-        row = {"file": image.name, "generic_score": scored.get("generic_score"), "base_score": scored["base_score"], "personal_score": scored.get("personal_score"), "eye_score": scored.get("eye_score"), "family_score": family_score if family_score is not None else "", "final_score": round(final, 4), "decision": decision, "decision_reason": reason, "manual_keep": manual_keep, "protected_by_family_rule": protected, "detected_people": "|".join(family.get("detected_people", [])), "face_status": family.get("status", ""), "_family_tags": family.get("tags", []), "_family_regions": family.get("regions", [])}
+            if family.get("protected_by_family_rule", False):
+                decision, reason, protected = "review", "family_protected_score", True
+            else:
+                decision, reason = "reject", "score_reject"
+        elif not manual_keep and final < keep_threshold:
+            decision, reason = "review", "score_review"
+
+        # Gate-Prüfung: bei auto_phase1 und Gate-Fehler auf review zurückstufen
+        if not manual_keep and mode == "auto_phase1" and not gate_ok:
+            decision, reason = "review", "auto_phase1_gate_failed"
+
+        row = {
+            "file": image.name,
+            "generic_score": scored.get("generic_score"),
+            "base_score": scored["base_score"],
+            "personal_score": scored.get("personal_score"),
+            "eye_score": scored.get("eye_score"),
+            "family_score": family_score if family_score is not None else "",
+            "final_score": round(final, 4),
+            "decision": decision,
+            "decision_reason": reason,
+            "manual_keep": manual_keep,
+            "protected_by_family_rule": protected,
+            "detected_people": "|".join(family.get("detected_people", [])),
+            "face_status": family.get("status", ""),
+            "_family_tags": family.get("tags", []),
+            "_family_regions": family.get("regions", []),
+        }
         prediction = predict(row)
         row["predicted_decision"] = prediction.get("predicted_decision")
         row["prediction_reason"] = prediction.get("prediction_reason")
-        rows.append(row); predictions.append(prediction)
+        rows.append(row)
+        predictions.append(prediction)
     rows = apply_series(rows)
 
     # -------------------------------------------------------------------------
