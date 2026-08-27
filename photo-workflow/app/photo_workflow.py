@@ -2230,6 +2230,19 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
     dry_run = bool(phase2_cfg.get('dry_run', False))
     
     for dir_path in folders:
+
+        # ==========================================================================
+        # Handoff-State prüfen (nur für auto_phase2/full_auto)
+        # ==========================================================================
+        automation = cfg.get('automation', {})
+        mode = automation.get('mode', 'off')
+        if mode in ('auto_phase2', 'full_auto'):
+            runtime_path = Path(cfg['paths']['base_dir']) / 'WORKFLOW_DATA' / 'runtime'
+            handoff_state = read_handoff_state(dir_path.name, runtime_path)
+            if handoff_state is None:
+                log(cfg, f'[PHASE2 SKIP] no valid handoff batch={dir_path.name} mode={mode}', error=True)
+                continue
+
         COUNT_FOUND_DONE += 1
         
         # Nur Ordner ohne führenden Punkt verarbeiten
