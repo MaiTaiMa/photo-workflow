@@ -38,7 +38,7 @@ Diese Datei dokumentiert die fachliche Trennung der 77 Module (Abschnitt 6.1.3).
 | `phase1_workunit_executor.py` | Einzelne Workunit ausführen |
 | `phase1_manifest.py` | Batch-Manifest (JSON, hash-verkettet) |
 | `phase1_runtime_budget_state.py` | Runtime-Budget-State (Pause, Zeitlimit) |
-| `phase1_state.py` | Phase-1-State (JSON, hash-verkettet) |
+| `phase_state.py` | Phase-States für Phase 1 und Phase 2 (JSON, hash-verkettet) |
 | `execution_plan.py` | Execution-Plan-Schema, Workunit-Definition |
 | `workunit_state.py` | Workunit-State (JSON, hash-verkettet) |
 | `aesthetic.py` | Base-Score, Personal-Model, Generic-Score (`base_score_components()`) |

@@ -10,7 +10,7 @@ from app.phase_state import PhaseTransitionError, transition
 from app.state_store import StateStore
 
 
-def test_phase1_state_machine_rejects_backward_transition(tmp_path: Path):
+def test_phase_state_machine_rejects_backward_transition(tmp_path: Path):
     store = StateStore(tmp_path / "state")
     transition(store, "batch+12345678", "phase1_started", producer_version="test")
     transition(store, "batch+12345678", "phase1_moving", producer_version="test")
