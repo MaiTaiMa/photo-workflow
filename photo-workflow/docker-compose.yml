@@ -6,5 +6,5 @@ services:
       - /volume1/TEMP:/volume1/TEMP
       - ./config:/app/config
     working_dir: /app
-    command: ["--config", "/app/config/config.yaml", "phase1"]
+    command: ["--config", "/app/config/config.yaml", "pipeline"]
     restart: "no"
