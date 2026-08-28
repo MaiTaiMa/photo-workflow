@@ -443,3 +443,52 @@ python -m app.photo_workflow --config config/config.yaml readiness-report
 - **Branch:** `release/v1.2`
 - **Spec:** `docs/spec_v1-2/`
 - **Vertrag:** `docs/AUTOMATION_AND_FINALIZATION_CONTRACT_v1-2.md`
+
+
+---
+
+## Anhang D: Metadaten-Tags und Legacy-Kompatibilität
+
+### D.1 Namespaced Metadaten-Tag-Schema
+
+Culling-Entscheidungen werden optional als Metadaten in die JPG-Dateien geschrieben (Config: `metadata_culling.enabled`). Das Schema nutzt bewusst **namespaced Tags**, damit Synology Photos und andere Systeme sie robust lesen können:
+
+| Namespace | Beispiel | Bedeutung |
+|---|---|---|
+| `workflow:` | `workflow:ai_cull` | Kennzeichnet KI-Culling-Verarbeitung |
+| `decision:` | `decision:keep` | Finale Entscheidung (keep/review/reject) |
+| `series:` | `series:id:series_4` | Serienzugehörigkeit und Rang |
+| `family:` | `family:match:true` | Familienerkennung-Treffer |
+| `person:` | `person:Kind1` | Erkannte Person (nur bekannte Referenzen) |
+
+Zusätzlich können Score-Bereiche als Metadaten geschrieben werden (Config: `metadata_culling.write_score_bands: true`), z. B. `score_band:<component>:<band>`. Die exakten Rohscores bleiben primär in `culling_scores.csv` und den JSON-Reports.
+
+**Wichtig:** Ältere, nicht-namespaced Tag-Namen wie `AI_CULL`, `DECISION_KEEP` oder `SERIES_BEST` sind **nicht mehr aktuell** und kommen im Code nicht vor. Falls du solche Tags in älteren Bildern findest, stammen sie aus einer früheren Projektphase.
+
+### D.2 Legacy-Datumsrekonstruktion
+
+Kameras liefern weiterhin das alte 8-stellige Namensformat (z. B. `20250315`). Der Workflow rekonstruiert daraus im Standardmodus `legacy_bash` das Jahr über ein konfigurierbares Dekaden-Präfix:
+
+```yaml
+workflow:
+  date_reconstruction:
+    mode: legacy_bash
+    decade_prefix: "202"
+    year_digit_index: 3
+```
+
+`decade_prefix: "202"` erzeugt zusammen mit der Jahresziffer an Position `year_digit_index` ein Jahr zwischen 2020 und 2029 (z. B. `20250315` → `2025-03-15`). Für ein neues Jahrzehnt genügt es, `decade_prefix` anzupassen (z. B. auf `"203"`).
+
+Der alternative Modus `full_year` erwartet ein vollständiges vierstelliges Jahr direkt im Ordnernamen (echtes `YYYYMMDD`-Format).
+
+### D.3 Familien-Referenzpfade (verifiziert)
+
+Die tatsächlichen Pfade für die Familien-Gesichtserkennung laut `config.yaml`:
+
+| Config-Feld | Pfad |
+|---|---|
+| `family_recognition.reference_dir` | `WORKFLOW_DATA/faces` |
+| `family_recognition.cache_dir` | `WORKFLOW_DATA/models/family_faces` |
+
+Jede Person hat einen eigenen Unterordner (Slug) unterhalb von `WORKFLOW_DATA/faces/<slug>/reference`. Der Cache unter `WORKFLOW_DATA/models/family_faces` speichert ausschließlich nicht-sensitive Metadaten (Fingerprints, Laufstatus) – **niemals Embeddings oder Face-Crops**.
+\n
