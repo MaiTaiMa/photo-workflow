@@ -4,7 +4,7 @@ Dieses Repository enthält einen konservativen Zwei-Phasen-Workflow für Kamera-
 
 ## Einstieg
 
-- [Benutzerhandbuch](photo-workflow/docs/MANUAL_DE.md)
+- [Benutzerhandbuch](photo-workflow/docs/USER_MANUAL.md)
 - [Konfiguration](photo-workflow/config/config.yaml)
 
 ## Inhalte des Repos

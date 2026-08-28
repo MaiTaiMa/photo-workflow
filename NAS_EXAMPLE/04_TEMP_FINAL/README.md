@@ -32,7 +32,7 @@ Nach erfolgreichem Transfer bleiben die Archive in `TEMP_FINAL` als lokale Kopie
 
 ## Abgrenzung
 
-Dieser Ordner ist nicht der richtige Ort für Inhalte, die fachlich in einen vorgelagerten oder nachgelagerten Workflow-Schritt gehören. Wenn die Daten noch unverarbeitet sind, muss `TEMP_SD` verwendet werden. Wenn die Daten im Review sind, gehört der Inhalt nach `TEMP_IMAGES`. Wenn ein Fehler, Konflikt oder Sicherheitsproblem vorliegt, gehört der Fall nach `TEMP_ERROR`. Wenn die Archive noch nicht finalisiert sind, gehören sie nach `05_ARCHIVE` (in Arbeit). Technische Laufzeitdaten, Modelle, Caches und Summaries gehören in `WORKFLOW_DATA`, nicht in die Eingangs- oder Review-Ordner.
+Dieser Ordner ist nicht der richtige Ort für Inhalte, die fachlich in einen vorgelagerten oder nachgelagerten Workflow-Schritt gehören. Wenn die Daten noch unverarbeitet sind, muss `TEMP_SD` verwendet werden. Wenn die Daten im Review sind, gehört der Inhalt nach `TEMP_IMAGES`. Wenn ein Fehler, Konflikt oder Sicherheitsproblem vorliegt, gehört der Fall nach `TEMP_ERROR`. Technische Laufzeitdaten, Modelle, Caches und Summaries gehören in `WORKFLOW_DATA`, nicht in die Eingangs- oder Review-Ordner.
 
 ## Automatische Bereinigung
 
