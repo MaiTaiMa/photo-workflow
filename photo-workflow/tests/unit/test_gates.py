@@ -1,8 +1,16 @@
-"""
-Skript: tests/unit/test_gates.py
-Zweck: Testet automatic_handoff_gate und auto_phase1_gate.
-Version: 1.0.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_gates.py
+# PURPOSE:     Testet automatic_handoff_gate und auto_phase1_gate.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 from pathlib import Path
 import pytest
 from app.automatic_handoff_gate import check_automatic_handoff_gate

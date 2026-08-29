@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/dry_run.py
 # PURPOSE:     Dry-Run-Planung und Report (AP4)
-# AUTHOR:      Benjamin (via AP4-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP4)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, pool_sorting.py, naming_convention.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP4
-#               - DryRunPlan-Klasse für Planung
-#               - plan_renaming() für Umbenennungs-Plan
-#               - generate_report() für Text-Report
-#               - check_collisions() für Kollisionspruefung
 # =============================================================================
-"""
+
 
 import json
 import os

@@ -1,19 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/series_detection.py
 # PURPOSE:     Serien-Erkennung (AP7)
-# AUTHOR:      Benjamin (via AP7-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP7)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, datetime
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP7
-#               - detect_series() für Zeit-basierte Erkennung
-#               - cluster_by_similarity() für visuelle Aehnlichkeit
-#               - Series-Klasse für Serien-Daten
 # =============================================================================
-"""
+
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Tuple, Optional

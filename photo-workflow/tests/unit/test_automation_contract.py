@@ -1,11 +1,15 @@
-"""
-Skript: tests/unit/test_automation_contract.py
-Zweck: Prüft den Prediction-Vertrag und deterministische Prediction-IDs.
-Version: 1.1.0
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_automation_contract.py
+# PURPOSE:     Prüft den Prediction-Vertrag und deterministische Prediction-IDs.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.1.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | 1.1.0 | C1.2.2: Prediction-ID-Hilfsfunktion getestet.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | 1.1.0 | C1.2.2: Prediction-ID-Hilfsfunktion getestet.
-"""
 
 import pytest
 

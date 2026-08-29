@@ -1,16 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/score_integration.py
 # PURPOSE:     Integration von CLIP-Scores mit existing scores (AP6)
-# AUTHOR:      Benjamin (via AP6-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.1.0 (AP6B)
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.8+, app.clip_scorer
 # CHANGES:
 #   2026-08-12: AP6B – keine 0.5-Fallbacks; dynamische Regewichtung
 # =============================================================================
-"""
+
 
 from typing import Dict, List, Any, Tuple, Optional
 from pathlib import Path

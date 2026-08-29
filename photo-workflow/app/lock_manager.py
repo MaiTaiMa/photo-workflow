@@ -1,19 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/lock_manager.py
 # PURPOSE:     Locking und Recovery (AP8)
-# AUTHOR:      Benjamin (via AP8-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP8)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, os, json
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP8
-#               - LockManager-Klasse für Locking
-#               - acquire_lock() und release_lock()
-#               - Recovery-Log und Wiederaufnahme
 # =============================================================================
-"""
+
 
 import os
 import json

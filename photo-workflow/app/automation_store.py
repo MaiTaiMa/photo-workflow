@@ -1,8 +1,15 @@
-"""
-Skript: app/automation_store.py
-Zweck: Speichert validierte Shadow-Prognosen atomar je Batch.
-Version: 1.0.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/automation_store.py
+# PURPOSE:     Speichert validierte Shadow-Prognosen atomar je Batch.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 import json
 import os

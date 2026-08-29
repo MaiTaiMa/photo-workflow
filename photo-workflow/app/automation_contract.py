@@ -1,14 +1,17 @@
-"""
-Skript: app/automation_contract.py
-Zweck: Definiert und validiert versionierte KI-Prognose-Datensätze.
-Version: 1.3.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/automation_contract.py
+# PURPOSE:     Definiert und validiert versionierte KI-Prognose-Datensätze.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.3.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-26 | 1.3.0 | A1: Erweiterte Auditfelder (eye, family, Serie) additiv ergänzt.
+#   2026-08-22 | 1.2.0 | C1.2.2: Policy und Prediction-ID verpflichtend gemacht.
+#   2026-08-22 | 1.1.0 | C1.2.2: Deterministische Prediction-ID-Hilfsfunktion ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.3.0 | A1: Erweiterte Auditfelder (eye, family, Serie) additiv ergänzt.
-  2026-08-22 | 1.2.0 | C1.2.2: Policy und Prediction-ID verpflichtend gemacht.
-  2026-08-22 | 1.1.0 | C1.2.2: Deterministische Prediction-ID-Hilfsfunktion ergänzt.
-"""
 
 from __future__ import annotations
 

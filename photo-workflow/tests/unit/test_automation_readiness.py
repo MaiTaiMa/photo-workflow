@@ -1,14 +1,15 @@
-"""
-Skript: tests/unit/test_automation_readiness.py
-Zweck: Prüft Readiness-Aggregation und fail-closed Fullauto-Gates.
-Autor: Matthias Streser
-Erstellt: 2026-08-26
-Version: 1.0.0
-Requires: pytest, app.automation_readiness, Automation-Teststores
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_automation_readiness.py
+# PURPOSE:     Prüft Readiness-Aggregation und fail-closed Fullauto-Gates.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-26
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+, pytest, app.automation_readiness, Automation-Teststores
+# CHANGES:
+#   2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
-"""
 
 from app.automation_readiness import (
     READINESS_POLICY,
@@ -767,5 +768,3 @@ def test_is_fullauto_ready_rejects_batch_threshold(tmp_path) -> None:
     assert report["gate_reason"] == (
         "fullauto_batch_agreement_below_threshold"
     )
-
-

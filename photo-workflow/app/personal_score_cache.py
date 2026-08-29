@@ -1,8 +1,15 @@
-"""
-Skript: app/personal_score_cache.py
-Zweck: Versionierter Cache für CLIP-Referenz-Embeddings mit sicherer Invalidierung.
-Version: 1.0.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/personal_score_cache.py
+# PURPOSE:     Versionierter Cache für CLIP-Referenz-Embeddings mit sicherer Invalidierung.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 import hashlib
 import json

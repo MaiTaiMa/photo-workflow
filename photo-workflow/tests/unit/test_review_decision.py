@@ -1,11 +1,15 @@
-"""
-Skript: tests/unit/test_review_decision.py
-Zweck: Prüft Human-Review-Entscheidungen für versionierte Predictions.
-Version: 1.1.0
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_review_decision.py
+# PURPOSE:     Prüft Human-Review-Entscheidungen für versionierte Predictions.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.1.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | 1.1.0 | C1.2.2: Test-Prediction an Policy-Version gebunden.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | 1.1.0 | C1.2.2: Test-Prediction an Policy-Version gebunden.
-"""
 
 import pytest
 

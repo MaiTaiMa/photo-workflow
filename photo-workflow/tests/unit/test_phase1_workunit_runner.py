@@ -1,11 +1,15 @@
-"""
-Skript: tests/unit/test_phase1_workunit_runner.py
-Zweck: Testet den kanonischen Review-/Rejected-Ordnervertrag.
-Version: 1.0.0
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_phase1_workunit_runner.py
+# PURPOSE:     Testet den kanonischen Review-/Rejected-Ordnervertrag.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
-"""
 
 from app.phase1_analysis_plan import Phase1AnalysisPlanStore
 from app.phase1_workunit_runner import Phase1WorkUnitRunner

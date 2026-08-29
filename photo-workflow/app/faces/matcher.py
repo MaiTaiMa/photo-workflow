@@ -1,15 +1,16 @@
-"""
-Skript: app/faces/matcher.py
-Zweck: Vergleicht flüchtige Face-Embeddings mit Referenzpersonen.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.3
-Requires: Python 3.11, NumPy
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/faces/matcher.py
+# PURPOSE:     Vergleicht flüchtige Face-Embeddings mit Referenzpersonen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.3
+# REQUIRES:    Python 3.11, NumPy
+# CHANGES:
+#   2026-08-08 | 1.2 | AP22 Face-Matching nach 98AP formatiert
+#   2026-08-08 | 1.3 | Direkten RAM-Embedding-Vergleich ergänzt
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.2 | AP22 Face-Matching nach 98AP formatiert
-  2026-08-08 | 1.3 | Direkten RAM-Embedding-Vergleich ergänzt
-"""
 
 from __future__ import annotations
 

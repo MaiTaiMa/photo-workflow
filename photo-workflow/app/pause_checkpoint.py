@@ -1,14 +1,15 @@
-"""
-Skript: app/pause_checkpoint.py
-Zweck: Persistiert atomare und hashvalidierte Pause-Checkpoints je Batch.
-Autor: MaiTaiMa
-Erstellt: 2026-08-14
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/pause_checkpoint.py
+# PURPOSE:     Persistiert atomare und hashvalidierte Pause-Checkpoints je Batch.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-14
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-14 | 1.0.0 | V12-02: Atomare Pause-Checkpoints ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-14 | 1.0.0 | V12-02: Atomare Pause-Checkpoints ergänzt.
-"""
 
 from __future__ import annotations
 

@@ -1,14 +1,15 @@
-"""
-Skript: tests/unit/test_style_audit.py
-Zweck: Prüft die Kernregeln des AP22.0-Regelaudits.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.0
-Requires: pytest
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_style_audit.py
+# PURPOSE:     Prüft die Kernregeln des AP22.0-Regelaudits.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.0
+# REQUIRES:    Python 3.11+, pytest
+# CHANGES:
+#   2026-08-08 | 1.0 | Initiale AP22.0-Audit-Tests
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.0 | Initiale AP22.0-Audit-Tests
-"""
 
 from __future__ import annotations
 

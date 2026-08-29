@@ -1,11 +1,15 @@
-"""
-Skript: tests/unit/test_automation_store.py
-Zweck: Prüft atomare Prediction-Artefakte mit Policy-gebundener Identität.
-Version: 1.2.0
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_automation_store.py
+# PURPOSE:     Prüft atomare Prediction-Artefakte mit Policy-gebundener Identität.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.2.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | 1.2.0 | C1.2.2: Persistenz gegen manipulierte Prediction-Identität abgesichert.\n  2026-08-22 | 1.1.0 | C1.2.2: Prediction-Fixture an Policy und ID gebunden.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | 1.2.0 | C1.2.2: Persistenz gegen manipulierte Prediction-Identität abgesichert.\n  2026-08-22 | 1.1.0 | C1.2.2: Prediction-Fixture an Policy und ID gebunden.
-"""
 
 import json
 

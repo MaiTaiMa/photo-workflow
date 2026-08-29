@@ -1,8 +1,15 @@
-"""
-Skript: app/human_review_contract.py
-Zweck: Definiert und validiert menschliche Keep-/Reject-Entscheidungen.
-Version: 1.0.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/human_review_contract.py
+# PURPOSE:     Definiert und validiert menschliche Keep-/Reject-Entscheidungen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 from datetime import datetime
 from typing import Any, Mapping

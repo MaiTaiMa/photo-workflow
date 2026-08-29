@@ -1,11 +1,15 @@
-"""
-Skript: app/review_validation.py
-Zweck: Vergleicht KI-Prognosen mit menschlichen Keep-/Reject-Entscheidungen.
-Version: 2.1.0
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/review_validation.py
+# PURPOSE:     Vergleicht KI-Prognosen mit menschlichen Keep-/Reject-Entscheidungen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     2.1.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | 2.1.0 | C1.2.4: Validierungsreports an eine Prediction-Policy gebunden.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | 2.1.0 | C1.2.4: Validierungsreports an eine Prediction-Policy gebunden.
-"""
 
 import json
 import os

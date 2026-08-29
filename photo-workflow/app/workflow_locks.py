@@ -1,14 +1,15 @@
-"""
-Skript: app/workflow_locks.py
-Zweck: Verwaltet atomare, besitzgebundene Run- und Batch-Locks.
-Autor: MaiTaiMa
-Erstellt: 2026-08-14
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/workflow_locks.py
+# PURPOSE:     Verwaltet atomare, besitzgebundene Run- und Batch-Locks.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-14
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-14 | 1.0.0 | V12-02: Allgemeine Workflow-Locks ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-14 | 1.0.0 | V12-02: Allgemeine Workflow-Locks ergänzt.
-"""
 
 from __future__ import annotations
 

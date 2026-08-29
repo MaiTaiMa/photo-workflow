@@ -1,12 +1,15 @@
-"""
-Skript: app/auto_phase1_gate.py
-Zweck: Fail-closed Gate für auto_phase1-Betrieb.
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/auto_phase1_gate.py
+# PURPOSE:     Fail-closed Gate für auto_phase1-Betrieb.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-26 | 1.0.0 | Initial: Gate-Logik für auto_phase1.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Initial: Gate-Logik für auto_phase1.
-"""
 
 from __future__ import annotations
 

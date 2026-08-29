@@ -1,14 +1,15 @@
-"""
-Skript: tests/unit/test_automation_config.py
-Zweck: Prüft die strikte Validierung der Automation-Konfiguration.
-Autor: Matthias Streser
-Erstellt: 2026-08-26
-Version: 1.0.0
-Requires: pytest, app.automation_config
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_automation_config.py
+# PURPOSE:     Prüft die strikte Validierung der Automation-Konfiguration.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-26
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+, pytest, app.automation_config
+# CHANGES:
+#   2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
-"""
 
 import pytest
 

@@ -1,16 +1,17 @@
-"""
-Skript: app/automation_readiness.py
-Zweck: Aggregiert Batch-Validierungen zu einer rein diagnostischen Readiness-Metrik.
-Autor: Matthias Streser
-Erstellt: 2026-08-22
-Version: 1.2.1
-Requires: Python 3.11, JSON, pathlib
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/automation_readiness.py
+# PURPOSE:     Aggregiert Batch-Validierungen zu einer rein diagnostischen Readiness-Metrik.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-22
+# VERSION:     1.2.1
+# REQUIRES:    Python 3.11, JSON, pathlib
+# CHANGES:
+#   2026-08-26 | 1.2.1 | Header und Funktionsdokumentation gemäß Implementierungsregeln ergänzt.
+#   2026-08-22 | 1.2.0 | C1.2.4: Fullauto-Gate fail-closed und nicht-operativ ergänzt.
+#   2026-08-22 | 1.1.0 | C1.2.4: Readiness nach Policy-Version filterbar gemacht.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.2.1 | Header und Funktionsdokumentation gemäß Implementierungsregeln ergänzt.
-  2026-08-22 | 1.2.0 | C1.2.4: Fullauto-Gate fail-closed und nicht-operativ ergänzt.
-  2026-08-22 | 1.1.0 | C1.2.4: Readiness nach Policy-Version filterbar gemacht.
-"""
 
 import json
 import os

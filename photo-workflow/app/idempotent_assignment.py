@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/idempotent_assignment.py
 # PURPOSE:     Idempotente Zuordnung (AP8)
-# AUTHOR:      Benjamin (via AP8-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP8)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, json, hashlib
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP8
-#               - IdempotentAssignment-Klasse für Zuordnungen
-#               - assign() für idempotente Zuordnung
-#               - is_assigned() für Duplikat-Pruefung
-#               - Recovery-Unterstu tzung
 # =============================================================================
-"""
+
 
 import os
 import json

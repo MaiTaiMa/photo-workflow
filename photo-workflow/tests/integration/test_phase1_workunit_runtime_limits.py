@@ -1,15 +1,16 @@
-"""
-Skript: tests/integration/test_phase1_workunit_runtime_limits.py
-Zweck: Prüft sichere Zeitlimit-Pausen vor Phase-1-Bildschritten.
-Autor: MaiTaiMa
-Erstellt: 2026-08-20
-Version: 1.0.0
-Requires: Python 3.11, pytest
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/integration/test_phase1_workunit_runtime_limits.py
+# PURPOSE:     Prüft sichere Zeitlimit-Pausen vor Phase-1-Bildschritten.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-20
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11, pytest
+# CHANGES:
+#   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+#   2026-08-20 | 1.0.0 | B2.1: Integrationstests für Run- und Batch-Zeitlimits ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
-  2026-08-20 | 1.0.0 | B2.1: Integrationstests für Run- und Batch-Zeitlimits ergänzt.
-"""
 
 from pathlib import Path
 

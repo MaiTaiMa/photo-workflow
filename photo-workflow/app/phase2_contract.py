@@ -1,22 +1,17 @@
-"""
-Skript: app/phase2_contract.py
-Zweck: Phase-2-Vertrag (Archivierung, Review/Rejected-Bereinigung, Move nach temp_final).
-Autor: MaiTaiMa
-Erstellt: 2026-08-09
-Version: 1.6
-Requires: Python 3.11, pathlib, shutil
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/phase2_contract.py
+# PURPOSE:     Phase-2-Vertrag (Archivierung, Review/Rejected-Bereinigung, Move nach temp_final).
+# AUTHOR:      Matzethias
+# DATE:        2026-08-09
+# VERSION:     1.6
+# REQUIRES:    Python 3.11, pathlib, shutil
+# CHANGES:
+#   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+#   2026-08-09 | 1.0 | Initiale Version mit Archive-Vertrag
+#   2026-08-09 | 1.5 | Review/Rejected-Bereinigung + Move nach temp_final
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
-  2026-08-09 | 1.0 | Initiale Version mit Archive-Vertrag
-  2026-08-09 | 1.5 | Review/Rejected-Bereinigung + Move nach temp_final
-  2026-08-09 | 1.6 | Korrekte Ordner-Namen (Review, Rejected) + robuste Erweiterungen
-
-98AP-Regeln:
-  - AP2: Review-Entscheidungen bleiben nachvollziehbar
-  - AP7: Keine automatischen Löschungen ohne Log
-  - AP8: Move nach temp_final erst nach vollständiger Bereinigung
-"""
 
 from pathlib import Path
 import shutil

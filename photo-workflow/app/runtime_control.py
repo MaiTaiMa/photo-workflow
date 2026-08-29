@@ -1,16 +1,17 @@
-"""
-Skript: app/runtime_control.py
-Zweck: Hält Stop-Anforderungen und sichere Pause-Checkpoints im Arbeitsspeicher.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.2.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/runtime_control.py
+# PURPOSE:     Hält Stop-Anforderungen und sichere Pause-Checkpoints im Arbeitsspeicher.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.2.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-08 | 1.0.0 | Initiale Runtime-Control ergänzt.
+#   2026-08-20 | 1.2.0 | B2.1: Explizite Budget-Stop-Gründe ergänzt.
+#   2026-08-14 | 1.1.0 | V12-02: Strukturierte Stop- und Checkpoint-Daten ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.0.0 | Initiale Runtime-Control ergänzt.
-  2026-08-20 | 1.2.0 | B2.1: Explizite Budget-Stop-Gründe ergänzt.
-  2026-08-14 | 1.1.0 | V12-02: Strukturierte Stop- und Checkpoint-Daten ergänzt.
-"""
 
 from __future__ import annotations
 

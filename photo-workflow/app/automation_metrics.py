@@ -1,8 +1,15 @@
-"""
-Skript: app/automation_metrics.py
-Zweck: Berechnet Metriken für Vollautomatik-Readiness
-Version: 1.0.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/automation_metrics.py
+# PURPOSE:     Berechnet Metriken für Vollautomatik-Readiness
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 import json
 from pathlib import Path

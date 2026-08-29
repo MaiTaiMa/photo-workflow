@@ -1,14 +1,15 @@
-"""
-Skript: tests/unit/test_auto_decision.py
-Zweck: Prüft nicht-operative KI-Prognosen und ihre Fail-closed-Grenzen.
-Autor: Matthias Streser
-Erstellt: 2026-08-26
-Version: 1.0.0
-Requires: pytest, app.auto_decision
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_auto_decision.py
+# PURPOSE:     Prüft nicht-operative KI-Prognosen und ihre Fail-closed-Grenzen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-26
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+, pytest, app.auto_decision
+# CHANGES:
+#   2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Header und Testdokumentation gemäß Implementierungsregeln ergänzt.
-"""
 
 import pytest
 

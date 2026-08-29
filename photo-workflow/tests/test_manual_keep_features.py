@@ -1,4 +1,15 @@
-"""Test für Feature-Vektor-basiertes MANUAL_KEEP-Matching."""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/test_manual_keep_features.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 from pathlib import Path
 import tempfile

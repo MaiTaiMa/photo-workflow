@@ -1,20 +1,17 @@
-"""
-Skript: app/photo_workflow.py
-Zweck: Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
-Autor: MaiTaiMa
-Erstellt: 2026-08-09
-Version: 1.7
-Requires: Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/photo_workflow.py
+# PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-09
+# VERSION:     1.7
+# REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
+# CHANGES:
+#   2026-08-27 | 1.7 | G7: 04_TEMP_FINAL nur für full_auto freigegeben.
+#   2026-08-22 | 1.6 | C1.2.2: Prediction-Records an aktive Policy gebunden.
+#   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-27 | 1.7 | G7: 04_TEMP_FINAL nur für full_auto freigegeben.
-  2026-08-22 | 1.6 | C1.2.2: Prediction-Records an aktive Policy gebunden.
-  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
-  2026-08-09 | 1.0 | Initiale Version mit Phase 1/2
-  2026-08-09 | 1.3 | Face-Erkennung und AI Culling ergänzt
-  2026-08-20 | 1.5 | B2.1: Sichere Zeitlimit-Pause vor Phase-1-Workunits ergänzt
-  2026-08-09 | 1.4 | MANUAL_KEEP-Integration, dynamische Face-Erkennung, Terminal-Ausgabe
-"""
 
 from __future__ import annotations
 

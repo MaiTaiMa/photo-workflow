@@ -1,14 +1,15 @@
-"""
-Skript: app/path_security.py
-Zweck: Prüft kanonische Workflow-, Publish- und Mountpfade.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.1
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/path_security.py
+# PURPOSE:     Prüft kanonische Workflow-, Publish- und Mountpfade.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.1
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-08 | 1.1 | AP22.1 Header, Kommentare und Formatierung ergänzt
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.1 | AP22.1 Header, Kommentare und Formatierung ergänzt
-"""
 
 from __future__ import annotations
 

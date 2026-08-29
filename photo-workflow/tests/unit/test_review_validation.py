@@ -1,15 +1,16 @@
-"""
-Skript: tests/unit/test_review_validation.py
-Zweck: Prüft die Validierung von Predictions gegen menschliche Reviews.
-Version: 1.2.0
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_review_validation.py
+# PURPOSE:     Prüft die Validierung von Predictions gegen menschliche Reviews.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.2.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | 1.2.0 | C1.2.4: Test für gemischte Policy-Versionen ergänzt.
+#   2026-08-22 | 1.1.0 | C1.2.2: Test-Predictions an Policy-Version gebunden.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | 1.2.0 | C1.2.4: Test für gemischte Policy-Versionen ergänzt.
-  2026-08-22 | 1.1.0 | C1.2.2: Test-Predictions an Policy-Version gebunden.
-
-Änderungsprotokoll:
-  2026-08-22 | 1.1.0 | C1.2.2: Test-Predictions an Policy-Version gebunden.
-"""
 
 import json
 

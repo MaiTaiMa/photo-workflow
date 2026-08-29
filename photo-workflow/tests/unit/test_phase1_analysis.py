@@ -1,3 +1,16 @@
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_phase1_analysis.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 from pathlib import Path
 from app.phase1_analysis import analyze_rows, combine_scores
 def _score(base): return lambda _: {"generic_score": base, "base_score": base, "personal_score": None, "eye_score": None}

@@ -1,11 +1,10 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        tests/test_selection_schema.py
 # PURPOSE:     Tests für selection_schema.py (AP3)
-# AUTHOR:      Benjamin (via AP3-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP3)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, pytest
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP3
@@ -14,7 +13,7 @@
 #               - Tests für compute_fingerprint()
 #               - Tests für create_empty_selection()
 # =============================================================================
-"""
+
 
 import sys
 import os

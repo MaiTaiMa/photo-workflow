@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/pool_limits.py
 # PURPOSE:     Limit-Validierung und Ueberwachung (AP5)
-# AUTHOR:      Benjamin (via AP5-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP5)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, selection_schema.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP5
-#               - PoolLimits-Klasse für Limit-Validierung
-#               - check_limits() für Limit-Checks
-#               - is_queue_full() für Queue-Status
-#               - get_limit_status() für ausfue hrlichen Status
 # =============================================================================
-"""
+
 
 from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass

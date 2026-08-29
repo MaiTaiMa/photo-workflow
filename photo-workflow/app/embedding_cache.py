@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/embedding_cache.py
 # PURPOSE:     Embedding-Cache-Verwaltung (AP6)
-# AUTHOR:      Benjamin (via AP6-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP6)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, json
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP6
-#               - EmbeddingCache-Klasse für Cache-Verwaltung
-#               - load_cache() und save_cache()
-#               - invalidate_cache() bei Pool-Aenderungen
-#               - get_embedding() und cache_embedding()
 # =============================================================================
-"""
+
 
 import json
 import os

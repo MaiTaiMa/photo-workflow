@@ -1,14 +1,15 @@
-"""
-Skript: tests/unit/test_runtime_budget.py
-Zweck: Prüft deterministisch das zustandsfreie Runtime-Budget.
-Autor: MaiTaiMa
-Erstellt: 2026-08-20
-Version: 1.0.0
-Requires: Python 3.11, pytest
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_runtime_budget.py
+# PURPOSE:     Prüft deterministisch das zustandsfreie Runtime-Budget.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-20
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11, pytest
+# CHANGES:
+#   2026-08-20 | 1.0.0 | B1: Tests für Zeitbudget, Restzeit und Ablauf ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-20 | 1.0.0 | B1: Tests für Zeitbudget, Restzeit und Ablauf ergänzt.
-"""
 
 import pytest
 

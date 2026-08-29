@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/selection_pool.py
 # PURPOSE:     Pool-Verwaltung für selection.json (AP3)
-# AUTHOR:      Benjamin (via AP3-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP3)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, selection_schema.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP3
-#               - SelectionPool-Klasse zum Lesen/Schreiben
-#               - load_selection() und save_selection()
-#               - add_image() und remove_image()
-#               - get_active_images() und get_new_images()
 # =============================================================================
-"""
+
 
 import json
 import os

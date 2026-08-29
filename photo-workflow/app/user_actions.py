@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/user_actions.py
 # PURPOSE:     User-Action-Generierung und Report (AP5)
-# AUTHOR:      Benjamin (via AP5-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP5)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, pool_limits.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP5
-#               - UserAction-Klasse für Actions
-#               - UserActionReport-Klasse für Reports
-#               - generate_user_actions() für Action-Generierung
-#               - get_suggested_actions() für Vorschlaege
 # =============================================================================
-"""
+
 
 from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass, field

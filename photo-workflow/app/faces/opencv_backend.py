@@ -1,14 +1,15 @@
-"""
-Skript: app/faces/opencv_backend.py
-Zweck: Erkennt Gesichter mit YuNet und erzeugt SFace-Embeddings.
-Autor: MaiTaiMa
-Erstellt: 2026-08-09
-Version: 1.0
-Requires: Python 3.11, OpenCV-Contrib, NumPy
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/faces/opencv_backend.py
+# PURPOSE:     Erkennt Gesichter mit YuNet und erzeugt SFace-Embeddings.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-09
+# VERSION:     1.0
+# REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy
+# CHANGES:
+#   2026-08-09 | 1.0 | YuNet, SFace und RAM-only Face-Pipeline ergänzt
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-09 | 1.0 | YuNet, SFace und RAM-only Face-Pipeline ergänzt
-"""
 
 from __future__ import annotations
 

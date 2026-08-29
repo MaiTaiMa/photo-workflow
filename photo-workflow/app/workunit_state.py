@@ -1,14 +1,15 @@
-"""
-Skript: app/workunit_state.py
-Zweck: Speichert atomare und hashvalidierte WorkUnit-Zustände je Batch.
-Autor: MaiTaiMa
-Erstellt: 2026-08-17
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/workunit_state.py
+# PURPOSE:     Speichert atomare und hashvalidierte WorkUnit-Zustände je Batch.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-17
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-17 | 1.0.0 | V12-04A: Persistente WorkUnit-Zustände ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-17 | 1.0.0 | V12-04A: Persistente WorkUnit-Zustände ergänzt.
-"""
 
 from __future__ import annotations
 

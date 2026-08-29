@@ -1,12 +1,15 @@
-"""
-Skript: app/automatic_handoff_gate.py
-Zweck: Fail-closed Gate für automatic_handoff (Vertrag Abschnitt 6).
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/automatic_handoff_gate.py
+# PURPOSE:     Fail-closed Gate für automatic_handoff (Vertrag Abschnitt 6).
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-26 | 1.0.0 | Initial: Gate-Logik für automatic_handoff.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Initial: Gate-Logik für automatic_handoff.
-"""
 
 from __future__ import annotations
 

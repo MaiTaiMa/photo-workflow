@@ -1,16 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/runtime_paths.py
 # PURPOSE:     Validierung und Erzeugung von Runtime-Pfaden für AP2
-# AUTHOR:      Benjamin (via AP2-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP2)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, config.yaml mit runtime-Sektion
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP2
 # =============================================================================
-"""
+
 
 import os
 from pathlib import Path

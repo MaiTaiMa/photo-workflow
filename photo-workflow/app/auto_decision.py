@@ -1,15 +1,16 @@
-"""
-Skript: app/auto_decision.py
-Zweck: Erstellt nicht-operative KI-Prognosen für den Review-Workflow.
-Autor: Matthias Streser
-Erstellt: 2026-08-20
-Version: 1.2.1
-Requires: Python 3.11, typing
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/auto_decision.py
+# PURPOSE:     Erstellt nicht-operative KI-Prognosen für den Review-Workflow.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-20
+# VERSION:     1.2.1
+# REQUIRES:    Python 3.11, typing
+# CHANGES:
+#   2026-08-26 | 1.2.1 | Header und Kommentierung gemäß Implementierungsregeln ergänzt.
+#   2026-08-20 | 1.2.0 | A1: Vertragskonforme, nicht-operative Automationsmodi.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.2.1 | Header und Kommentierung gemäß Implementierungsregeln ergänzt.
-  2026-08-20 | 1.2.0 | A1: Vertragskonforme, nicht-operative Automationsmodi.
-"""
 
 from typing import Any, Mapping
 

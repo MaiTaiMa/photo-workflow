@@ -1,14 +1,15 @@
-"""
-Skript: app/trust_override.py
-Zweck: Persistiert den projektweiten manuellen Vertrauenswiderruf atomar.
-Autor: Matthias Streser
-Erstellt: 2026-08-26
-Version: 1.1.0
-Requires: Python 3.11, hashlib, json, pathlib
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/trust_override.py
+# PURPOSE:     Persistiert den projektweiten manuellen Vertrauenswiderruf atomar.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-26
+# VERSION:     1.1.0
+# REQUIRES:    Python 3.11, hashlib, json, pathlib
+# CHANGES:
+#   2026-08-26 | 1.1.0 | Widerruf, manueller Restore und Zustandszeitpunkte ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.1.0 | Widerruf, manueller Restore und Zustandszeitpunkte ergänzt.
-"""
 
 from __future__ import annotations
 

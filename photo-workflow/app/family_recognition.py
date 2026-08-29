@@ -1,15 +1,16 @@
-"""
-Skript: app/family_recognition.py
-Zweck: Erkennt Familiengesichter mit YuNet und SFace aus dynamischen Referenzpools.
-Autor: MaiTaiMa
-Erstellt: 2026-08-09
-Version: 1.1
-Requires: Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool optional
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/family_recognition.py
+# PURPOSE:     Erkennt Familiengesichter mit YuNet und SFace aus dynamischen Referenzpools.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-09
+# VERSION:     1.1
+# REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool optional
+# CHANGES:
+#   2026-08-09 | 1.0 | OpenCV-Backend und RAM-only Matching ergänzt
+#   2026-08-09 | 1.1 | Dynamische Personen-Erkennung: faces/<Person>/reference/
+# =============================================================================
 
-Ä·nderungsprotokoll:
-  2026-08-09 | 1.0 | OpenCV-Backend und RAM-only Matching ergänzt
-  2026-08-09 | 1.1 | Dynamische Personen-Erkennung: faces/<Person>/reference/
-"""
 
 from __future__ import annotations
 

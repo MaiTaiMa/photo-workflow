@@ -1,14 +1,15 @@
-"""
-Skript: app/phase1_runtime_budget_state.py
-Zweck: Speichert atomare aktive Phase-1-Batch-Laufzeiten für sichere Resume-Limits.
-Autor: MaiTaiMa
-Erstellt: 2026-08-20
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/phase1_runtime_budget_state.py
+# PURPOSE:     Speichert atomare aktive Phase-1-Batch-Laufzeiten für sichere Resume-Limits.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-20
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-20 | 1.0.0 | B2.1: Hashvalidierten State für aktive Batch-Zeit ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-20 | 1.0.0 | B2.1: Hashvalidierten State für aktive Batch-Zeit ergänzt.
-"""
 
 from __future__ import annotations
 

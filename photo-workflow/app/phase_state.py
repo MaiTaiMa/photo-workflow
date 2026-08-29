@@ -1,16 +1,17 @@
-"""
-Skript: app/phase_state.py
-Zweck: Erzwingt erlaubte Phasen-Zustandsübergänge pro Batch.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.2.1
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/phase_state.py
+# PURPOSE:     Erzwingt erlaubte Phasen-Zustandsübergänge pro Batch.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.2.1
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-08 | 1.1 | AP22.2 Header, Kommentare und Formatierung ergänzt
+#   2026-08-28 | 1.2 | Datei für zentrale Phasen-State-Logik umbenannt
+#   2026-08-28 | 1.2.1 | API-Kompatibilität und v1.2-Phase-2-Zustände korrigiert
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.1 | AP22.2 Header, Kommentare und Formatierung ergänzt
-  2026-08-28 | 1.2 | Datei für zentrale Phasen-State-Logik umbenannt
-  2026-08-28 | 1.2.1 | API-Kompatibilität und v1.2-Phase-2-Zustände korrigiert
-"""
 
 from __future__ import annotations
 

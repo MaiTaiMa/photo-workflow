@@ -1,20 +1,16 @@
-"""
-Skript: app/manual_keep.py
-Zweck: MANUAL_KEEP-Verwaltung (AP8) - inbox/ und used/ fur manuell geschutzte Bilder.
-Autor: Benjamin (via AP8-Implementierung)
-Erstellt: 2026-08-09
-Version: 1.1
-Requires: Python 3.8+, os, json, pathlib
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/manual_keep.py
+# PURPOSE:     MANUAL_KEEP-Verwaltung (AP8) - inbox/ und used/ fur manuell geschutzte Bilder.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-09
+# VERSION:     1.1
+# REQUIRES:    Python 3.8+, os, json, pathlib
+# CHANGES:
+#   2026-08-09 | 1.0 | Initiale Implementierung fur AP8
+#   2026-08-09 | 1.1 | Robustere Pfadprufung, Batch-Erkennung, Terminal-Ausgabe
+# =============================================================================
 
-Ä·nderungsprotokoll:
-  2026-08-09 | 1.0 | Initiale Implementierung fur AP8
-  2026-08-09 | 1.1 | Robustere Pfadprufung, Batch-Erkennung, Terminal-Ausgabe
-
-98AP-Vertrag:
-  - AP2: MANUAL_KEEP hat Vorrang vor jeder automatischen Bewertung
-  - AP7: Entscheidungen mussen nachvollziehbar und reversibel sein
-  - AP8: Inbox/Used-Logik fur idempotente Zuordnung
-"""
 
 import os
 import json

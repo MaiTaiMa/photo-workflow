@@ -1,3 +1,16 @@
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_personal_score_cache.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 from pathlib import Path
 
 from app.personal_score_cache import load_or_build_reference_cache, reference_fingerprint

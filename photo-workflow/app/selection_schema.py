@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/selection_schema.py
 # PURPOSE:     JSON-Schema und Validierung für selection.json (AP3)
-# AUTHOR:      Benjamin (via AP3-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP3)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, jsonschema (optional)
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP3
-#               - SelectionSchema-Klasse mit Validierung
-#               - validate_selection() für selection.json
-#               - validate_image_entry() für einzelne Eintraege
-#               - compute_fingerprint() für Integritaetspruefung
 # =============================================================================
-"""
+
 
 import json
 import hashlib

@@ -1,19 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/pool_sorting.py
 # PURPOSE:     Sortierung nach Pool-Nutzen (AP4)
-# AUTHOR:      Benjamin (via AP4-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP4)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, selection_pool.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP4
-#               - compute_nutzwert() für Nutzwert-Berechnung
-#               - sort_images_by_utility() für deterministische Sortierung
-#               - assign_ranks() für dynamische Rangvergabe
 # =============================================================================
-"""
+
 
 import hashlib
 from datetime import datetime

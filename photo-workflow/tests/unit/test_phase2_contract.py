@@ -1,15 +1,17 @@
-"""
-Skript: tests/unit/test_phase2_contract.py
-Zweck: Testet Phase-2-Hardening (cleanup_review_rejected, move_to_temp_final).
-Autor: MaiTaiMa
-Erstellt: 2026-08-09
-Version: 2.0 (angepasst an neue phase2_contract.py)
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_phase2_contract.py
+# PURPOSE:     Testet Phase-2-Hardening (cleanup_review_rejected, move_to_temp_final).
+# AUTHOR:      Matzethias
+# DATE:        2026-08-09
+# VERSION:     2.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+#   2026-08-09 | 1.0 | Initiale Version mit Phase2GateError
+#   2026-08-09 | 2.0 | Umstellung auf cleanup_review_rejected + move_to_temp_final
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
-  2026-08-09 | 1.0 | Initiale Version mit Phase2GateError
-  2026-08-09 | 2.0 | Umstellung auf cleanup_review_rejected + move_to_temp_final
-"""
 
 import pytest
 from pathlib import Path

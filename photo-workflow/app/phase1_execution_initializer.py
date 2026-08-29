@@ -1,4 +1,16 @@
-"""Initialize persisted Phase-1 analysis plans and WorkUnit states safely."""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/phase1_execution_initializer.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 from __future__ import annotations
 from typing import Any, Iterable
 from app.execution_plan import WorkUnitPlan

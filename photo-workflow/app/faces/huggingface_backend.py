@@ -1,14 +1,15 @@
-"""
-Skript: app/faces/huggingface_backend.py
-Zweck: Stellt einen lokalen Hugging-Face-Embedding-Adapter bereit.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.2
-Requires: Python 3.11, PyTorch, Transformers, Pillow
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/faces/huggingface_backend.py
+# PURPOSE:     Stellt einen lokalen Hugging-Face-Embedding-Adapter bereit.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.2
+# REQUIRES:    Python 3.11, PyTorch, Transformers, Pillow
+# CHANGES:
+#   2026-08-08 | 1.2 | AP22 Face-Backend nach 98AP formatiert
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.2 | AP22 Face-Backend nach 98AP formatiert
-"""
 
 from __future__ import annotations
 

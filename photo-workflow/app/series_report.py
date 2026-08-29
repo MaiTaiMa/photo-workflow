@@ -1,17 +1,16 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/series_report.py
 # PURPOSE:     Report-Generierung für Serien (AP7)
-# AUTHOR:      Benjamin (via AP7-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.1.0 (AP7A)
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.11+, series_detection.py, best_of_selection.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP7
 #   2026-08-13: AP7A – finale Culling-Rows als Batch-Serienreports schreiben
 # =============================================================================
-"""
+
 
 from __future__ import annotations
 

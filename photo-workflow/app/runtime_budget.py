@@ -1,15 +1,16 @@
-"""
-Skript: app/runtime_budget.py
-Zweck: Verwaltet zustandsfreie lokale Laufzeitbudgets ohne Workflow-Mutationen.
-Autor: MaiTaiMa
-Erstellt: 2026-08-20
-Version: 1.1.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/runtime_budget.py
+# PURPOSE:     Verwaltet zustandsfreie lokale Laufzeitbudgets ohne Workflow-Mutationen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-20
+# VERSION:     1.1.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-20 | 1.1.0 | B2.1: Persistierte aktive Zeit im Budget berücksichtigt.
+#   2026-08-20 | 1.0.0 | B1: Monotones Zeitbudget für Run- und Batch-Grenzen ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-20 | 1.1.0 | B2.1: Persistierte aktive Zeit im Budget berücksichtigt.
-  2026-08-20 | 1.0.0 | B1: Monotones Zeitbudget für Run- und Batch-Grenzen ergänzt.
-"""
 
 from __future__ import annotations
 

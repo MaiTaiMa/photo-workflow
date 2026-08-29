@@ -1,15 +1,16 @@
-"""
-Skript: app/execution_plan.py
-Zweck: Plant deterministisch neue Batches und interne WorkUnits ohne Dateioperationen.
-Autor: MaiTaiMa
-Erstellt: 2026-08-17
-Version: 1.1.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/execution_plan.py
+# PURPOSE:     Plant deterministisch neue Batches und interne WorkUnits ohne Dateioperationen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-17
+# VERSION:     1.1.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-20 | 1.1.0 | B1: Laufzeitlimits für Run und Batch validiert.
+#   2026-08-17 | 1.0.0 | V12-03: Batch-Reihenfolge und Mengenlimit-Planung ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-20 | 1.1.0 | B1: Laufzeitlimits für Run und Batch validiert.
-  2026-08-17 | 1.0.0 | V12-03: Batch-Reihenfolge und Mengenlimit-Planung ergänzt.
-"""
 
 from __future__ import annotations
 

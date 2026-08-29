@@ -1,14 +1,15 @@
-"""
-Skript: app/batch_layout.py
-Zweck: Verwaltet die kanonische Batch-Struktur und JPG-/ARW-Paarungen.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.1
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/batch_layout.py
+# PURPOSE:     Verwaltet die kanonische Batch-Struktur und JPG-/ARW-Paarungen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.1
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-08 | 1.1 | AP22.2 Header, Kommentare und Formatierung ergänzt
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.1 | AP22.2 Header, Kommentare und Formatierung ergänzt
-"""
 
 from __future__ import annotations
 

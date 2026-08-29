@@ -1,14 +1,15 @@
-"""
-Skript: tests/unit/test_automation_config_schema.py
-Zweck: Prüft die strikte Akzeptanz des kanonischen Automation-Blocks.
-Autor: MaiTaiMa
-Erstellt: 2026-08-20
-Version: 1.0.0
-Requires: Python 3.11, pytest
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_automation_config_schema.py
+# PURPOSE:     Prüft die strikte Akzeptanz des kanonischen Automation-Blocks.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-20
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11, pytest
+# CHANGES:
+#   2026-08-20 | 1.0.0 | A1: Schema-Test für die Automation-Top-Level-Sektion.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-20 | 1.0.0 | A1: Schema-Test für die Automation-Top-Level-Sektion.
-"""
 
 from app.config_schema import get_test_config, validate_config
 

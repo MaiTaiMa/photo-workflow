@@ -1,15 +1,16 @@
-"""
-Skript: app/state_store.py
-Zweck: Speichert atomare, pro Batch hashverkettete Zustandsdateien.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.2
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/state_store.py
+# PURPOSE:     Speichert atomare, pro Batch hashverkettete Zustandsdateien.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.2
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-08 | 1.1 | AP22.1 Header, Kommentare und Formatierung ergänzt
+#   2026-08-08 | 1.2 | State-Hash-Payload an die Validierung angeglichen
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.1 | AP22.1 Header, Kommentare und Formatierung ergänzt
-  2026-08-08 | 1.2 | State-Hash-Payload an die Validierung angeglichen
-"""
 
 from __future__ import annotations
 

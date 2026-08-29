@@ -1,20 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/proposal_generator.py
 # PURPOSE:     Vorschlags-Generierung für new_refs/new_faces (AP5)
-# AUTHOR:      Benjamin (via AP5-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP5)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, pool_limits.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP5
-#               - ProposalGenerator-Klasse für Vorschlaege
-#               - generate_proposals() für Vorschlags-Generierung
-#               - filter_candidates() für Kandidaten-Filterung
-#               - prioritize_proposals() für Priorisierung
 # =============================================================================
-"""
+
 
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime, timedelta

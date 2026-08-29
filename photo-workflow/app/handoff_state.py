@@ -1,12 +1,15 @@
-"""
-Skript: app/handoff_state.py
-Zweck: Atomarer Transition-State für automatic_handoff (Vertrag Abschnitt 6).
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/handoff_state.py
+# PURPOSE:     Atomarer Transition-State für automatic_handoff (Vertrag Abschnitt 6).
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-26 | 1.0.0 | Initial: Atomarer State-Write für Handoff.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Initial: Atomarer State-Write für Handoff.
-"""
 
 import json
 import hashlib

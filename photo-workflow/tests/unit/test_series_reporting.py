@@ -1,3 +1,16 @@
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_series_reporting.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 import json
 
 from app.series_report import write_batch_series_reports

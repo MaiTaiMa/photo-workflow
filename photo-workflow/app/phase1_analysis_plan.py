@@ -1,14 +1,15 @@
-"""
-Skript: app/phase1_analysis_plan.py
-Zweck: Speichert atomare, secrets-freie Phase-1-Analysepläne je Batch.
-Autor: MaiTaiMa
-Erstellt: 2026-08-17
-Version: 1.0.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/phase1_analysis_plan.py
+# PURPOSE:     Speichert atomare, secrets-freie Phase-1-Analysepläne je Batch.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-17
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-17 | 1.0.0 | V12-04A1: Persistenten Analyseplan-Store ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-17 | 1.0.0 | V12-04A1: Persistenten Analyseplan-Store ergänzt.
-"""
 
 from __future__ import annotations
 

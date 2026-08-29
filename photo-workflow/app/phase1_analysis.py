@@ -1,4 +1,16 @@
-"""Pure Phase-1 culling analysis with injected dependencies only."""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/phase1_analysis.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path

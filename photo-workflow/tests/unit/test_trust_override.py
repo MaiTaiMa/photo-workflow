@@ -1,15 +1,16 @@
-"""
-Skript: tests/unit/test_trust_override.py
-Zweck: Prüft Widerruf, Restore und Integrität des Trust-Override-Stores.
-Autor: Matthias Streser
-Datum: 2026-08-26
-Version: 1.0.0
-Requires: Python 3.11, pytest, app.trust_override
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_trust_override.py
+# PURPOSE:     Prüft Widerruf, Restore und Integrität des Trust-Override-Stores.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11, pytest, app.trust_override
+# CHANGES:
+#   2026-08-26 | 1.0.0 | Store-Tests für Widerruf und manuellen Restore ergänzt.
+#   2026-08-27 | 1.1.0 | Tests für increment_confirmed_batches() und auto_restore ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-26 | 1.0.0 | Store-Tests für Widerruf und manuellen Restore ergänzt.
-  2026-08-27 | 1.1.0 | Tests für increment_confirmed_batches() und auto_restore ergänzt.
-"""
 
 from pathlib import Path
 

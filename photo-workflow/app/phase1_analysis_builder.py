@@ -1,12 +1,16 @@
-"""
-Skript: app/phase1_analysis_builder.py
-Zweck: Erzeugt sichere, persistierbare Phase-1-Analysezeilen aus finalen Culling-Zeilen.
-Version: 1.1.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/phase1_analysis_builder.py
+# PURPOSE:     Erzeugt sichere, persistierbare Phase-1-Analysezeilen aus finalen Culling-Zeilen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.1.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-22 | 1.1.0 | C1.2.3: Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | 1.1.0 | C1.2.3: Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
-"""
+
 from __future__ import annotations
 from pathlib import Path
 from typing import Any

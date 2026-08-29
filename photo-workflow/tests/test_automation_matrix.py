@@ -1,16 +1,16 @@
-"""
-Testmatrix für Automationsmodi, Gates, Handoff und Finalisierung.
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/test_automation_matrix.py
+# PURPOSE:     Vertragstestmatrix für alle sechs Automationsmodi (Master-Prompt v13, Abschnitt 4.4).
+# AUTHOR:      Matzethias
+# DATE:        2026-08-27
+# VERSION:     1.0
+# REQUIRES:    Python 3.11+, pytest, photo-workflow app
+# CHANGES:
+#   2026-08-27 | 1.0 | G8: Initiale Vertragstestmatrix.
+# =============================================================================
 
-Skript: tests/test_automation_matrix.py
-Zweck: Vertragstestmatrix für alle sechs Automationsmodi (Master-Prompt v13, Abschnitt 4.4).
-Autor: MaiTaiMa
-Erstellt: 2026-08-27
-Version: 1.0
-Requires: pytest, photo-workflow app
 
-Änderungsprotokoll:
-  2026-08-27 | 1.0 | G8: Initiale Vertragstestmatrix.
-"""
 import pytest
 from unittest.mock import MagicMock, patch
 from pathlib import Path

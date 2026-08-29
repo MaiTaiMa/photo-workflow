@@ -1,17 +1,18 @@
-"""
-Skript: app/config_schema.py
-Zweck: Striktes Config-Schema fuer photo-workflow mit 98AP-Validierung
-Autor: Matzethias
-Erstellt: 2026-08-09
-Version: 2.2.0
-Requires: Python 3.12+, typing
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/config_schema.py
+# PURPOSE:     Striktes Config-Schema fuer photo-workflow mit 98AP-Validierung
+# AUTHOR:      Matzethias
+# DATE:        2026-08-09
+# VERSION:     2.2.0
+# REQUIRES:    Python 3.12+, typing
+# CHANGES:
+#   2026-08-20 | 2.2.0 | A1.7: pipeline und phase2 als aktive Config-Sektionen ergänzt
+#   2026-08-20 | 2.1.0 | A1: automation als kanonische Config-Sektion ergänzt
+#   2026-08-09 | 2.0.0 | 98AP-konforme Validierung mit allen Sektionen
+# =============================================================================
 
-Aenderungsprotokoll:
-  2026-08-20 | 2.2.0 | A1.7: pipeline und phase2 als aktive Config-Sektionen ergänzt
-  2026-08-20 | 2.1.0 | A1: automation als kanonische Config-Sektion ergänzt
-  2026-08-09 | 2.0.0 | 98AP-konforme Validierung mit allen Sektionen
-  2026-08-09 | 1.0.0 | Initiale Implementierung mit validate_config()
-"""
+
 import os
 import hashlib
 from typing import Dict, Any, List, Tuple, Optional, Set

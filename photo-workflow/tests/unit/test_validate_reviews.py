@@ -1,11 +1,15 @@
-"""
-Skript: tests/unit/test_validate_reviews.py
-Zweck: Prüft die CLI-nahe Validierung menschlicher Review-Entscheidungen.
-Version: 1.1.0
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_validate_reviews.py
+# PURPOSE:     Prüft die CLI-nahe Validierung menschlicher Review-Entscheidungen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.1.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-08-22 | 1.1.0 | C1.2.2: Test-Prediction an Policy-Version gebunden.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-22 | 1.1.0 | C1.2.2: Test-Prediction an Policy-Version gebunden.
-"""
 
 from app.automation_contract import build_prediction_record
 from app.automation_store import write_prediction_batch

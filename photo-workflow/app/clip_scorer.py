@@ -1,8 +1,15 @@
-"""
-Skript: app/clip_scorer.py
-Zweck: Lokales CLIP-Scoring mit sicherem Referenz-Embedding-Cache.
-Version: 1.2.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/clip_scorer.py
+# PURPOSE:     Lokales CLIP-Scoring mit sicherem Referenz-Embedding-Cache.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.2.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 import os
 from pathlib import Path

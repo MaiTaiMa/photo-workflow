@@ -1,8 +1,15 @@
-"""
-Skript: app/validate_reviews.py
-Zweck: Erstellt einen auswertenden KI-gegen-Mensch-Validierungsbericht je Batch.
-Version: 1.0.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/validate_reviews.py
+# PURPOSE:     Erstellt einen auswertenden KI-gegen-Mensch-Validierungsbericht je Batch.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 import argparse
 from pathlib import Path

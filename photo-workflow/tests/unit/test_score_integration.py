@@ -1,3 +1,16 @@
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_score_integration.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 from app.score_integration import compute_final_score
 
 

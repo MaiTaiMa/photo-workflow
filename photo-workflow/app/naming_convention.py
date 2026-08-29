@@ -1,21 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/naming_convention.py
 # PURPOSE:     Dateinamen-Generierung nach Konvention (AP4)
-# AUTHOR:      Benjamin (via AP4-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP4)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP4
-#               - format_rank() für dynamische Rang-Formatierung
-#               - extract_original_stem() für Original-Stem
-#               - compute_stable_suffix() für reproduzierbaren Hash
-#               - generate_filename() für vollständigen Dateinamen
-#               - validate_filename() für Kollisionspruefung
 # =============================================================================
-"""
+
 
 import hashlib
 import re

@@ -1,3 +1,16 @@
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_clip_scorer_personal_cache.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
+
 from pathlib import Path
 
 from app.clip_scorer import CLIPScorer

@@ -1,14 +1,15 @@
-"""
-Skript: tests/unit/test_phase1_runtime_budget_state.py
-Zweck: Prüft atomare und hashvalidierte aktive Phase-1-Batch-Laufzeiten.
-Autor: MaiTaiMa
-Erstellt: 2026-08-20
-Version: 1.0.0
-Requires: Python 3.11, pytest
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tests/unit/test_phase1_runtime_budget_state.py
+# PURPOSE:     Prüft atomare und hashvalidierte aktive Phase-1-Batch-Laufzeiten.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-20
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11, pytest
+# CHANGES:
+#   2026-08-20 | 1.0.0 | B2.1: Tests für persistierte aktive Batch-Zeit ergänzt.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-20 | 1.0.0 | B2.1: Tests für persistierte aktive Batch-Zeit ergänzt.
-"""
 
 import json
 

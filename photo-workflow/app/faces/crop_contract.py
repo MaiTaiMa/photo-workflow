@@ -1,14 +1,15 @@
-"""
-Skript: app/faces/crop_contract.py
-Zweck: Validiert und speichert neue Face-Crops im erlaubten Poolbereich.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.2
-Requires: Python 3.11, Pillow
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/faces/crop_contract.py
+# PURPOSE:     Validiert und speichert neue Face-Crops im erlaubten Poolbereich.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.2
+# REQUIRES:    Python 3.11, Pillow
+# CHANGES:
+#   2026-08-08 | 1.2 | AP22 Face-Crop-Vertrag nach 98AP formatiert
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.2 | AP22 Face-Crop-Vertrag nach 98AP formatiert
-"""
 
 from __future__ import annotations
 

@@ -1,19 +1,15 @@
-"""
 # =============================================================================
 # PROJECT:     photo-workflow
 # FILE:        app/best_of_selection.py
 # PURPOSE:     Best-of-Auswahl für Serien (AP7)
-# AUTHOR:      Benjamin (via AP7-Implementierung)
+# AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0 (AP7)
+# VERSION:     1.0.0
 # REQUIRES:    Python 3.8+, series_detection.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP7
-#               - compute_best_of_score() für Score-Berechnung
-#               - select_best_of() für Auswahl
-#               - get_protected_images() für geschuetzte Bilder
 # =============================================================================
-"""
+
 
 from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass

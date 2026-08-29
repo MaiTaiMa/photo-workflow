@@ -1,8 +1,15 @@
-"""
-Skript: app/review_decision.py
-Zweck: Erfasst menschliche Keep-/Reject-Entscheidungen fuer bekannte KI-Prognosen.
-Version: 1.0.0
-"""
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/review_decision.py
+# PURPOSE:     Erfasst menschliche Keep-/Reject-Entscheidungen fuer bekannte KI-Prognosen.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+# =============================================================================
+
 
 import argparse
 import json

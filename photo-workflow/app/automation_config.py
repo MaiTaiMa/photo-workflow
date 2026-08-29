@@ -1,15 +1,16 @@
-"""
-Skript: app/automation_config.py
-Zweck: Validiert den automation-Block der Workflow-Konfiguration.
-Autor: Matthias Streser
-Datum: 2026-08-23
-Version: 1.2.0
-Requires: Python 3.11, app.auto_decision
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/automation_config.py
+# PURPOSE:     Validiert den automation-Block der Workflow-Konfiguration.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-29
+# VERSION:     1.2.0
+# REQUIRES:    Python 3.11, app.auto_decision
+# CHANGES:
+#   2026-08-23 | 1.2.0 | C1.2.5: Optionalen Fullauto-Gate-Vertrag validiert.
+#   2026-08-20 | 1.1.0 | A1: Policy-Version und Vertragsmodi validiert.
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-23 | 1.2.0 | C1.2.5: Optionalen Fullauto-Gate-Vertrag validiert.
-  2026-08-20 | 1.1.0 | A1: Policy-Version und Vertragsmodi validiert.
-"""
 
 from typing import Any, Mapping
 
