@@ -2120,7 +2120,7 @@ def automatic_handoff(batch_path: Path, cfg: dict) -> bool:
         True bei erfolgreichem Handoff, False bei Gate-Fehler oder Skip.
     """
     from app.automatic_handoff_gate import check_automatic_handoff_gate
-    from app.handoff_state import write_handoff_state_atomically
+    from app.handoff_state import write_handoff_state_atomically, read_handoff_state
     from app.config_schema import config_fingerprint
 
     automation = cfg.get("automation", {})
