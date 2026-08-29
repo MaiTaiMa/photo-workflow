@@ -62,6 +62,9 @@ from app.phase1_workunit_runner import Phase1WorkUnitRunner
 from app.training import train_from_directory, load_or_rebuild_personal_model
 from app.workunit_state import WorkUnitStateStore
 from app.trust_override import TrustOverrideStore, TrustOverrideError
+from app.automatic_handoff_gate import check_automatic_handoff_gate
+from app.handoff_state import write_handoff_state_atomically, read_handoff_state
+from app.config_schema import config_fingerprint
 
 from app.aesthetic import (
     base_score_components,
@@ -2118,9 +2121,6 @@ def automatic_handoff(batch_path: Path, cfg: dict) -> bool:
     Returns:
         True bei erfolgreichem Handoff, False bei Gate-Fehler oder Skip.
     """
-    from app.automatic_handoff_gate import check_automatic_handoff_gate
-    from app.handoff_state import write_handoff_state_atomically, read_handoff_state
-    from app.config_schema import config_fingerprint
 
     automation = cfg.get("automation", {})
     mode = automation.get("mode", "off")
