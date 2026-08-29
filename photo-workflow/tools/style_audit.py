@@ -1,14 +1,15 @@
-"""
-Skript: tools/style_audit.py
-Zweck: Prüft projektweite Implementierungs- und JSON-Artefaktregeln.
-Autor: MaiTaiMa
-Erstellt: 2026-08-08
-Version: 1.0
-Requires: Python 3.11
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        tools/style_audit.py
+# PURPOSE:     Prüft projektweite Implementierungs- und JSON-Artefaktregeln.
+# AUTHOR:      Matzethias
+# DATE:        2026-08-08
+# VERSION:     1.0
+# REQUIRES:    Python 3.11
+# CHANGES:
+#   2026-08-08 | 1.0 | Initialer AP22.0-Regelaudit
+# =============================================================================
 
-Änderungsprotokoll:
-  2026-08-08 | 1.0 | Initialer AP22.0-Regelaudit
-"""
 
 from __future__ import annotations
 
