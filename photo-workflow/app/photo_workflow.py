@@ -44,7 +44,6 @@ from app.review_decision import record_human_decision
 from app.validate_reviews import validate_reviews
 from app.automation_readiness import aggregate_readiness
 from app.clip_scorer import CLIPScorer
-from app.personal_score_cache import load_or_build_reference_cache
 from app.pause_checkpoint import PauseCheckpointStore
 from app.phase1_runtime_budget_state import (
     Phase1RuntimeBudgetStateStore,
