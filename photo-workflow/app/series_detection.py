@@ -8,6 +8,9 @@
 # REQUIRES:    Python 3.8+, datetime
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP7
+#               - detect_series() für Zeit-basierte Erkennung
+#               - cluster_by_similarity() für visuelle Aehnlichkeit
+#               - Series-Klasse für Serien-Daten
 # =============================================================================
 
 

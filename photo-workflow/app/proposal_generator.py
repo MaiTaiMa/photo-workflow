@@ -8,6 +8,10 @@
 # REQUIRES:    Python 3.8+, pool_limits.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP5
+#               - ProposalGenerator-Klasse für Vorschlaege
+#               - generate_proposals() für Vorschlags-Generierung
+#               - filter_candidates() für Kandidaten-Filterung
+#               - prioritize_proposals() für Priorisierung
 # =============================================================================
 
 

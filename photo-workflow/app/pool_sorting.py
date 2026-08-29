@@ -8,6 +8,9 @@
 # REQUIRES:    Python 3.8+, selection_pool.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP4
+#               - compute_nutzwert() für Nutzwert-Berechnung
+#               - sort_images_by_utility() für deterministische Sortierung
+#               - assign_ranks() für dynamische Rangvergabe
 # =============================================================================
 
 

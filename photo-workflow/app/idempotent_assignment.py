@@ -8,6 +8,10 @@
 # REQUIRES:    Python 3.8+, json, hashlib
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP8
+#               - IdempotentAssignment-Klasse für Zuordnungen
+#               - assign() für idempotente Zuordnung
+#               - is_assigned() für Duplikat-Pruefung
+#               - Recovery-Unterstu tzung
 # =============================================================================
 
 

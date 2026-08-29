@@ -8,6 +8,9 @@
 # REQUIRES:    Python 3.8+, os, json
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP8
+#               - LockManager-Klasse für Locking
+#               - acquire_lock() und release_lock()
+#               - Recovery-Log und Wiederaufnahme
 # =============================================================================
 
 

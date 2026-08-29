@@ -8,6 +8,10 @@
 # REQUIRES:    Python 3.8+, selection_schema.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP3
+#               - SelectionPool-Klasse zum Lesen/Schreiben
+#               - load_selection() und save_selection()
+#               - add_image() und remove_image()
+#               - get_active_images() und get_new_images()
 # =============================================================================
 
 

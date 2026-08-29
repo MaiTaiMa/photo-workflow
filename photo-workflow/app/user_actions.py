@@ -8,6 +8,10 @@
 # REQUIRES:    Python 3.8+, pool_limits.py
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP5
+#               - UserAction-Klasse für Actions
+#               - UserActionReport-Klasse für Reports
+#               - generate_user_actions() für Action-Generierung
+#               - get_suggested_actions() für Vorschlaege
 # =============================================================================
 
 

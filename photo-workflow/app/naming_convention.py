@@ -8,6 +8,11 @@
 # REQUIRES:    Python 3.8+
 # CHANGES:
 #   2026-08-09: Initiale Implementierung für AP4
+#               - format_rank() für dynamische Rang-Formatierung
+#               - extract_original_stem() für Original-Stem
+#               - compute_stable_suffix() für reproduzierbaren Hash
+#               - generate_filename() für vollständigen Dateinamen
+#               - validate_filename() für Kollisionspruefung
 # =============================================================================
 
 
