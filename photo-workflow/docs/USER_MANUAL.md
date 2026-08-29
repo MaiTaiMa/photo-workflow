@@ -492,3 +492,230 @@ Die tatsächlichen Pfade für die Familien-Gesichtserkennung laut `config.yaml`:
 
 Jede Person hat einen eigenen Unterordner (Slug) unterhalb von `WORKFLOW_DATA/faces/<slug>/reference`. Der Cache unter `WORKFLOW_DATA/models/family_faces` speichert ausschließlich nicht-sensitive Metadaten (Fingerprints, Laufstatus) – **niemals Embeddings oder Face-Crops**.
 \n
+
+## 13. Quick-Start: Erster Start in 5 Schritten
+
+### Schritt 1: Verzeichnisstruktur anlegen
+
+```bash
+cd ~/Programme/photo-workflow
+mkdir -p NAS_EXAMPLE/{00_TEMP_ERROR,01_TEMP_SD,02_TEMP_IMAGES,03_TEMP_DONE,04_TEMP_FINAL,MANUAL_KEEP/{inbox,used},WORKFLOW_DATA/{faces,models,taste,runtime/{state,logs,quarantine,run_summaries}}}
+```
+
+### Schritt 2: Test-Batch vorbereiten
+
+Kopiere 5-10 JPGs (und optional ARWs) in einen neuen Ordner unter `01_TEMP_SD`:
+
+```bash
+mkdir -p NAS_EXAMPLE/01_TEMP_SD/2026-08-29_Familienfeier
+cp /pfad/zu/test/*.JPG NAS_EXAMPLE/01_TEMP_SD/2026-08-29_Familienfeier/
+```
+
+### Schritt 3: Config prüfen
+
+```bash
+cat config/config.yaml | head -50
+```
+
+Wichtigste Einstellungen für den Start:
+- `paths.base_dir`: Muss auf `../NAS_EXAMPLE` zeigen
+- `automation.mode`: Auf `shadow` oder `assisted` für den ersten Test
+- `culling.enabled`: `true`
+
+### Schritt 4: Ersten Testlauf starten
+
+```bash
+docker-compose run --rm photo-workflow pipeline
+```
+
+Oder lokal (Python):
+```bash
+python app/photo_workflow.py --config config/config.yaml pipeline
+```
+
+### Schritt 5: Ergebnisse prüfen
+
+- **Phase 1:** Bilder sollten jetzt in `02_TEMP_IMAGES/2026-08-29_Familienfeier/` sein
+  - `Review/`: Zur manuellen Prüfung vorgemerkte Bilder
+  - `Rejected/`: Automatisch abgelehnte Bilder
+  - Hauptordner: Automatisch behaltene Bilder
+- **Logs:** `WORKFLOW_DATA/runtime/logs/process.log`
+
+### Nächste Schritte
+
+1. Bilder in `Review/` manuell sichten und nach `03_TEMP_DONE` verschieben
+2. Workflow erneut starten (Phase 2)
+3. Bei Erfolg: `automation.mode` auf `auto_phase2` oder `full_auto` erhöhen
+
+
+## 14. Troubleshooting & FAQ
+
+### Häufige Fehler und Lösungen
+
+| Fehler | Ursache | Lösung |
+|---|---|---|
+| `Permission denied` beim Schreiben | Falsche Dateiberechtigungen | `chown -R $USER:$USER NAS_EXAMPLE/` |
+| `Lock conflict` | Paralleler Lauf blockiert | `rm NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/.script.lock` |
+| `No images found in batch` | Batch enthält nur ARWs oder ist leer | Mindestens 1 JPG im Hauptordner erforderlich |
+| `Phase 2 startet nicht` | Batch nicht nach `03_TEMP_DONE` verschoben | Manueller Move erforderlich (außer bei `automatic_handoff`) |
+| `CLIP-Modell nicht gefunden` | `models/clip/`-Ordner fehlt | Config: `clip_scoring.enabled: false` setzen |
+| `Face-Erkennung liefert keine Treffer` | Keine Referenzbilder in `faces/<slug>/reference/` | Mindestens 1 Face-Crop pro Person als Referenz hinzufügen |
+
+### Performance-Optimierung
+
+**Für große Batches (>1000 Bilder):**
+
+1. **Batch-Limit erhöhen** (Config):
+```yaml
+pipeline:
+  max_batches_per_run: 10  # Standard: 3
+```
+
+2. **CLIP-Scoring deaktivieren** (schneller, aber weniger präzise):
+```yaml
+clip_scoring:
+  enabled: false
+```
+
+3. **Parallelisierung** (nur auf Multi-Core-NAS):
+```bash
+# Mehrere Instanzen mit unterschiedlichen Batches
+docker-compose run --rm photo-workflow phase1 --folder 01_TEMP_SD/Batch_A &
+docker-compose run --rm photo-workflow phase1 --folder 01_TEMP_SD/Batch_B &
+wait
+```
+
+### Backup & Recovery
+
+**Wichtige Daten für Backup:**
+
+```bash
+# States (für Resume nach Absturz)
+tar -czf workflow-states-backup.tar.gz NAS_EXAMPLE/WORKFLOW_DATA/runtime/state/
+
+# Referenzpools (Faces, Geschmack)
+tar -czf workflow-pools-backup.tar.gz NAS_EXAMPLE/WORKFLOW_DATA/faces/ NAS_EXAMPLE/WORKFLOW_DATA/models/taste/
+
+# Logs & Reports (Audit)
+tar -czf workflow-logs-backup.tar.gz NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/ NAS_EXAMPLE/WORKFLOW_DATA/runtime/run_summaries/
+```
+
+**Recovery nach System-Crash:**
+
+1. Backup zurückspielen
+2. Lock-Dateien entfernen:
+```bash
+rm NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/*.lock
+```
+3. Workflow mit `pipeline` neu starten – er setzt automatisch an der letzten sicheren State-Datei fort
+
+
+## Anhang E: Beispiel-Workflows
+
+### E.1: Manueller Betrieb (`shadow`-Mode)
+
+**Szenario:** Vollständige Kontrolle, KI nur als Vorschlag.
+
+**Config:**
+```yaml
+automation:
+  mode: shadow
+culling:
+  enabled: true
+```
+
+**Ablauf:**
+1. Batch in `01_TEMP_SD` ablegen
+2. `pipeline` starten → Phase 1 läuft, aber ändert **nichts** an Dateien
+3. Reports prüfen: `WORKFLOW_DATA/runtime/run_summaries/`
+4. Bei Zustimmung: Batch manuell nach `03_TEMP_DONE` verschieben
+5. `pipeline` erneut → Phase 2 archiviert
+
+**Vorteil:** Maximale Sicherheit, keine automatischen Änderungen.
+**Nachteil:** Höchster manueller Aufwand.
+
+---
+
+### E.2: Assistierter Betrieb (`assisted`-Mode)
+
+**Szenario:** KI trifft Vorentscheidungen, Mensch bestätigt.
+
+**Config:**
+```yaml
+automation:
+  mode: assisted
+culling:
+  keep_threshold: 0.65
+  reject_threshold: 0.35
+```
+
+**Ablauf:**
+1. Batch in `01_TEMP_SD` ablegen
+2. `pipeline` starten → Phase 1 sortiert automatisch in `Keep/Review/Rejected`
+3. Nur `Review/`-Bilder manuell sichten
+4. Batch nach `03_TEMP_DONE` verschieben
+5. `pipeline` erneut → Phase 2
+
+**Vorteil:** Deutlich weniger manueller Aufwand als `shadow`.
+**Nachteil:** KI-Entscheidungen können falsch sein (Review-Ordner prüfen!).
+
+---
+
+### E.3: Vollautomatischer Betrieb (`full_auto`-Mode)
+
+**Szenario:** Komplette Automatisierung nach erfolgreicher Readiness-Prüfung.
+
+**Config:**
+```yaml
+automation:
+  mode: full_auto
+  policy_version: "1.2"
+  fullauto_gate:
+    auto_execute: true
+phase2:
+  cleanup_review_rejected: true
+  move_to_temp_final: true
+```
+
+**Ablauf:**
+1. Batch in `01_TEMP_SD` ablegen
+2. `pipeline` starten → Phase 1 + Phase 2 laufen automatisch durch
+3. Ergebnis in `04_TEMP_FINAL` prüfen
+4. Bei `publish_to_synology_photos: true`: Automatische Veröffent-lichung
+
+**Voraussetzungen:**
+- `automation_readiness` muss `ready` melden (vorherige erfolgreiche Läufe)
+- Kein aktiver Trust-Override
+- Keine Manuel-Keep-Konflikte
+
+**Vorteil:** Minimaler manueller Aufwand.
+**Nachteil:** Höheres Risiko – nur nach ausführlichem Testing verwenden!
+
+---
+
+### E.4: Hybrid-Betrieb (Auto-Phase1, Manuell-Phase2)
+
+**Szenario:** Phase 1 automatisch, Phase 2 manuell bestätigt.
+
+**Config:**
+```yaml
+automation:
+  mode: auto_phase1
+phase2:
+  cleanup_review_rejected: true
+  move_to_temp_final: false  # Manueller Move erforderlich
+```
+
+**Ablauf:**
+1. Batch in `01_TEMP_SD` ablegen
+2. `pipeline` starten → Phase 1 automatisch
+3. Ergebnisse in `02_TEMP_IMAGES` prüfen
+4. Bei OK: Batch nach `03_TEMP_DONE` verschieben
+5. `pipeline` erneut → Phase 2 (manuell getriggert)
+
+**Vorteil:** Gute Balance aus Automatisierung und Kontrolle.
+**Empfohlen für:** Produktiven Einstieg nach Testphase.
+
+---
+
+**Hinweis:** Alle Beispiele basieren auf der aktuellen Implementierung (v1.2). Bei Änderungen der Config-Schema-Version können Details abweichen – immer zuerst mit Test-Batches prüfen!
