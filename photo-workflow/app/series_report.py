@@ -237,17 +237,16 @@ def write_batch_series_reports(
     save_dir: Path,
     cfg: dict[str, Any],
 ) -> dict[str, Any]:
-    """Schreibt Reports aus finalen Culling-Rows, ohne Entscheidungen zu ändern."""
+    """Schreibt EINEN kombinierten JSON-Report + Text-Report direkt in save_dir."""
     reporting_cfg = cfg.get('reporting', {})
     enabled = bool(reporting_cfg.get('series_reports_enabled', True))
-    report_dir = save_dir / 'series_reports'
 
     result = {
         'enabled': enabled,
         'series_count': 0,
         'reported_image_count': 0,
         'json_report_count': 0,
-        'report_dir': str(report_dir),
+        'json_report_path': '',
         'text_report_path': '',
     }
     if not enabled:
@@ -263,14 +262,22 @@ def write_batch_series_reports(
     if not grouped:
         return result
 
-    report_dir.mkdir(parents=True, exist_ok=True)
-    reports = []
-    for series_id in sorted(grouped):
-        report = _series_report_from_rows(series_id, grouped[series_id])
-        save_report(report, report_dir / f'{_safe_report_stem(series_id)}.json')
-        reports.append(report)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    reports = [
+        _series_report_from_rows(series_id, grouped[series_id])
+        for series_id in sorted(grouped)
+    ]
 
-    text_path = report_dir / 'series_report.txt'
+    combined_report = {
+        'schema_version': 'series-report-v1',
+        'generated_at': datetime.now(timezone.utc).isoformat(),
+        'series_count': len(reports),
+        'series': reports,
+    }
+    json_path = save_dir / 'series_report.json'
+    save_report(combined_report, json_path)
+
+    text_path = save_dir / 'series_report.txt'
     save_text_report(_batch_text_report(reports), text_path)
 
     result.update({
@@ -278,7 +285,8 @@ def write_batch_series_reports(
         'reported_image_count': sum(
             report['series_size'] for report in reports
         ),
-        'json_report_count': len(reports),
+        'json_report_count': 1,
+        'json_report_path': str(json_path),
         'text_report_path': str(text_path),
     })
     return result

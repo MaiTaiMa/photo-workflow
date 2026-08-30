@@ -42,7 +42,7 @@ from app.automation_contract import build_prediction_record
 from app.automation_store import write_prediction_batch
 from app.review_decision import record_human_decision
 from app.validate_reviews import validate_reviews
-from app.automation_readiness import aggregate_readiness
+from app.automation_readiness import aggregate_readiness, format_ai_status_block
 from app.clip_scorer import CLIPScorer
 from app.pause_checkpoint import PauseCheckpointStore
 from app.phase1_runtime_budget_state import (
@@ -2166,6 +2166,20 @@ def automatic_handoff(batch_path: Path, cfg: dict) -> bool:
     if not gate_ok:
         reason = gate_report.get("gate_reason", "unknown")
         log(cfg, f'[HANDOFF GATE FAILED] batch={batch_path.name} reason={reason}')
+
+        try:
+            policy_version = str(automation.get("policy_version", ""))
+            readiness_report, _ = aggregate_readiness(
+                runtime_path, expected_policy_version=policy_version or None
+            )
+            readiness_report["gate_reason"] = reason
+            status_block = format_ai_status_block(
+                readiness_report, mode=mode, batch_id=batch_path.name
+            )
+            log(cfg, "\n" + status_block)
+        except Exception as exc:
+            log(cfg, f'[STATUS BLOCK ERROR] batch={batch_path.name} error={exc}', error=True)
+
         return False
 
     # Handoff-State persistieren (vor dem Move)

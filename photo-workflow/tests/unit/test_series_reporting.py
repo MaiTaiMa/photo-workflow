@@ -55,7 +55,7 @@ def test_no_real_series_writes_no_reports(tmp_path):
     assert result['enabled'] is True
     assert result['series_count'] == 0
     assert result['json_report_count'] == 0
-    assert not (tmp_path / 'series_reports').exists()
+    assert not (tmp_path / 'series_report.json').exists()
 
 
 def test_writes_json_and_text_report_from_final_rows(tmp_path):
@@ -74,12 +74,13 @@ def test_writes_json_and_text_report_from_final_rows(tmp_path):
     assert result['series_count'] == 1
     assert result['reported_image_count'] == 2
     assert result['json_report_count'] == 1
-    report_dir = tmp_path / 'series_reports'
-    json_paths = list(report_dir.glob('*.json'))
-    assert len(json_paths) == 1
-    assert (report_dir / 'series_report.txt').is_file()
+    json_path = tmp_path / 'series_report.json'
+    assert json_path.is_file()
+    assert (tmp_path / 'series_report.txt').is_file()
 
-    report = json.loads(json_paths[0].read_text(encoding='utf-8'))
+    combined = json.loads(json_path.read_text(encoding='utf-8'))
+    assert combined['series_count'] == 1
+    report = combined['series'][0]
     assert report['series_id'] == 'series_0'
     assert report['decision_counts'] == {
         'keep': 1,
@@ -89,8 +90,8 @@ def test_writes_json_and_text_report_from_final_rows(tmp_path):
     assert report['images'][0]['file'] == 'IMG_0001.JPG'
     assert report['images'][0]['series_best'] is True
     assert report['images'][1]['decision_reason'] == 'series_near_best'
-    assert '_source_path' not in json.dumps(report)
-    assert '_family_tags' not in json.dumps(report)
+    assert '_source_path' not in json.dumps(combined)
+    assert '_family_tags' not in json.dumps(combined)
 
 
 def test_multiple_series_get_separate_collision_safe_files(tmp_path):
@@ -102,9 +103,12 @@ def test_multiple_series_get_separate_collision_safe_files(tmp_path):
     result = write_batch_series_reports(rows, tmp_path, {})
 
     assert result['series_count'] == 2
-    json_paths = list((tmp_path / 'series_reports').glob('*.json'))
-    assert len(json_paths) == 2
-    assert len({path.name for path in json_paths}) == 2
+    json_path = tmp_path / 'series_report.json'
+    assert json_path.is_file()
+    combined = json.loads(json_path.read_text(encoding='utf-8'))
+    assert combined['series_count'] == 2
+    series_ids = {series['series_id'] for series in combined['series']}
+    assert len(series_ids) == 2
 
 
 def test_manual_keep_and_family_protection_are_visible(tmp_path):
@@ -118,8 +122,9 @@ def test_manual_keep_and_family_protection_are_visible(tmp_path):
     ]
 
     write_batch_series_reports(rows, tmp_path, {})
-    json_path = next((tmp_path / 'series_reports').glob('*.json'))
-    report = json.loads(json_path.read_text(encoding='utf-8'))
+    json_path = tmp_path / 'series_report.json'
+    combined = json.loads(json_path.read_text(encoding='utf-8'))
+    report = combined['series'][0]
 
     assert report['manual_keep_count'] == 1
     assert report['family_protected_count'] == 1
@@ -136,4 +141,5 @@ def test_disabled_reporting_writes_nothing(tmp_path):
 
     assert result['enabled'] is False
     assert result['series_count'] == 0
-    assert not (tmp_path / 'series_reports').exists()
+    assert not (tmp_path / 'series_report.json').exists()
+    assert not (tmp_path / 'series_report.txt').exists()

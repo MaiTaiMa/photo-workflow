@@ -404,3 +404,46 @@ def is_fullauto_ready(
     report["mode"] = mode
     report["expected_policy_version"] = policy_version
     return False, report
+
+# -----------------------------------------------------------------------------
+# Formatiert einen menschenlesbaren Status-Block für den KI-Assistenten.
+# Rein diagnostisch, keine Seiteneffekte, keine Freigabe-Entscheidung.
+# -----------------------------------------------------------------------------
+
+def format_ai_status_block(
+    report: dict[str, Any],
+    mode: str,
+    batch_id: str,
+    config_path: str = "config/config.yaml",
+) -> str:
+    """Baut einen abgesetzten Status-Block zum KI-Assistenten-Bereitschaftsgrad."""
+    policy = report.get("policy", {})
+    status = report.get("status", "unknown")
+    ready = bool(report.get("fullauto_gate_ready", status == "ready"))
+
+    def pct(value: Any) -> str:
+        return f"{value * 100:.1f}%" if isinstance(value, (int, float)) else "n/a"
+
+    gate_reason = report.get("gate_reason", status)
+    lines = [
+        "=" * 60,
+        "🤖 KI-ASSISTENT STATUS",
+        "=" * 60,
+        f"Modus:                    {mode}",
+        f"Batch:                    {batch_id}",
+        f"Gate-Status:              {'✅ BEREIT' if ready else f'❌ NICHT BEREIT ({gate_reason})'}",
+        "-" * 60,
+        f"Validierte Batches:       {report.get('evaluable_batch_count', 0)} / {policy.get('minimum_evaluable_batches', '?')} (Minimum)",
+        f"Ausgewertete Vorhersagen: {report.get('evaluated_predictions', 0)} / {policy.get('minimum_evaluated_predictions', '?')} (Minimum)",
+        f"Gesamt-Übereinstimmung:   {pct(report.get('overall_agreement'))} (Ziel: >= {pct(policy.get('minimum_overall_agreement'))})",
+        f"Keep-Präzision:           {pct(report.get('keep_precision'))} (Ziel: >= {pct(policy.get('minimum_keep_precision'))})",
+        f"Reject-Präzision:         {pct(report.get('reject_precision'))} (Ziel: >= {pct(policy.get('minimum_reject_precision'))})",
+    ]
+    if not ready:
+        lines += [
+            "-" * 60,
+            "Nächster Schritt:",
+            f"  python -m app.photo_workflow --config {config_path} validate-reviews --batch {batch_id}",
+        ]
+    lines.append("=" * 60)
+    return "\n".join(lines)
