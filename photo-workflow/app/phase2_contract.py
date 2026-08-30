@@ -22,7 +22,7 @@ from typing import Dict, Any
 from .automation_metrics import AutomationMetrics
 
 
-def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -> Dict[str, Any]:
+def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, delete_files: bool = True) -> Dict[str, Any]:
     """
     Bereinigt Review und Rejected Ordner nach Phase 2.
     
@@ -47,6 +47,7 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
         batch_path: Pfad zum Batch-Ordner
         cfg: Config-Dictionary mit Pfaden
         dry_run: Wenn True, nur simulieren
+        delete_files: Wenn True, Dateien löschen statt nach temp_error verschieben
     
     Returns:
         dict mit:
@@ -101,11 +102,15 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
                         shutil.move(str(img), str(target))
                     result['review_keep_moved'] += 1
                 else:
-                    # Nach error
-                    target = temp_error_dir / f"{batch.name}_REVIEW_{img.name}"
-                    if not dry_run:
-                        temp_error_dir.mkdir(parents=True, exist_ok=True)
-                        shutil.move(str(img), str(target))
+                    # Nach error oder löschen
+                    if delete_enabled:
+                        if not dry_run:
+                            img.unlink()
+                    else:
+                        target = temp_error_dir / f"{batch.name}_REVIEW_{img.name}"
+                        if not dry_run:
+                            temp_error_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.move(str(img), str(target))
                     result['review_reject_moved'] += 1
                     
             except Exception as e:
@@ -124,11 +129,15 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -
                 continue
             
             try:
-                # Alle nach error
-                target = temp_error_dir / f"{batch.name}_REJ_{img.name}"
-                if not dry_run:
-                    temp_error_dir.mkdir(parents=True, exist_ok=True)
-                    shutil.move(str(img), str(target))
+                # Alle nach error oder löschen
+                if delete_enabled:
+                    if not dry_run:
+                        img.unlink()
+                else:
+                    target = temp_error_dir / f"{batch.name}_REJ_{img.name}"
+                    if not dry_run:
+                        temp_error_dir.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(img), str(target))
                 result['rejected_moved'] += 1
                 
             except Exception as e:
@@ -228,6 +237,7 @@ def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dic
         batch_path: Pfad zum Batch-Ordner
         cfg: Config-Dictionary mit Pfaden
         dry_run: Wenn True, nur simulieren
+        delete_files: Wenn True, Dateien löschen statt nach temp_error verschieben
     
     Returns:
         dict mit:
@@ -353,6 +363,7 @@ def run_phase2_with_cleanup(batch_path: str, cfg: dict, dry_run: bool = False) -
         batch_path: Pfad zum Batch-Ordner
         cfg: Config-Dictionary mit Pfaden
         dry_run: Wenn True, nur simulieren
+        delete_files: Wenn True, Dateien löschen statt nach temp_error verschieben
     
     Returns:
         dict mit:

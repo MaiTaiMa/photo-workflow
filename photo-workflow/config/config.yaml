@@ -343,14 +343,20 @@ automation:
 phase2:
   # cleanup_review_rejected: Review und Rejected nach Phase 2 bereinigen.
   # Mögliche Werte: true oder false.
-  # Auswirkung: true verschiebt Review-/Rejected-Dateien nach temp_error.
+  # Auswirkung: true verschiebt Review-/Rejected-Dateien nach temp_error (oder löscht sie).
   cleanup_review_rejected: true
+
+  # delete_review_rejected: Bereinigte Dateien löschen statt nach temp_error verschieben.
+  # Mögliche Werte: true oder false.
+  # Auswirkung: true löscht review/rejected-Dateien endgültig, false verschiebt nach temp_error.
+  delete_review_rejected: true  # Standard: true (Platz sparen)
 
   # move_to_temp_final: Bereinigten Batch nach temp_final verschieben.
   # Mögliche Werte: true oder false.
   # Auswirkung: true aktiviert den Transfer nach temp_final (Pfad in paths.temp_final).
   move_to_temp_final: true
 
+  dry_run: false
   # dry_run: Nur simulieren, keine Dateioperationen.
   # Mögliche Werte: true oder false.
   # Auswirkung: true protokolliert nur, false führt Moves tatsächlich aus.

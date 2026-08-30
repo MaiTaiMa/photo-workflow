@@ -2244,6 +2244,7 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
     # Phase-2-Config auslesen
     phase2_cfg = cfg.get('phase2', {})
     cleanup_enabled = bool(phase2_cfg.get('cleanup_review_rejected', True))
+    delete_enabled = bool(phase2_cfg.get('delete_review_rejected', True))
     move_enabled = bool(phase2_cfg.get('move_to_temp_final', False))
     dry_run = bool(phase2_cfg.get('dry_run', False))
     
@@ -2283,6 +2284,7 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                     batch_path=str(dir_path),
                     cfg=cfg,
                     dry_run=dry_run,
+                    delete_files=delete_enabled,
                 )
                 
                 log(cfg, f'[CLEANUP] {dir_path.name} keep={cleanup_result["review_keep_moved"]} reject={cleanup_result["review_reject_moved"]} rejected={cleanup_result["rejected_moved"]} status={cleanup_result["status"]}')
