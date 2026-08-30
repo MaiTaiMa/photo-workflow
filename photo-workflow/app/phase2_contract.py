@@ -66,6 +66,7 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, d
     cleanup_enabled = bool(phase2_cfg.get('cleanup_review_rejected', True))
     dry_run = dry_run or bool(phase2_cfg.get('dry_run', False))
     
+    delete_enabled = delete_files and bool(phase2_cfg.get('delete_review_rejected', True))
     # Pfade aus Config
     temp_done_dir = Path(cfg['paths']['temp_done'])
     temp_error_dir = Path(cfg['paths'].get('temp_error', '../NAS_EXAMPLE/00_TEMP_ERROR'))
