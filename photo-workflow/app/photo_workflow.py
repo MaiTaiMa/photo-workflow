@@ -1590,7 +1590,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'series_json_report_count': series_report_info[
             'json_report_count'
         ],
-        'series_report_directory': series_report_info['report_dir'],
+        'series_report_directory': series_report_info.get('json_report_path', ''),
         'series_text_report_path': series_report_info[
             'text_report_path'
         ],
