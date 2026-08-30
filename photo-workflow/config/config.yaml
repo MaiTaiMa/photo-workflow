@@ -294,7 +294,7 @@ automation:
   # Mögliche Werte: off, shadow, assisted, auto_phase1, auto_phase2, full_auto.
   # Auswirkung: shadow und assisted bleiben diagnostisch; operative Modi werden
   # erst in späteren, separat abgesicherten Arbeitspaketen verdrahtet.
-  mode: shadow
+  mode: full_auto
 
   # keep_score_min: Mindestwert für eine automatische Keep-Prognose.
   # Mögliche Werte: 0.0 bis 1.0.

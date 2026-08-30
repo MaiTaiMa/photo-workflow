@@ -182,7 +182,7 @@ phase1_started -> phase1_moving -> phase1_completed
 2. **Review/Rejected bereinigen** – Keep-Dateien nach `temp_done`, Rejects nach `temp_error`.
 3. **Bereinigung verifizieren** – Ordner müssen leer sein.
 4. **State-Update** – `phase2_completed` setzen.
-5. **Move nach `temp_final`** – (nur bei `full_auto` und aktivierter Option).
+5. **Move nach `temp_final`** – (bei `phase2.move_to_temp_final: true`, unabhängig vom Automationsmodus).
 
 ### 5.3 Move-Logik (98AP-Vertrag)
 
@@ -320,7 +320,7 @@ culling:
 ```yaml
 phase2:
   cleanup_review_rejected: true
-  move_to_temp_final: true  # nur bei full_auto
+  move_to_temp_final: true  # Move nach Phase-2-Cleanup, unabhängig vom Modus
   dry_run: false
 ```
 

@@ -19,7 +19,7 @@ from .phase_state import transition, PhaseTransitionError
 from .state_store import StateStore
 from datetime import datetime
 from typing import Dict, Any
-from automation_metrics import AutomationMetrics
+from .automation_metrics import AutomationMetrics
 
 
 def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False) -> Dict[str, Any]:

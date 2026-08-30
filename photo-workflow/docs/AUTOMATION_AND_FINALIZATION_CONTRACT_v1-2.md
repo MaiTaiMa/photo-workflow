@@ -45,7 +45,7 @@ Ein Batch darf erst nach `04_TEMP_FINAL` 체bergeben werden, wenn Phase 2 vollst�
 | `assisted` | Vorschlag mit Grund sichtbar | Mensch entscheidet | Nur manuell | Review-Unterst체tzung |
 | `auto_phase1` | Versionierte, validierte Prediction | Nur bei erf체llten Gates; sonst `review` | Nur manuell | Automatische Phase-1-Vorsortierung |
 | `auto_phase2` | Wie `auto_phase1` | Wie `auto_phase1` | Nur bei `automatic_handoff` und allen Phase-2-Gates | Lokale automatische Phase 1 und 2 |
-| `full_auto` | Wie `auto_phase2` | Wie `auto_phase2` | Nur bei `automatic_handoff` und allen Phase-2-Gates | Vollst채ndiger lokaler v1.2-Lauf bis `04_TEMP_FINAL` |
+| `full_auto` | Wie `auto_phase2` | Wie `auto_phase2` | Nur bei `automatic_handoff` und allen Phase-2-Gates | Vollst채ndiger lokaler v1.2-Lauf bis `04_TEMP_FINAL` (wenn `phase2.move_to_temp_final: true`) |
 
 `shadow` und `assisted` d체rfen niemals `keep`, `review`, `reject`, Dateimoves, Archivierung, ARW-Aktionen oder States ver채ndern. Ein `ready`-Status der Readiness-Auswertung aktiviert keinen Modus selbst. Jeder operative Modus muss explizit in der Konfiguration aktiviert sein.
 

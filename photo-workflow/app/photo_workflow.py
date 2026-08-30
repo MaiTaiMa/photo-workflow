@@ -53,6 +53,26 @@ from app.runtime_control import RuntimeControl, install_signal_handlers
 from app.workflow_locks import WorkflowLockError, WorkflowLockManager
 from app.series_culling import apply_series_culling
 from app.series_report import write_batch_series_reports
+
+# ==========================================================================
+# Warning-Filter für bekannte Bibliotheks-Probleme (Tech-Debt für v1.3)
+# ==========================================================================
+import warnings
+
+# face_recognition_models verwendet deprecated pkg_resources
+# TODO(v1.3): Auf Version migrieren, die importlib.resources verwendet
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module="face_recognition_models"
+)
+
+# OpenCV 5.x DNN Graph-Engine Warnung (CPU-Fallback ist beabsichtigt)
+# TODO(v1.3): OpenCV-API für Target-Selection in 5.x prüfen
+warnings.filterwarnings(
+    "ignore",
+    message=r".*setPreferableTarget.*"
+)
 from app.metadata_writer import write_culling_metadata
 from app.phase1_analysis import analyze_rows
 from app.phase1_analysis_builder import build_persistable_analysis_rows
@@ -2139,8 +2159,8 @@ def automatic_handoff(batch_path: Path, cfg: dict) -> bool:
         config=cfg,
         workdir=workdir,
         runtime_path=runtime_path,
-        policy_version=str(automation.get("policy_version", "")),
-        model_version=str(automation.get("model_version", "")),
+        # policy_version=str(automation.get("policy_version", "")),
+        # model_version=str(automation.get("model_version", "")),
     )
 
     if not gate_ok:
@@ -2238,8 +2258,8 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
             runtime_path = Path(cfg['paths']['base_dir']) / 'WORKFLOW_DATA' / 'runtime'
             handoff_state = read_handoff_state(dir_path.name, runtime_path)
             if handoff_state is None:
-                log(cfg, f'[PHASE2 SKIP] no valid handoff batch={dir_path.name} mode={mode}', error=True)
-                continue
+                log(cfg, f'[PHASE2 MANUAL] {dir_path.name} kein Handoff-Token, aber Cleanup trotzdem')
+                # continue entfällt – Cleanup läuft normal weiter
 
         COUNT_FOUND_DONE += 1
         
@@ -2283,9 +2303,9 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                     continue
                 
                 # ==========================================================================
-                # SCHRITT 4: Move nach temp_final (nur full_auto + cleanup OK)
+                # SCHRITT 4: Move nach temp_final (cleanup OK)
                 # ==========================================================================
-                if move_enabled and mode == 'full_auto':
+                if move_enabled:
                     move_result = move_to_temp_final(
                         batch_path=str(dir_path),
                         cfg=cfg,
@@ -2298,14 +2318,8 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                         log(cfg, f'[PHASE2 OK] {dir_path.name} move_to_temp_final deaktiviert')
                     else:
                         log(cfg, f'[PHASE2 FAILED] {dir_path.name} {move_result["error"]}', error=True)
-                elif mode != 'full_auto':
-                    log(
-                        cfg,
-                        f'[PHASE2 OK] {dir_path.name} cleanup abgeschlossen; '
-                        '04_TEMP_FINAL nur bei full_auto',
-                    )
                 else:
-                    log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup abgeschlossen, move deaktiviert')
+                    log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup abgeschlossen, move_to_temp_final deaktiviert')
             else:
                 log(cfg, f'[PHASE2 OK] {dir_path.name} cleanup deaktiviert')
         else:
