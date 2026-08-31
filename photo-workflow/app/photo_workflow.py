@@ -67,13 +67,6 @@ warnings.filterwarnings(
     module="face_recognition_models"
 )
 
-# OpenCV 5.x DNN Graph-Engine Warnung (CPU-Fallback ist beabsichtigt)
-# TODO(v1.3): OpenCV-API für Target-Selection in 5.x prüfen
-warnings.filterwarnings(
-    "ignore",
-    message=r".*setPreferableTarget.*"
-)
-from app.metadata_writer import write_culling_metadata
 from app.phase1_analysis import analyze_rows
 from app.phase1_analysis_builder import build_persistable_analysis_rows
 from app.phase1_analysis_plan import Phase1AnalysisPlanStore

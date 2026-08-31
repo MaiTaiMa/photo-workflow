@@ -26,6 +26,53 @@ import numpy as np
 from .protocol import BackendInfo
 
 
+def configure_dnn_backend(preferred_target=None) -> None:
+    """
+    Konfiguriere DNN-Backend mit Graceful Degradation für OpenCV 5.x
+    
+    Diese Funktion sollte VOR dem Laden von DNN-Modellen aufgerufen werden.
+    
+    Args:
+        preferred_target: Bevorzugtes Target (CPU, GPU, VPU, etc.)
+    """
+    if preferred_target is None:
+        preferred_target = cv2.dnn.DNN_TARGET_CPU
+    
+    opencv_version = tuple(map(int, cv2.__version__.split('.')[:3]))
+    
+    # OpenCV 5.x: Target-Setzung wird nicht unterstützt, aber wir versuchen es trotzdem
+    # mit Graceful Degradation
+    if opencv_version >= (5, 0, 0):
+        # Backend explizit setzen (falls verfügbar)
+        if hasattr(cv2.dnn, 'DNN_BACKEND_OPENCV'):
+            try:
+                cv2.dnn.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+            except Exception:
+                pass  # Graceful Degradation
+        
+        # Target-Setzung in 5.x wird gewarnt, aber wir akzeptieren den CPU-Fallback
+        if hasattr(cv2.dnn, 'DNN_TARGET_CPU'):
+            try:
+                cv2.dnn.setPreferableTarget(preferred_target)
+            except Exception:
+                pass  # Erwartet in 5.x - wir fahren fort
+    else:
+        # OpenCV < 5.0: Target setzen wie gewohnt
+        if hasattr(cv2.dnn, 'setPreferableTarget'):
+            cv2.dnn.setPreferableTarget(preferred_target)
+
+# Beim ersten Aufruf einmalig konfigurieren
+_configure_dnn_called = False
+
+def _ensure_dnn_configured() -> None:
+    """Stelle sicher, dass DNN-Backend nur einmal konfiguriert wird."""
+    global _configure_dnn_called
+    if not _configure_dnn_called:
+        configure_dnn_backend()
+        _configure_dnn_called = True
+
+
+
 class OpenCVFaceBackend:
     """
     Lokaler YuNet-/SFace-Adapter mit proportionaler Bildskalierung.
@@ -69,6 +116,7 @@ class OpenCVFaceBackend:
 
     def _load(self) -> None:
         """Lädt die OpenCV-Modelle verzögert beim ersten Aufruf."""
+        _ensure_dnn_configured()
         if self._detector is not None:
             return
         self._detector = cv2.FaceDetectorYN.create(
