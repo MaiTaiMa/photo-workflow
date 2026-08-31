@@ -96,6 +96,8 @@ from app.family_recognition import (
     write_native_tags,
 )
 
+from app.metadata_writer import write_culling_metadata
+
 from app.manual_keep import (
     detect_manual_keep_images,
     move_manual_keep_sources_to_used,
