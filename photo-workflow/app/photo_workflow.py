@@ -246,7 +246,7 @@ def load_config(path: str | Path) -> dict:
     cull = cfg['culling']
     cull.setdefault('enabled', True)
     cull.setdefault('move_files', True)
-    cull.setdefault('create_review_folder', True)
+    # create_review_folder entfernt (Vereinfachung: nur Rejected)
     cull.setdefault('create_rejected_folder', True)
     cull.setdefault('keep_threshold', 0.65)
     cull.setdefault('reject_threshold', 0.35)
@@ -1003,13 +1003,10 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
 
     save_dir = ensure_dir(workdir / 'SAVE')
     rejected_dir = workdir / 'Rejected'
-    review_dir = workdir / 'Review'
 
     if cfg['culling'].get('create_rejected_folder', True):
         rejected_dir.mkdir(exist_ok=True)
 
-    if cfg['culling'].get('create_review_folder', True):
-        review_dir.mkdir(exist_ok=True)
 
     # ==========================================================================
     # SCHRITT 1: Referenzprofile und bestehende Modelle laden
@@ -1422,7 +1419,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             row['decision'] == 'review'
             and cfg['culling'].get('move_files', True)
         ):
-            target_path = review_dir / jpg.name
+            target_path = rejected_dir / jpg.name
 
         if target_path != jpg:
             shutil.move(str(jpg), str(target_path))

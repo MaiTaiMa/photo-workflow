@@ -25,7 +25,7 @@ def _target_relative_path(file_name: str, decision: str, move_files: bool) -> st
         raise Phase1AnalysisBuildError("analysis row decision is invalid")
     if not move_files or decision == "keep":
         return file_name
-    directory = "Review" if decision == "review" else "Rejected"
+    directory = "Rejected"
     return str(Path(directory) / file_name)
 
 def build_persistable_analysis_rows(rows: list[dict[str, Any]], *, move_files: bool) -> list[dict[str, Any]]:

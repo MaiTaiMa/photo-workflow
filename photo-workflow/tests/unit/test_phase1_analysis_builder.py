@@ -18,7 +18,7 @@ from app.phase1_analysis_plan import Phase1AnalysisPlanStore
 def _row(decision="keep", file_name="a.jpg"):
     return {"file": file_name, "decision": decision, "final_score": 0.5, "_source_path": "/unsafe/a.jpg", "_family_tags": ["family:test"], "_family_regions": []}
 
-@pytest.mark.parametrize(("decision", "target"), [("keep", "a.jpg"), ("review", "Review/a.jpg"), ("reject", "Rejected/a.jpg")])
+@pytest.mark.parametrize(("decision", "target"), [("keep", "a.jpg"), ("review", "Rejected/a.jpg"), ("reject", "Rejected/a.jpg")])
 def test_builds_decision_target_and_removes_internal_fields(decision, target):
     result = build_persistable_analysis_rows([_row(decision)], move_files=True)
     assert result[0]["execution"]["target_relative_path"] == target
