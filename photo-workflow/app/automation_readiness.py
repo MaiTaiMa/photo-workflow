@@ -19,6 +19,7 @@ import tempfile
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 from app.trust_override import TrustOverrideError, TrustOverrideStore
+from app.trust_manager import TrustManager
 from pathlib import Path
 
 
@@ -394,6 +395,9 @@ def is_fullauto_ready(
                 report["gate_reasons"] = ["trust_override_active"]
                 return False, report
 
+            # TrustManager fuer batchbezogenes Vertrauen
+            # HINWEIS: Batch-Pruefung erfolgt in check_automatic_handoff_gate(),
+            # wo workdir verfuegbar ist. Hier nur globale Readiness.
             return True, report
 
         report["gate_reason"] = gate_reasons[0]

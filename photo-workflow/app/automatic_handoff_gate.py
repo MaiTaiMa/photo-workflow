@@ -18,6 +18,7 @@ from typing import Any, Mapping
 
 from app.automation_readiness import aggregate_readiness
 from app.trust_override import TrustOverrideStore, TrustOverrideError
+from app.trust_manager import TrustManager
 from app.workflow_locks import WorkflowLockManager
 from app.pause_checkpoint import PauseCheckpointStore
 
@@ -74,6 +75,12 @@ def check_automatic_handoff_gate(
     except TrustOverrideError:
         return False, {"gate_ok": False, "gate_reason": "trust_override_check_failed"}
 
+    # TrustManager fuer batchbezogenes Vertrauen
+    trust_cfg = config.get("automation", {}).get("trust_system", {})
+    trust_cfg = dict(trust_cfg)  # Kopie, um Original-Config nicht zu aendern
+    trust_cfg["enabled"] = trust_cfg.get("enabled", False)
+    trust_manager = TrustManager(trust_cfg, Path(runtime_path) / "automation")
+
     # Lock-Konflikt prüfen (fail-closed)
     try:
         locks_dir = Path(config["paths"]["base_dir"]) / "WORKFLOW_DATA" / "locks"
@@ -95,5 +102,16 @@ def check_automatic_handoff_gate(
 
     # TODO: Hier können weitere Gates ergänzt werden (Manifest, review_state_invalid, MANUAL_KEEP-Dokumentation).
     # Für Paket C.1 belassen wir es bei den oben genannten, um die Komplexität klein zu halten.
+
+    # Auto-Approve-Pruefung via TrustManager
+    batch_id = workdir.name
+    if trust_manager.should_auto_approve(batch_id):
+        return True, {
+            "gate_ok": True,
+            "mode": mode,
+            "policy_version": policy_version,
+            "auto_approved": True,
+            "trust_level": "high",
+        }
 
     return True, {"gate_ok": True, "mode": mode, "policy_version": policy_version}

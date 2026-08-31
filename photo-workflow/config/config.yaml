@@ -248,6 +248,27 @@ workflow:
 # Readiness aktiviert keinen Modus; shadow bleibt der sichere Standard.
 # -----------------------------------------------------------------------------
 automation:
+  # trust_system: Batchbezogenes Trust-Level-System fuer KI-Automatik (TODO_v1.3 Modul 3).
+  # Mögliche Werte: Mapping mit den unten dokumentierten Feldern.
+  # Auswirkung: enabled=true aktiviert Auto-Approve bei HIGH-Level; false blockiert Auto-Approve.
+  trust_system:
+    # enabled: Aktiviert das batchbezogene Trust-System.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true erlaubt Auto-Approve bei HIGH-Level; false blockiert Auto-Approve.
+    enabled: false
+    # min_validations_for_auto: Anzahl Validierungen fuer HIGH-Level.
+    # Mögliche Werte: Integer >= 1.
+    # Auswirkung: Erst nach dieser Anzahl wird Auto-Approve erlaubt.
+    min_validations_for_auto: 5
+    # discrepancy_reset_trust: Bei Diskrepanz Trust zuruecksetzen.
+    # Mögliche Werte: true oder false.
+    # Auswirkung: true setzt bei Diskrepanz auf LOW zurueck; false ignoriert Diskrepanzen.
+    discrepancy_reset_trust: true
+    # max_auto_approvals_before_revalidation: Max Auto-Approvals vor Revalidierung.
+    # Mögliche Werte: Integer >= 1.
+    # Auswirkung: Nach dieser Anzahl wird wieder manuelle Pruefung erzwungen.
+    max_auto_approvals_before_revalidation: 10
+
   # fullauto_gate: Zusätzliche, strengere Readiness-Grenze für full_auto.
   # Mögliche Werte: Mapping mit den unten dokumentierten Gate-Feldern.
   # Auswirkung: Ein unvollständiges oder nicht bestandenes Gate bleibt fail-closed.

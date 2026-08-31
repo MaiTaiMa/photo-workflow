@@ -82,6 +82,7 @@ from app.phase1_workunit_runner import Phase1WorkUnitRunner
 from app.training import train_from_directory, load_or_rebuild_personal_model
 from app.workunit_state import WorkUnitStateStore
 from app.trust_override import TrustOverrideStore, TrustOverrideError
+from app.trust_manager import TrustManager
 from app.automatic_handoff_gate import check_automatic_handoff_gate
 from app.handoff_state import write_handoff_state_atomically, read_handoff_state
 from app.config_schema import config_fingerprint
@@ -2462,6 +2463,27 @@ def build_parser() -> argparse.ArgumentParser:
         help='Hebt den manuellen Trust-Override auf.',
     )
 
+    trust_status = sub.add_parser(
+        'trust-status',
+        help='Zeigt den batchbezogenen Trust-Status an.',
+    )
+    trust_status.add_argument(
+        '--batch',
+        required=False,
+        default=None,
+        help='Batch-ID (optional, sonst alle Batches).',
+    )
+
+    trust_reset = sub.add_parser(
+        'trust-reset',
+        help='Setzt den batchbezogenen Trust zurueck.',
+    )
+    trust_reset.add_argument(
+        '--batch',
+        required=True,
+        help='Batch-ID.',
+    )
+
     return parser
     
 
@@ -2485,6 +2507,30 @@ def main() -> int:
                 payload = store.restore()
             print(json.dumps(payload, ensure_ascii=False, indent=2))
             return 0
+        except TrustOverrideError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+
+    elif args.command in ("trust-status", "trust-reset"):
+        try:
+            from pathlib import Path
+            cfg = load_config(Path(args.config))
+            trust_cfg = cfg.get("automation", {}).get("trust_system", {})
+            trust_cfg = dict(trust_cfg)
+            trust_cfg["enabled"] = trust_cfg.get("enabled", False)
+            runtime_path = Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "runtime"
+            trust_manager = TrustManager(trust_cfg, runtime_path / "automation")
+
+            if args.command == "trust-status":
+                status = trust_manager.get_status(args.batch)
+                print(json.dumps(status, ensure_ascii=False, indent=2))
+            else:  # trust-reset
+                trust_manager.reset_trust(args.batch)
+                print(f"Trust fuer Batch {args.batch} zurueckgesetzt")
+            return 0
+        except Exception as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
         except TrustOverrideError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
