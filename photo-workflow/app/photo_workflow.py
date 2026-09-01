@@ -2505,7 +2505,6 @@ def main() -> int:
 
     elif args.command in ("trust-status", "trust-reset"):
         try:
-            from pathlib import Path
             cfg = load_config(Path(args.config))
             trust_cfg = cfg.get("automation", {}).get("trust_system", {})
             trust_cfg = dict(trust_cfg)

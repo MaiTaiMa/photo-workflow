@@ -21,9 +21,34 @@ import hashlib
 from pathlib import Path
 
 import cv2
+import warnings
 import numpy as np
 
 from .protocol import BackendInfo
+
+# OpenCV 5.x: Warnungen bei setPreferableTarget unterdruecken (CPU-Fallback ist erwartet)
+_warnings_setup_done = False
+
+def _setup_dnn_warnings():
+    """Unterdruecke OpenCV native C++ Log-Warnungen (setPreferableTarget CPU-Fallback).
+
+    Hinweis: Die Warnung "[ WARN:0@...] setPreferableTarget..." kommt aus
+    OpenCVs C++ Logging-System (nicht Python warnings) und muss daher
+    ueber cv2.utils.logging.setLogLevel() unterdrueckt werden.
+    """
+    global _warnings_setup_done
+    if _warnings_setup_done:
+        return
+    _warnings_setup_done = True
+    warnings.filterwarnings('ignore', message='.*setPreferableTarget.*')
+    warnings.filterwarnings('ignore', message='.*Targets are not supported.*')
+    try:
+        cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+    except Exception:
+        pass  # Aeltere OpenCV-Versionen ohne dieses API
+
+_setup_dnn_warnings()
+
 
 
 def configure_dnn_backend(preferred_target=None) -> None:
