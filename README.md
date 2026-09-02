@@ -25,7 +25,6 @@ Der Workflow trennt Eingang, Review, Freigabe und endgültige Archivierung. Phas
 - Die Shell-Skripte prüfen und starten nur; die fachliche Logik liegt in Python.
 - Für die ausführliche Inbetriebnahme und Nutzung nutze das Handbuch.
 
-
 ## Pipeline-Ausführung
 
 Der Workflow kann einzelne Phasen oder eine konfigurierbare Pipeline ausführen.  
@@ -45,6 +44,7 @@ pipeline:
   phases:
     - phase1
     - phase2
+    # - phase3  # Optional: Phase 3 für Transfer nach targetfolder
 
   # stop_on_error: Pipeline beim ersten Fehler stoppen.
   # Mögliche Werte: true oder false.
@@ -62,6 +62,9 @@ python -m app.photo_workflow --config config/config.yaml phase1
 # Nur Phase 2 ausführen: ARW-Archivierung, Review/Rejected-Bereinigung und optionaler Transfer nach TEMP_FINAL.
 python -m app.photo_workflow --config config/config.yaml phase2
 
+# Nur Phase 3 ausführen: Transfer nach targetfolder mit Indexierung und Metadaten.
+python -m app.photo_workflow --config config/config.yaml phase3
+
 # Alle in pipeline.phases konfigurierten Phasen nacheinander ausführen.
 python -m app.photo_workflow --config config/config.yaml pipeline
 
@@ -75,10 +78,11 @@ Bei der Standard-Konfiguration wird folgende Reihenfolge ausgeführt:
 
 1. `phase1`: Batch aus `01_TEMP_SD` verarbeiten, Bilder bewerten und nach `02_TEMP_IMAGES` übertragen.
 2. `phase2`: ARW-Dateien archivieren, `_Review` und `_Rejected` bereinigen sowie – wenn aktiviert – den Batch nach `04_TEMP_FINAL` verschieben.
+3. `phase3` (optional): Finalisierte Batches aus `04_TEMP_FINAL` nach targetfolder transferieren, indexieren und Metadaten übertragen.
 
 ### Erweiterung um Phase 3
 
-Sobald Phase 3 implementiert ist, wird sie ausschließlich in der Konfiguration ergänzt:
+Sobald Phase 3 aktiviert werden soll, wird sie ausschließlich in der Konfiguration ergänzt:
 
 ```yaml
 pipeline:
