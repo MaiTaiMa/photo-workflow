@@ -36,6 +36,15 @@ python /app/app/photo_workflow.py --config /app/config/config.yaml pipeline
 # Alias, identisch zu pipeline
 python /app/app/photo_workflow.py --config /app/config/config.yaml phase12
 
+# Nur Phase 3: Finalisierung und Transfer nach targetfolder
+python /app/app/photo_workflow.py --config /app/config/config.yaml phase3
+
+# Phase 3 mit explizitem Ziel
+python /app/app/photo_workflow.py --config /app/config/config.yaml phase3 --folder 2025-11-01 --target /volume1/photo/wirser
+
+# Pipeline mit allen Phasen (phase1 + phase2 + phase3)
+python /app/app/photo_workflow.py --config /app/config/config.yaml pipeline
+
 # Family-Cache gezielt neu aufbauen
 python /app/app/photo_workflow.py --config /app/config/config.yaml rebuild-family-cache
 
@@ -59,6 +68,29 @@ Jeder Lauf schreibt einen Startblock, laufende Statusmeldungen und eine Abschlus
 - Löschungen von Originaldaten sind nur in eng begrenzten, vertraglich definierten Fällen erlaubt (siehe `docs/AUTOMATION_AND_FINALIZATION_CONTRACT_v1-2.md`).
 - Lockfiles verhindern parallele Läufe auf demselben Batch.
 - Vor produktivem Einsatz sollte immer ein Testlauf mit Kopien echter Ordner erfolgen.
+
+
+## Phase 3: Finalisierung und Veröffentlichung
+
+Phase 3 überführt finalisierte Batches aus `04_TEMP_FINAL` in den Synology-Photos-Bestand (targetfolder). Optional mit Indexierung, Album-Zuordnung und Metadaten-Transfer.
+
+**Voraussetzungen:**
+- Batch muss in `04_TEMP_FINAL` liegen (nach Phase 2)
+- `finalization.enabled: true` in config.yaml
+- `publishtosynologyphotos.enabled: true` für API-Transfer
+- Synology-Photos-API-Zugang (NAS-Docker-Deployment)
+
+**Ablauf:**
+1. Transfer nach targetfolder (copy oder move)
+2. Indexierung via synofoto-bin-index-tool (optional)
+3. Album-Upsert für erkannte Personen (optional)
+4. Metadaten-Transfer (Ratings, Tags, Personen)
+
+**Sicherheit:**
+- Atomare Manifest-Datei (finalizationmanifest.json)
+- SHA256-Verifikation vor Aktivierung
+- Capability-gated: Kein Transfer ohne erfolgreiche Pilotläufe
+
 
 ## Erweiterte Themen
 

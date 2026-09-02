@@ -226,12 +226,39 @@ def prepare_family_model(cfg: dict[str, object], force_rebuild: bool = False, al
     model.update({
         "backend": backend,
         "matcher": matcher,
-        "people": {person: {} for person in loaded_people},
-        "status": "cache_rebuilt" if fr_cfg.get("cache_enabled", True) else "ready_no_cache",
-        "rebuilt_cache": bool(fr_cfg.get("cache_enabled", True)),
         "person_count": len(loaded_people),
     })
-    if fr_cfg.get("cache_enabled", True):
+
+    # Cache-Validierung: Prüfen ob Cache existiert und gültig ist
+    cache_exists = paths["meta"].exists() and paths["index"].exists()
+    cache_valid = False
+
+    if cache_exists and not force_rebuild:
+        try:
+            meta = json.loads(paths["meta"].read_text(encoding="utf-8"))
+            cached_person_count = len(meta.get("people", []))
+            current_person_count = len(loaded_people)
+            cache_valid = (cached_person_count == current_person_count and cached_person_count > 0)
+        except Exception:
+            cache_valid = False
+
+    # Status setzen
+    if cache_valid:
+        model["status"] = "cache_used"
+        model["used_cache"] = True
+        model["rebuilt_cache"] = False
+    elif fr_cfg.get("cache_enabled", True):
+        model["status"] = "cache_rebuilt"
+        model["used_cache"] = False
+        model["rebuilt_cache"] = True
+    else:
+        model["status"] = "ready_no_cache"
+        model["used_cache"] = False
+        model["rebuilt_cache"] = False
+
+    # Cache nur bei rebuild schreiben
+    if model["rebuilt_cache"] and fr_cfg.get("cache_enabled", True):
+        model.update(_write_cache(cfg, state, loaded_people))
         model.update(_write_cache(cfg, state, loaded_people))
     
     return model
