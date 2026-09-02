@@ -307,6 +307,40 @@ def evaluate_fullauto_thresholds(
     return not reasons, reasons
 
 
+def evaluate_assistant_thresholds(
+    automation: Mapping[str, Any],
+    readiness_report: Mapping[str, Any],
+) -> tuple[bool, list[str]]:
+    """Evaluate Assistant-mode thresholds (stricter than full_auto)."""
+    reasons: list[str] = []
+    gate = automation.get("fullauto_gate")
+
+    if not isinstance(gate, Mapping):
+        return False, ["assistant_gate_missing"]
+
+    if gate.get("enabled") is not True:
+        reasons.append("assistant_gate_disabled")
+
+    overall = readiness_report.get("overall_agreement")
+    minimum_batch = readiness_report.get("minimum_batch_agreement")
+
+    # ASSISTANT: Hoehere Schwellen als full_auto!
+    required_overall = gate.get("min_overall_agreement_assistant", 0.97)
+    required_batch = gate.get("min_batch_agreement_assistant", 0.93)
+
+    if not isinstance(overall, (int, float)) or isinstance(overall, bool):
+        reasons.append("overall_agreement_missing")
+    elif overall < required_overall:
+        reasons.append("assistant_overall_agreement_below_threshold")
+
+    if not isinstance(minimum_batch, (int, float)) or isinstance(minimum_batch, bool):
+        reasons.append("minimum_batch_agreement_missing")
+    elif minimum_batch < required_batch:
+        reasons.append("assistant_batch_agreement_below_threshold")
+
+    return not reasons, reasons
+
+
 # -----------------------------------------------------------------------------
 # Ermittelt fail-closed die Gate-Bereitschaft der aktiven Policy.
 # Eingaben bleiben unverändert; Unsicherheit führt zu einem sicheren Ergebnis.

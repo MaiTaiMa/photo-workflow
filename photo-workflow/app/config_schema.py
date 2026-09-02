@@ -128,6 +128,42 @@ def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
     if errors:
         return False, errors
     
+    # -------------------------------------------------------------------------
+    # 2b. automation-Sektion validieren (falls vorhanden)
+    # -------------------------------------------------------------------------
+    automation = config.get('automation', {})
+    if automation:  # Nur pruefen wenn automation-Sektion existiert
+        auto_errors = []
+
+        # mode: Muss einer der erlaubten Werte sein
+        mode = automation.get('mode', 'off')
+        allowed_modes = {'off', 'shadow', 'assisted', 'auto_phase1', 'auto_phase2', 'full_auto'}
+        if mode not in allowed_modes:
+            auto_errors.append(f"automation.mode '{mode}' nicht erlaubt. Erlaubt: {allowed_modes}")
+
+        # keep_score_min: Float zwischen 0 und 1
+        keep_min = automation.get('keep_score_min')
+        if keep_min is not None:
+            if not isinstance(keep_min, (int, float)) or isinstance(keep_min, bool) or not (0.0 <= keep_min <= 1.0):
+                auto_errors.append("automation.keep_score_min muss Float zwischen 0.0 und 1.0 sein")
+
+        # reject_score_max: Float zwischen 0 und 1, muss < keep_score_min sein
+        reject_max = automation.get('reject_score_max')
+        if reject_max is not None:
+            if not isinstance(reject_max, (int, float)) or isinstance(reject_max, bool) or not (0.0 <= reject_max <= 1.0):
+                auto_errors.append("automation.reject_score_max muss Float zwischen 0.0 und 1.0 sein")
+            elif keep_min is not None and reject_max >= keep_min:
+                auto_errors.append("automation.reject_score_max muss < keep_score_min sein")
+
+        # policy_version: String (optional, aber wenn dann nicht leer)
+        policy_version = automation.get('policy_version')
+        if policy_version is not None:
+            if not isinstance(policy_version, str) or not policy_version.strip():
+                auto_errors.append("automation.policy_version muss nicht-leerer String sein")
+
+        if auto_errors:
+            errors.extend([f"automation: {e}" for e in auto_errors])
+
     # 3. paths-Sektion
     paths = config.get('paths', {})
     required_paths = ['base_dir', 'temp_sd', 'temp_images', 'temp_done', 'temp_error']

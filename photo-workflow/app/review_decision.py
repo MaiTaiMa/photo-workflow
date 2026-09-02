@@ -125,4 +125,97 @@ def _load_existing_reviews(target: Path) -> list[dict[str, Any]]:
 
 
 if __name__ == "__main__":
+    pass
+
+
+def save_human_decisions_from_batch(
+    *,
+    runtime_path: str | Path,
+    batch_id: str,
+    producer_version: str,
+) -> tuple[dict[str, Any], Path]:
+    """
+    Liest menschliche Entscheidungen aus einem Batch und speichert sie.
+    
+    Liest aus 03_TEMP_DONE/<batch_id>/ die Ordner:
+    - Hauptordner (ohne Review/Rejected) = keep
+    - Review/ = review
+    - Rejected/ = reject
+    
+    Schreibt nach automation/reviews/<batch_id>.json
+    """
+    from pathlib import Path
+    from datetime import datetime, timezone
+    import json
+    import hashlib
+    
+    runtime_path = Path(runtime_path)
+    base_dir = runtime_path.parent.parent  # ../NAS_EXAMPLE
+    temp_done = base_dir / "03_TEMP_DONE" / batch_id
+    
+    if not temp_done.exists():
+        return {"status": "error", "reason": "batch_not_found"}, runtime_path / "automation" / "reviews" / f"{batch_id}.json"
+    
+    decisions = []
+    
+    # 1. Hauptordner = keep (nur JPGs, keine ARWs)
+    for f in sorted(temp_done.iterdir()):
+        if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg"):
+            decisions.append({
+                "image_id": f.name,
+                "human_decision": "keep",
+                "reason": "manual_keep",
+                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "producer_version": producer_version,
+            })
+    
+    # 2. Review/ = review
+    review_dir = temp_done / "Review"
+    if review_dir.exists():
+        for f in sorted(review_dir.iterdir()):
+            if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg"):
+                decisions.append({
+                    "image_id": f.name,
+                    "human_decision": "review",
+                    "reason": "manual_review",
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "producer_version": producer_version,
+                })
+    
+    # 3. Rejected/ = reject
+    rejected_dir = temp_done / "Rejected"
+    if rejected_dir.exists():
+        for f in sorted(rejected_dir.iterdir()):
+            if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg"):
+                decisions.append({
+                    "image_id": f.name,
+                    "human_decision": "reject",
+                    "reason": "manual_reject",
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "producer_version": producer_version,
+                })
+    
+    # Payload erstellen
+    payload = {
+        "batch_id": batch_id,
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "producer_version": producer_version,
+        "decisions": decisions,
+        "decision_count": len(decisions),
+    }
+    
+    # Hash berechnen
+    unsigned = dict(payload)
+    unsigned.pop("hash", None)
+    payload["hash"] = hashlib.sha256(
+        json.dumps(unsigned, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    
+    # Speichern
+    target = runtime_path / "automation" / "reviews" / f"{batch_id}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    
+    return {"status": "ok", "decision_count": len(decisions)}, target
+
     raise SystemExit(main())

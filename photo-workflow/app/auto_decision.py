@@ -59,6 +59,30 @@ def predict_decision(
     if mode == "off":
         return "review", "automation_off"
 
+    # -------------------------------------------------------------------------
+    # shadow: Nur lernen, keine Automation
+    # -------------------------------------------------------------------------
+    if mode == "shadow":
+        return "review", "shadow_mode_learning_only"
+
+    # -------------------------------------------------------------------------
+    # assisted: Vorschlaege bei hoher Sicherheit, sonst review
+    # -------------------------------------------------------------------------
+    if mode == "assisted":
+        # assisted braucht hoehere Scores als full_auto (konservativer)
+        keep_min = float(automation["keep_score_min"])
+        reject_max = float(automation["reject_score_max"])
+        # assisted: +0.10 auf beide Schwellen
+        assisted_keep_min = min(keep_min + 0.10, 1.0)
+        assisted_reject_max = max(reject_max - 0.10, 0.0)
+
+        if personal_score >= assisted_keep_min and final_score >= assisted_keep_min:
+            return "keep", "assisted_confident_keep"
+        if personal_score <= assisted_reject_max and final_score <= assisted_reject_max:
+            return "reject", "assisted_confident_reject"
+        return "review", "assisted_uncertain"
+
+
     if personal_score is None or final_score is None:
         return "review", "score_unavailable"
 

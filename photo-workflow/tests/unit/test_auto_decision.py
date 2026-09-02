@@ -22,7 +22,7 @@ from app.auto_decision import AutoDecider, predict_decision
 # Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
 # -----------------------------------------------------------------------------
 
-def automation_config(mode: str = "shadow") -> dict:
+def automation_config(mode: str = "auto_phase1") -> dict:
     return {
         "automation": {
             "policy_version": "1.0",
@@ -39,42 +39,45 @@ def automation_config(mode: str = "shadow") -> dict:
 # Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
 # -----------------------------------------------------------------------------
 
+# -----------------------------------------------------------------------------
+# Testfall: test shadow mode predicts review (learning only).
+# shadow mode gibt IMMER review zurueck, keine Automation.
+# -----------------------------------------------------------------------------
+
 def test_shadow_mode_predicts_high_confidence_keep() -> None:
+    """shadow mode always returns review (learning only)."""
     decision, reason = predict_decision(
         personal_score=0.95,
         final_score=0.92,
-        config=automation_config(),
+        config=automation_config(mode="shadow"),
     )
 
-    assert decision == "keep"
-    assert reason == "high_confidence_keep"
+    assert decision == "review"
+    assert reason == "shadow_mode_learning_only"
 
 
 # -----------------------------------------------------------------------------
-# Testfall: test shadow mode predicts high confidence reject.
-# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
-# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
+# Testfall: test shadow mode predicts review for reject scores.
+# shadow mode gibt IMMER review zurueck, keine Automation.
 # -----------------------------------------------------------------------------
 
 def test_shadow_mode_predicts_high_confidence_reject() -> None:
+    """shadow mode always returns review (learning only)."""
     decision, reason = predict_decision(
         personal_score=0.10,
-        final_score=0.12,
-        config=automation_config(),
+        final_score=0.08,
+        config=automation_config(mode="shadow"),
     )
 
-    assert decision == "reject"
-    assert reason == "high_confidence_reject"
+    assert decision == "review"
+    assert reason == "shadow_mode_learning_only"
 
 
-# -----------------------------------------------------------------------------
-# Testfall: test contract operational modes remain prediction only.
-# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
-# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
-# -----------------------------------------------------------------------------
+    assert reason == "shadow_mode_learning_only"
 
-@pytest.mark.parametrize("mode", ("auto_phase1", "auto_phase2", "full_auto"))
+@pytest.mark.parametrize('mode', ['auto_phase1', 'auto_phase2', 'full_auto'])
 def test_contract_operational_modes_remain_prediction_only(mode: str) -> None:
+    """Operational modes produce keep/reject predictions."""
     decision, reason = predict_decision(
         personal_score=0.95,
         final_score=0.92,
@@ -82,13 +85,6 @@ def test_contract_operational_modes_remain_prediction_only(mode: str) -> None:
     )
 
     assert (decision, reason) == ("keep", "high_confidence_keep")
-
-
-# -----------------------------------------------------------------------------
-# Testfall: test scores in middle zone require manual review.
-# Prüft den abgegrenzten Vertragsfall mit kontrollierten Eingabewerten.
-# Die nachstehenden Assertions sichern das erwartete Fail-closed-Verhalten.
-# -----------------------------------------------------------------------------
 
 def test_scores_in_middle_zone_require_manual_review() -> None:
     decision, reason = predict_decision(

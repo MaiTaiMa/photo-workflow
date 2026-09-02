@@ -2517,6 +2517,18 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
             handoff_state = read_handoff_state(dir_path.name, runtime_path)
             if handoff_state is None:
                 log(cfg, f'[PHASE2 MANUAL] {dir_path.name} kein Handoff-Token, aber Cleanup trotzdem')
+
+                # ==========================================================================
+                # NEU: Menschliche Entscheidungen speichern (für Auto-Learning)
+                # ==========================================================================
+                from app.review_decision import save_human_decisions_from_batch
+                
+                save_human_decisions_from_batch(
+                    runtime_path=runtime_path,
+                    batch_id=dir_path.name,
+                    producer_version=SCRIPT_VERSION,
+                )
+
                 # continue entfällt – Cleanup läuft normal weiter
 
         COUNT_FOUND_DONE += 1
