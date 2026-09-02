@@ -48,6 +48,12 @@ paths:
   # Auswirkung: true/false gibt es hier nicht; ein gesetzter Pfad aktiviert nur den Zielort.
   temp_final: ../NAS_EXAMPLE/04_TEMP_FINAL
 
+  # publish_root: Separat validierte Wurzel fuer die Veroeffentlichung.
+  # Moegliche Werte: Lokaler NAS-Pfad, der von Synology Photos indexiert wird.
+  # Auswirkung: finalization.publish_to_synology_photos.target_folder muss
+  #             innerhalb dieser Wurzel liegen (validate_publish_target).
+  publish_root: /volume1/photo
+
   # manual_keep_inbox: Eingang für manuell geschützte Bilder.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Dateien hier erzwingen später eine Keep-Entscheidung.
@@ -494,6 +500,17 @@ culling:
     # Mögliche Werte: true oder false.
     # Auswirkung: true erzeugt Profil neu und muss danach wieder auf false gesetzt werden.
     force_cache_rebuild: false
+
+  # persons: Optionale lesbare Namen für bekannte technische Personen-IDs.
+  # Die id entspricht dem dynamisch erkannten Ordnernamen und dem person:<id>-Tag.
+  # name wird ausschliesslich als XMP-mwg-rs:RegionName geschrieben.
+  # Fehlt ein Eintrag, wird die id auch als RegionName verwendet.
+  persons:
+    - name: "Peter"
+      id: "peter"
+    - name: "Anna"
+      id: "anna"
+
 
 # -----------------------------------------------------------------------------
 # reference_pools
@@ -994,3 +1011,76 @@ clip_scoring:
 # sind nach 98AP ein Validierungsfehler.
 # -----------------------------------------------------------------------------
 extensions: {}
+
+# -----------------------------------------------------------------------------
+# finalization (PHASE3)
+# Veroeffentlichung finalisierter Batches in den Synology-Photos-Bestand.
+# DEPLOYMENT: Nur im NAS-Docker-Deployment sinnvoll. Auf PC: enabled: false.
+finalization:
+  # enabled: PHASE3-Finalisierung aktivieren.
+  # Moegliche Werte: true oder false.
+  # Auswirkung: false beendet PHASE3 ohne Datei- oder API-Aktion.
+  enabled: false
+
+  publish_to_synology_photos:
+    # enabled: Transfer nach target_folder aktivieren.
+    # Moegliche Werte: true oder false.
+    # Auswirkung: false erzeugt nur Plan-/Reportartefakte (kein Transfer).
+    enabled: false
+
+    # mode: Transfermodus.
+    # Moegliche Werte: move | copy
+    # Auswirkung: move = copy, verify, source removal. copy erhaelt die Quelle.
+    mode: copy
+
+    # target_folder: Veroeffentlichungsziel innerhalb von paths.publish_root.
+    # Moegliche Werte: Lokaler NAS-Pfad unterhalb von publish_root.
+    # Auswirkung: Dieser Ordner wird von Synology Photos indexiert.
+    target_folder: /volume1/photo/wirser
+
+# -----------------------------------------------------------------------------
+# synology_api
+# Anbindung an die Synology-Photos-API. Capability-gesteuert, kein privater
+# Endpunkt ohne Pilotlauf-Nachweis (siehe spec_v1-2/06_Synology_Photos_API.md).
+synology_api:
+  # host: Synology NAS Hostname oder IP.
+  # Moegliche Werte: hostname, IP-Adresse.
+  # Default: localhost (fuer NAS-Docker).
+  host: localhost
+
+  # port: Synology DSM-Port.
+  # Moegliche Werte: 5000 (HTTP), 5001 (HTTPS).
+  # Default: 5000.
+  port: 5000
+
+  # protocol: HTTP oder HTTPS.
+  # Moegliche Werte: http | https.
+  # Default: http.
+  protocol: http
+
+  # enabled: API-Nutzung aktivieren.
+  # Moegliche Werte: true oder false.
+  enabled: false
+
+  # space: Ziel-Space in Synology Photos.
+  # Moegliche Werte: shared | personal
+  space: shared
+
+  # write_rating: XMP-Rating via API schreiben.
+  # Moegliche Werte: true oder false.
+  write_rating: true
+
+  # write_tags: Keywords via API schreiben.
+  # Moegliche Werte: true oder false.
+  write_tags: true
+
+  # write_known_persons: Personen-Zuordnung via API.
+  # Moegliche Werte: true oder false.
+  # Auswirkung: Nur nach erfolgreichem Pilotlauf auf true setzen.
+  write_known_persons: false
+
+  # album_upsert: Automatische Album-Zuordnung nach Transfer.
+  # Moegliche Werte: true oder false.
+  # Auswirkung: true erstellt/verwendet Alben nach Namen aus family_recognition.persons.
+  #             Nur nach erfolgreichem Pilotlauf auf true setzen.
+  album_upsert: false

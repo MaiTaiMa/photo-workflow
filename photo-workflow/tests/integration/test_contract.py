@@ -21,10 +21,21 @@ from app.state_store import StateStore
 
 
 def config(root: Path) -> dict:
-    return {"paths": {"base_dir": str(root / "base"),
-                       "publish_root": str(root / "publish")},
-            "safety": {"require_paths_within_base_dir": True,
-                       "follow_symlinks": False}}
+    return {
+        "paths": {"base_dir": str(root / "base"),
+                  "publish_root": str(root / "publish")},
+        "safety": {"require_paths_within_base_dir": True,
+                   "follow_symlinks": False},
+        "finalization": {
+            "enabled": True,
+            "publish_to_synology_photos": {
+                "enabled": True,
+                "mode": "copy",
+                "dry_run": False,
+                "indexing": {"enabled": False},
+            },
+        },
+    }
 
 
 def test_phase1_to_phase3_dry_run_contract(tmp_path: Path):

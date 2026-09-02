@@ -2334,6 +2334,78 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
         else:
             process_container_done(dir_path, cfg)
 
+def run_phase3(cfg: dict, folder: str | None = None, target: str | None = None, dry_run: bool = False) -> None:
+    """
+    Führt Phase 3 (Transfer nach publish_root) für einen Batch aus.
+
+    Wenn kein --folder angegeben ist, wird der letzte Batch in temp_done verwendet.
+    Wenn kein --target angegeben ist, wird finalization.publish_to_synology_photos.target_folder verwendet.
+    """
+    from app.phase3_transfer import transfer_batch
+    from app.state_store import StateStore
+
+    paths = cfg["paths"]
+    temp_done = paths.get("temp_done")
+    publish_cfg = cfg.get("finalization", {}).get("publish_to_synology_photos", {})
+    default_target = publish_cfg.get("target_folder")
+
+    if not folder:
+        # Letzten Batch in temp_done finden
+        if not temp_done:
+            log(cfg, "[PHASE3] temp_done nicht konfiguriert - bitte --folder angeben", error=True)
+            return
+        temp_done_path = Path(temp_done)
+        if not temp_done_path.exists():
+            log(cfg, f"[PHASE3] temp_done existiert nicht: {temp_done_path}", error=True)
+            return
+        batches = sorted([d for d in temp_done_path.iterdir() if d.is_dir()])
+        if not batches:
+            log(cfg, "[PHASE3] Keine Batches in temp_done gefunden", error=True)
+            return
+        folder_path = batches[-1]
+        log(cfg, f"[PHASE3] Verwende letzten Batch: {folder_path.name}")
+    else:
+        folder_path = Path(folder)
+
+    if not folder_path.exists():
+        log(cfg, f"[PHASE3] Batch-Ordner existiert nicht: {folder_path}", error=True)
+        return
+
+    if not target:
+        if not default_target:
+            log(cfg, "[PHASE3] target_folder nicht konfiguriert - bitte --target angeben", error=True)
+            return
+        target_path = Path(default_target) / folder_path.name
+        log(cfg, f"[PHASE3] Ziel: {target_path}")
+    else:
+        target_path = Path(target)
+
+    # State-Store initialisieren
+    _, state_dir, _ = get_runtime_paths(cfg)
+    state_store = StateStore(state_dir)
+    batch_id = folder_path.name
+
+    # Transfer ausführen
+    result = transfer_batch(
+        folder_path,
+        target_path,
+        cfg,
+        batch_id=batch_id,
+        mode=publish_cfg.get("mode", "copy"),
+        dry_run=dry_run,
+    )
+
+    log(cfg, f"[PHASE3] Ergebnis: {result['status']}")
+    if result["status"] == "planned":
+        log(cfg, f"[PHASE3] Dry-Run: {result['source_batch_path']} -> {result['target_batch_path']}")
+    elif result["status"] == "transferred":
+        log(cfg, f"[PHASE3] {len(result.get('files', []))} Dateien transferiert")
+        if result.get("indexing"):
+            log(cfg, f"[PHASE3] Indexing: {result['indexing']}")
+    else:
+        log(cfg, f"[PHASE3] Fehler: {result}", error=True)
+
+
 def run_training(cfg: dict, images_dir: str | None = None, model_out: str | None = None) -> None:
     """Trainiert das persönliche Bewertungsmodell."""
     images_dir = images_dir or cfg['training']['sample_images_dir']
@@ -2678,12 +2750,7 @@ def main() -> int:
             elif args.command == "phase2":
                 run_phase2(cfg, args.folder)
             elif args.command == "phase3":
-                from app.phase3_transfer import transfer_batch
-                from app.phase3_resume import write_correlation, load_correlation
-
-                # Phase 3: Transfer und Resume
-                # TODO: Implementierung nach Bedarf
-                print("[PHASE3] Not yet fully implemented")
+                run_phase3(cfg, args.folder, args.target, args.dry_run)
 
             elif args.command in ("pipeline", "phase12"):
                 run_pipeline(cfg, args.folder)

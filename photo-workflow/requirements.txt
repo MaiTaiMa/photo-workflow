@@ -62,3 +62,4 @@ transformers==5.14.1
 triton==3.7.1
 typer==0.27.1
 typing_extensions==4.16.0
+requests>=2.31.0

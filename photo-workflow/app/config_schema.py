@@ -109,6 +109,7 @@ def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
         'family_recognition', 'series_detection', 'metadata_culling',
         'personal_scoring', 'clip_scoring', 'reference_pools', 'pools', 'scoring',
         'series', 'manual_keep', 'batch', 'automation', 'pipeline', 'phase2',
+        'finalization', 'synology_api',  # PHASE3 / Synology-Photos-API
         'extensions',  # Explizit erlaubt laut 98AP
     }
     

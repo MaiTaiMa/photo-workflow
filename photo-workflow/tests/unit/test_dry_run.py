@@ -21,8 +21,19 @@ from app.synology_photos_adapter import SynologyPhotosAdapter
 
 
 def config(root: Path) -> dict:
-    return {"paths": {"base_dir": str(root / "base"),
-                       "publish_root": str(root / "publish")}}
+    return {
+        "paths": {"base_dir": str(root / "base"),
+                  "publish_root": str(root / "publish")},
+        "finalization": {
+            "enabled": True,
+            "publish_to_synology_photos": {
+                "enabled": True,
+                "mode": "copy",
+                "dry_run": False,
+                "indexing": {"enabled": False},
+            },
+        },
+    }
 
 
 def test_dry_run_does_not_transfer(tmp_path: Path):

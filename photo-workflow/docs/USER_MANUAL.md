@@ -200,21 +200,42 @@ phase1_completed -> phase2_started -> phase2_completed
 
 ---
 
-## 6. Phase 3: Transfer und Resume (aktueller Status)
+## 6. Phase 3: Transfer und Resume
 
 ### 6.1 Verfügbarkeit
 
-- CLI-Befehl `phase3` vorhanden.
-- Implementierung: TODO (Grundgerüst in `phase3_transfer.py`, `phase3_resume.py`).
+- CLI-Befehl `phase3` implementiert (Transfer-Grundgerüst).
+- Implementierung: `run_phase3()` in `app/photo_workflow.py`, `transfer_batch()` in `app/phase3_transfer.py`.
+- Album-Upsert und Metadaten-API sind vorbereitet, aber noch nicht vollständig implementiert.
 
-### 6.2 Geplanter Ablauf
+### 6.2 Ablauf
 
 1. **Transfer** – Batch von `04_TEMP_FINAL` nach `target_folder` (Synology-Photos-Zielpfad).
-2. **Index-Resolution** – Warten auf Synology-Photos-Indexierung.
-3. **Metadaten übertragen** – Ratings, Tags, Personen (nur lokale, bekannte Personen).
-4. **Resume** – Bei Timeout oder Fehler kontrolliert fortsetzen.
+   - Staging im Zielverzeichnis → SHA256-Verifikation → atomarer Rename.
+   - Manifest (`finalization_manifest.json`) mit SHA256-Liste wird atomar geschrieben.
+2. **Indexing** – Synology-Photos-Indexierung via `synofoto-bin-index-tool` (nur NAS-Docker).
+3. **Album-Upsert** – Vorbereitung vorhanden, Implementierung nach Bedarf (via `SYNO.Foto.Browse.Album` API).
+4. **Metadaten** – Vorbereitung vorhanden, API-Adapter implementiert, `apply_metadata()` noch nicht vollständig.
 
-### 6.3 Schutzgrenzen
+### 6.3 MWG-RS-Regionen
+
+Wenn `family_recognition.write_face_regions: true` gesetzt ist, werden erkannte Gesichtsregionen als `XMP-mwg-rs:RegionInfo` geschrieben (Standard, kompatibel zu Lightroom, digiKam, Apple Photos).
+
+- Koordinaten: normalisiert (0.0–1.0), Mittelpunkt der Box.
+- `RegionName`: lesbarer Name aus `family_recognition.persons` (Fallback: `id`).
+- Idempotenz: identische Regionen werden nicht doppelt geschrieben.
+
+### 6.4 CLI
+
+```bash
+# Dry-Run (nur simulieren)
+.venv/bin/python -m app.photo_workflow phase3 --folder <batch> --dry-run
+
+# Echter Transfer
+.venv/bin/python -m app.photo_workflow phase3 --folder <batch> --target <ziel>
+```
+
+### 6.5 Schutzgrenzen
 
 - Keine unbekannten Gesichter übertragen.
 - Keine Embeddings oder Face-Crops persistent speichern.
@@ -396,9 +417,10 @@ phase2:
 
 ## 12. Was aktuell nicht automatisch ausgeführt wird
 
-- **Phase 3:** CLI-Befehl vorhanden, Implementierung TODO.
-- **Synology-Photos-Transfer:** Nicht Bestandteil von v1.2.
-- **API-Integration:** Nicht Bestandteil von v1.2.
+- **Phase 3:** Transfer-Grundgerüst implementiert, standardmäßig deaktiviert (`finalization.enabled: false`).
+- **Synology-Photos-Transfer:** Implementiert, erfordert `finalization.publish_to_synology_photos.enabled: true`.
+- **Album-Upsert:** Vorbereitung vorhanden, erfordert `synology_api.album_upsert: true` und Pilotlauf-Nachweis.
+- **API-Integration:** Capability-gated, `apply_metadata()` noch nicht vollständig implementiert.
 
 ---
 
@@ -414,8 +436,11 @@ python -m app.photo_workflow --config config/config.yaml phase2
 # Pipeline (Phase 1 + Phase 2)
 python -m app.photo_workflow --config config/config.yaml pipeline
 
-# Phase 3 (TODO)
-python -m app.photo_workflow --config config/config.yaml phase3
+# Phase 3 (Dry-Run)
+python -m app.photo_workflow --config config/config.yaml phase3 --folder <batch> --dry-run
+
+# Phase 3 (Echter Transfer)
+python -m app.photo_workflow --config config/config.yaml phase3 --folder <batch> --target <ziel>
 
 # Menschliche Entscheidung nachtragen
 python -m app.photo_workflow --config config/config.yaml review-decision --batch <BATCH_ID> --image <IMAGE> --decision keep
