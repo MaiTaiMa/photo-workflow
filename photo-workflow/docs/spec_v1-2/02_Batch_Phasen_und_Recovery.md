@@ -22,7 +22,23 @@ Die unveränderliche `batch_id` lautet `source-folder-name+fingerprint(8)` und b
 5. Feature- und Score-Ermittlung einschließlich Manual Keep und Serienlogik. Pro JPG werden technische Scores, persönlicher Geschmack, Eye-Score und Family-Score berechnet. Serienlogik gruppiert ähnliche Bilder, Manual Keep erzwingt `keep` für erfolgreich zugeordnete extern ausgewählte Bilder.
 6. Eingebettete Metadaten, CSV und Phase-1-Manifest. Ratings, Tags und Status werden in die Bilder geschrieben, anschließend rückgelesen und geprüft; zusätzlich entsteht `SAVE/culling_scores.csv` und ein JSON-Manifest mit Dateiliste, Countern, Hashes und Phase-1-Status.
 7. Sichtbare Ablage in Hauptordner, `Review` oder `Rejected`. Jedes Bild wird entsprechend seiner Endentscheidung im Batch-Hauptordner, in `Review` oder in `Rejected` abgelegt; nur JPGs im Hauptordner gelten als aktiv und schützen ihr ARW.
-8. Atomare Übergabe nach `02_TEMP_IMAGES`. Erst nach vollständiger und konsistenter Ablage wird der Batch atomar nach `02_TEMP_IMAGES` übergeben und der Zustand `phase1_completed` geschrieben.
+8. Atomare Übergabe nach `02_TEMP_IMAGES` mit datum-basiertem Merge. Erst nach vollständiger und konsistenter Ablage wird der Batch atomar nach `02_TEMP_IMAGES` übergeben.
+
+   **Merge-Logik (datum-basiert, Standard):**
+   
+   - Nach der Datumsnormalisierung (z. B. `33351102` → `2025-11-02`) wird der Zielordner anhand des Datumsprefixes gesucht.
+   - Existiert bereits ein Ordner mit gleichem Datumsprefix und Suffix (z. B. `2025-11-02_Pause`), wird dorthin gemerged (Suffix hat Priorität!).
+   - Existiert sowohl `2025-11-02` als auch `2025-11-02_Pause`, wird nach `2025-11-02_Pause` gemerged.
+   - Existiert nur `2025-11-02`, wird dorthin gemerged.
+   - Existiert kein passender Ordner, wird `2025-11-02` neu angelegt.
+   
+   **Beispiel:**
+   
+
+33351102 (wird zu 2025-11-02) + 02_TEMP_IMAGES/2025-11-02_Pause existiert
+→ Merge nach 02_TEMP_IMAGES/2025-11-02_Pause (Suffix-Priorität)
+
+Der Zustand `phase1_completed` wird erst nach erfolgreichem Merge geschrieben.
 
 ### PHASE1-Vertrag
 

@@ -325,6 +325,101 @@ def log(cfg: dict, message: str, error: bool = False) -> None:
     with target.open('a', encoding='utf-8') as handle:
         handle.write(line)
     print(line, end='', file=sys.stderr if error else sys.stdout)
+
+
+# =============================================================================
+# Datum-basiertes Merge (Optional für phase2.merge_by_date_prefix)
+# =============================================================================
+
+
+def extract_date_prefix(folder_name: str) -> str | None:
+    """
+    Extrahiert das Datumsprefix aus einem Ordnernamen.
+    
+    Beispiele:
+        "2025-11-02" -> "2025-11-02"
+        "2025-11-02_Urlaub" -> "2025-11-02"
+        "2025-11-02_Hochzeit_Maria" -> "2025-11-02"
+        "Urlaub_2025-11-02" -> None (Datum nicht am Anfang)
+        "OhneDatum" -> None
+    
+    Args:
+        folder_name: Name des Ordners
+        
+    Returns:
+        Datumsprefix im Format YYYY-MM-DD oder None wenn nicht gefunden
+    """
+    match = re.match(r'^(\d{4}-\d{2}-\d{2})', folder_name)
+    return match.group(1) if match else None
+
+
+def find_merge_target(target_dir: Path, batch: Path, merge_by_date_prefix: bool = True) -> Path:
+    """
+    Findet den Ziel-Pfad für einen Batch im Ziel-Verzeichnis.
+    
+    Merge-Logik mit datum-basiertem Prefix-Match (Standard: true):
+    
+    Wenn merge_by_date_prefix=False:
+        - Exakter Match: "2025-11-02" -> "2025-11-02"
+        - Exakter Match: "2025-11-02_Urlaub" -> "2025-11-02_Urlaub"
+    
+    Wenn merge_by_date_prefix=True (Standard):
+        - "2025-11-02" + existiert "2025-11-02" -> Merge nach "2025-11-02"
+        - "2025-11-02" + existiert "2025-11-02_Urlaub" -> Merge nach "2025-11-02_Urlaub" (Suffix-Priorität!)
+        - "2025-11-02_Urlaub" + existiert "2025-11-02" -> Merge nach "2025-11-02_Urlaub" (Suffix-Priorität!)
+        - "2025-11-02_Urlaub" + existiert "2025-11-02_Hochzeit" -> Merge nach "2025-11-02_Hochzeit" (Suffix-Priorität!)
+        - "2025-11-02" + keiner existiert -> Neuer Ordner "2025-11-02"
+        - "2025-11-02_Urlaub" + keiner existiert -> Neuer Ordner "2025-11-02_Urlaub"
+    
+    Prioritäts-Regel:
+        - Suffix-Namen haben IMMER Priorität (manuell benannte Ordner bleiben erhalten)
+        - Wenn mehrere Suffix-Ordner existieren, wird der erste gefundene verwendet (alphabetisch sortiert)
+    
+    Args:
+        target_dir: Ziel-Verzeichnis (temp_done oder temp_final)
+        batch: Pfad zum Batch-Ordner (Quelle)
+        merge_by_date_prefix: Wenn True (Standard), suche nach Prefix-Match
+        
+    Returns:
+        Zielpfad (existiert bereits oder neuer Pfad)
+    """
+    if not merge_by_date_prefix:
+        # Standard-Verhalten: Exakter Match
+        return target_dir / batch.name
+    
+    # Datum-basiertes Merge: Suche nach Prefix-Match
+    date_prefix = extract_date_prefix(batch.name)
+    if not date_prefix:
+        # Kein Datumsprefix gefunden -> exakter Match als Fallback
+        return target_dir / batch.name
+    
+    # target_dir muss existieren für die Suche
+    if not target_dir.exists():
+        return target_dir / batch.name
+    
+    # Suche nach Ordnern mit gleichem Datumsprefix
+    # Suffix-Varianten haben IMMER Priorität (manuell benannt)
+    
+    # Erste Pass-Phase: Suche nach Suffix-Varianten (manuell benannt, Priorität!)
+    for existing in sorted(target_dir.iterdir()):
+        if existing.is_dir():
+            existing_prefix = extract_date_prefix(existing.name)
+            if existing_prefix == date_prefix and existing.name != date_prefix:
+                # Prefix-Match mit Suffix gefunden -> dorthin mergen (Priorität!)
+                return existing
+    
+    # Zweite Pass-Phase: Suche nach exaktem Datum (ohne Suffix)
+    for existing in sorted(target_dir.iterdir()):
+        if existing.is_dir():
+            existing_prefix = extract_date_prefix(existing.name)
+            if existing_prefix == date_prefix:
+                # Prefix-Match ohne Suffix gefunden -> dorthin mergen
+                return existing
+    
+    # Kein Match gefunden -> neuer Ordner mit exaktem Namen
+    return target_dir / batch.name
+
+
     
 def print_start_banner(cfg: dict, command: str) -> None:
     """Druckt den Start-Banner für den Workflow."""
@@ -764,8 +859,39 @@ def resolve_merge_fallback_dir(dest: Path) -> Path:
         i += 1
 
 
+def sha256_file(filepath: Path, chunk_size: int = 8192) -> str:
+    """Berechnet SHA256-Hash einer Datei."""
+    sha256 = hashlib.sha256()
+    with open(filepath, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+
+def _add_merge_suffix(rel_path: str, suffix: str = '_NEW') -> str:
+    """FÃ¼gt _NEW oder _OLD Suffix vor der Dateierweiterung ein."""
+    path = Path(rel_path)
+    stem = path.stem
+    if stem.endswith('.tar'):
+        new_stem = stem[:-4] + suffix + '.tar'
+        return str(path.parent / (new_stem + path.suffix))
+    else:
+        return str(path.parent / f"{stem}{suffix}{path.suffix}")
+
+
+
 def merge_or_move_folder(src: Path, dest: Path, cfg: dict) -> Path:
-    """Verschiebt oder merged einen Batch-Ordner."""
+    """Verschiebt oder merged einen Batch-Ordner mit .MERGE Datei.
+    
+    Merge-Strategie:
+    - Gleiche Dateien (Name+GrÃ¶Ãe+mtime identisch): Ãberspringen
+    - Gleiche GrÃ¶Ãe, unterschiedlicher Inhalt: Neuere Ã¼berschreibt
+    - Unterschiedliche GrÃ¶Ãe: Beide behalten, neuere mit _NEW Suffix
+    - Nur in Quelle: Nach Ziel kopieren
+    - Nur in Ziel: Bleibt unverÃ¤ndert
+    
+    Nach Merge: .MERGE Datei wird im Zielordner erstellt
+    """
     global COUNT_MOVED, COUNT_ERRORS
 
     require_within(cfg, src)
@@ -776,38 +902,156 @@ def merge_or_move_folder(src: Path, dest: Path, cfg: dict) -> Path:
 
     dest.parent.mkdir(parents=True, exist_ok=True)
 
+    # Fall 1: Ziel existiert nicht -> normaler Move
     if not dest.exists():
         shutil.move(str(src), str(dest))
         COUNT_MOVED += 1
         log(cfg, f'[MOVE] {src} -> {dest}')
         return dest
 
-    try:
-        for item in list(src.iterdir()):
-            target = dest / item.name
-            if target.exists():
-                if item.is_dir() and target.is_dir():
-                    merge_or_move_folder(item, target, cfg)
-                if item.exists():
-                    shutil.rmtree(item)
+    # Fall 2: Ziel existiert -> Merge mit Vergleich
+    log(cfg, f'[MERGE] {src} -> {dest}')
+    
+    stats = {'copied': 0, 'overwritten': 0, 'conflicts': 0, 'skipped': 0, 'errors': []}
+    conflict_files = []
+
+    # Alle Dateien in Quelle und Ziel scannen
+    src_files = {}
+    dest_files = {}
+    
+    for filepath in src.rglob('*'):
+        if filepath.is_file():
+            rel_path = str(filepath.relative_to(src))
+            src_files[rel_path] = filepath
+    
+    for filepath in dest.rglob('*'):
+        if filepath.is_file():
+            rel_path = str(filepath.relative_to(dest))
+            dest_files[rel_path] = filepath
+
+    src_paths = set(src_files.keys())
+    dest_paths = set(dest_files.keys())
+
+    # Nur in Quelle -> kopieren
+    for rel_path in sorted(src_paths - dest_paths):
+        src_file = src_files[rel_path]
+        dst_file = dest / rel_path
+        try:
+            dst_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_file, dst_file)
+            log(cfg, f'[MERGE COPY] {rel_path}')
+            stats['copied'] += 1
+        except Exception as e:
+            log(cfg, f'[MERGE ERROR] {rel_path}: {e}', error=True)
+            stats['errors'].append(f'{rel_path}: {e}')
+
+    # In beiden vorhanden -> vergleichen
+    for rel_path in sorted(src_paths & dest_paths):
+        src_file = src_files[rel_path]
+        dst_file = dest_files[rel_path]
+        
+        src_stat = src_file.stat()
+        dst_stat = dst_file.stat()
+        
+        # SCHNELLE PRÃFUNG: Name + GrÃ¶Ãe + mtime identisch?
+        if (src_stat.st_size == dst_stat.st_size and 
+            src_stat.st_mtime == dst_stat.st_mtime):
+            # Sehr wahrscheinlich identisch -> Ã¼berspringen
+            log(cfg, f'[MERGE SKIP] Identisch (schnell): {rel_path}')
+            stats['skipped'] += 1
+            continue
+        
+        # LANGSAME PRÃFUNG: SHA256 bei verdÃ¤chtigen FÃ¤llen
+        src_hash = sha256_file(src_file)
+        dst_hash = sha256_file(dst_file)
+        
+        # Identisch nach SHA256 -> Ã¼berspringen
+        if src_hash == dst_hash:
+            log(cfg, f'[MERGE SKIP] Identisch (SHA256): {rel_path}')
+            stats['skipped'] += 1
+            continue
+        
+        # Wirklich unterschiedlich -> Merge-Logik
+        src_mtime = src_stat.st_mtime
+        dst_mtime = dst_stat.st_mtime
+        src_size = src_stat.st_size
+        dst_size = dst_stat.st_size
+        
+        if src_size == dst_size:
+            # Gleiche GrÃ¶Ãe: Neuere Ã¼berschreibt
+            if src_mtime > dst_mtime:
+                try:
+                    shutil.copy2(src_file, dst_file)
+                    log(cfg, f'[MERGE OVERWRITE] {rel_path} (neuere Version)')
+                    stats['overwritten'] += 1
+                except Exception as e:
+                    log(cfg, f'[MERGE ERROR] {rel_path}: {e}', error=True)
+                    stats['errors'].append(f'{rel_path}: {e}')
             else:
-                shutil.move(str(item), str(target))
+                log(cfg, f'[MERGE SKIP] Ziel ist neuer: {rel_path}')
+                stats['skipped'] += 1
+        else:
+            # Unterschiedliche GrÃ¶Ãe: _NEW Suffix
+            newer_is_src = src_mtime > dst_mtime
+            if newer_is_src:
+                new_name = _add_merge_suffix(rel_path, '_NEW')
+            else:
+                new_name = _add_merge_suffix(rel_path, '_OLD')
+            
+            dst_new_file = dest / new_name
+            try:
+                dst_new_file.parent.mkdir(parents=True, exist_ok=True)
+                if newer_is_src:
+                    shutil.copy2(src_file, dst_new_file)
+                    log(cfg, f'[MERGE CONFLICT] {rel_path} -> {new_name} (neuere Version)')
+                else:
+                    shutil.copy2(dst_file, dst_new_file)
+                    log(cfg, f'[MERGE CONFLICT] {rel_path} -> {new_name} (Ã¤ltere Version)')
+                conflict_files.append(f"- {new_name} ({'neuere' if newer_is_src else 'Ã¤ltere'} Version von {rel_path})")
+                stats['conflicts'] += 1
+            except Exception as e:
+                log(cfg, f'[MERGE ERROR] {rel_path}: {e}', error=True)
+                stats['errors'].append(f'{rel_path}: {e}')
 
-        if src.exists():
-            shutil.rmtree(src)
-
+    # Quelle lÃ¶schen nach erfolgreichem Merge
+    try:
+        shutil.rmtree(src)
         COUNT_MOVED += 1
-        log(cfg, f'[MERGE OK] {src} -> {dest}')
-        return dest
+        
+        # .MERGE Datei schreiben
+        merge_log_path = dest / '.MERGE'
+        merge_lines = [
+            f"# Merge Log - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"# Source: {src}",
+            f"# Target: {dest}",
+            "",
+            f"copied: {stats['copied']}",
+            f"overwritten: {stats['overwritten']}",
+            f"conflicts: {stats['conflicts']}",
+            f"skipped: {stats['skipped']}",
+            f"errors: {len(stats['errors'])}",
+            "",
+            "# Conflict Files:",
+        ]
+        
+        if conflict_files:
+            merge_lines.extend(conflict_files)
+        else:
+            merge_lines.append("# Keine Konflikt-Dateien")
+        
+        if stats['errors']:
+            merge_lines.extend(["", "# Errors:"])
+            merge_lines.extend(f"- {e}" for e in stats['errors'])
+        
+        merge_content = "\n".join(merge_lines)
+        merge_log_path.write_text(merge_content, encoding='utf-8')
 
-    except Exception as exc:
-        fallback = resolve_merge_fallback_dir(dest)
-        if src.exists():
-            shutil.move(str(src), str(fallback))
+        log(cfg, f'[MERGE OK] {src} -> {dest} (copied={stats["copied"]}, overwritten={stats["overwritten"]}, conflicts={stats["conflicts"]}, skipped={stats["skipped"]}, errors={len(stats["errors"])})')
+    except Exception as e:
+        log(cfg, f'[MERGE ERROR] Delete source failed: {e}', error=True)
         COUNT_ERRORS += 1
-        log(cfg, f'[MOVE ALT] {src} -> {fallback} / reason={exc}', error=True)
-        return fallback
 
+    return dest
 
 def folder_hash(folder: Path) -> str:
     """Berechnet einen Hash für den JPG-Inhalt eines Ordners."""
@@ -1728,7 +1972,7 @@ def prepare_folder_phase1(folder: Path, cfg: dict) -> Path:
     log(cfg, f'[DONE] {workdir.name}')
 
     # Batch nach temp_images verschieben
-    return merge_or_move_folder(workdir, Path(cfg['paths']['temp_images']) / workdir.name, cfg)
+    return merge_or_move_folder(workdir, find_merge_target(Path(cfg['paths']['temp_images']), workdir, cfg.get('phase2', {}).get('merge_by_date_prefix', True)), cfg)
 
 
 def run_phase1(cfg: dict, folder: str | None = None) -> None:
@@ -2191,21 +2435,27 @@ def automatic_handoff(batch_path: Path, cfg: dict) -> bool:
 
     # Atomarer Move nach 03_TEMP_DONE
     try:
-        target_path = temp_done_dir / batch_path.name
+        # NEU: Datum-basiertes Merge (Standard: true)
+        merge_by_date_prefix = bool(cfg.get('phase2', {}).get('merge_by_date_prefix', True))
+        
+        # Zielpfad finden (mit optionalem Prefix-Match)
+        target_path = find_merge_target(temp_done_dir, batch_path, merge_by_date_prefix)
+        
         if target_path.exists():
-            log(cfg, f'[HANDOFF SKIP] target exists: {target_path}')
-            return False
-
-        shutil.move(str(batch_path), str(target_path))
-        COUNT_MOVED += 1
-        log(cfg, f'[HANDOFF SUCCESS] {batch_path} -> {target_path}')
+            # Merge statt Skip - verwende merge_or_move_folder
+            from app.photo_workflow import merge_or_move_folder
+            merge_or_move_folder(batch_path, target_path, cfg)
+            log(cfg, f'[HANDOFF MERGE] {batch_path} -> {target_path}')
+        else:
+            # Neuer Ordner - normaler Move
+            shutil.move(str(batch_path), str(target_path))
+            COUNT_MOVED += 1
+            log(cfg, f'[HANDOFF SUCCESS] {batch_path} -> {target_path}')
         return True
 
     except Exception as exc:
         log(cfg, f'[HANDOFF MOVE ERROR] batch={batch_path.name} error={exc}', error=True)
         return False
-
-
 def process_container_done(dir_path: Path, cfg: dict) -> None:
     """Verarbeitet einen Container-Ordner mit mehreren Batches."""
     for sub in sorted(dir_path.iterdir()):

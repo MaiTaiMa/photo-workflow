@@ -20,6 +20,7 @@ from .state_store import StateStore
 from datetime import datetime
 from typing import Dict, Any
 from .automation_metrics import AutomationMetrics
+from app.photo_workflow import merge_or_move_folder, find_merge_target
 
 
 def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, delete_files: bool = True) -> Dict[str, Any]:
@@ -219,8 +220,8 @@ def read_decision(image_path: Path) -> str:
 def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dict[str, Any]:
     """
     Verschiebt den bereinigten Batch nach temp_final.
-
-    Move-Logik (98AP-Vertrag):
+    
+    Merge-Logik (98AP-Vertrag):
     - copy: Batch wird zuerst kopiert (shutil.move verwendet intern copy2)
     - verify: Ziel wird nach dem Move validiert (Dateiliste, Größe)
     - source removal: Quelle wird nach erfolgreichem Move entfernt
@@ -238,8 +239,7 @@ def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dic
         batch_path: Pfad zum Batch-Ordner
         cfg: Config-Dictionary mit Pfaden
         dry_run: Wenn True, nur simulieren
-        delete_files: Wenn True, Dateien löschen statt nach temp_error verschieben
-    
+        
     Returns:
         dict mit:
             - success: bool
@@ -252,6 +252,9 @@ def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dic
     temp_final_dir = Path(cfg['paths']['temp_final'])
     move_enabled = bool(cfg.get('phase2', {}).get('move_to_temp_final', False))
     dry_run = dry_run or bool(cfg.get('phase2', {}).get('dry_run', False))
+    
+    # NEU: Datum-basiertes Merge (Standard: true)
+    merge_by_date_prefix = bool(cfg.get('phase2', {}).get('merge_by_date_prefix', True))
     
     result = {
         'success': False,
@@ -269,22 +272,17 @@ def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dic
         result['error'] = f'Batch existiert nicht: {batch}'
         return result
     
-    # Zielpfad
-    target = temp_final_dir / batch.name
+    # Zielpfad finden (mit optionalem Prefix-Match)
+    target = find_merge_target(temp_final_dir, batch, merge_by_date_prefix)
     
-    # Kollisionsprüfung
-    if target.exists():
-        result['error'] = f'Zielpfad existiert bereits: {target}'
-        return result
-    
-    # Move durchführen
+    # Merge oder Move durchführen (mit merge_or_move_folder aus photo_workflow)
     if not dry_run:
         try:
-            shutil.move(str(batch), str(target))
+            merge_or_move_folder(batch, target, cfg)
             result['success'] = True
             result['target_path'] = str(target)
         except Exception as e:
-            result['error'] = f'Move fehlgeschlagen: {e}'
+            result['error'] = f'Move/Merge fehlgeschlagen: {e}'
     else:
         # Dry run
         result['success'] = True
@@ -292,8 +290,6 @@ def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dic
         result['error'] = 'Dry run - keine Dateioperation'
     
     return result
-
-
 def verify_cleanup_complete(batch_path: str) -> Dict[str, Any]:
     """
     Prüft, ob Review/Rejected vollständig bereinigt wurden.

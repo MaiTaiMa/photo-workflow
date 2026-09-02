@@ -192,6 +192,98 @@ Ein `move` wird als `copy → verify → source removal` implementiert:
 - **verify:** Ziel wird nach dem Move validiert (Dateiliste, Größe).
 - **source removal:** Quelle wird nach erfolgreichem Move entfernt.
 
+
+
+### Merge-Verhalten bei doppelten Ordnern
+
+#### Überblick
+
+Wenn ein Ordner mit gleichem Datum (`JJJJ-MM-DD`) bereits im Zielverzeichnis existiert, wird automatisch ein Merge durchgeführt. Dies gilt für:
+
+- **Handoff** (nach Phase 1): `02_TEMP_IMAGES` → `03_TEMP_DONE`
+- **Phase 2**: `03_TEMP_DONE` → `04_TEMP_FINAL`
+
+**Nicht betroffen** ist Phase 1 (`01_TEMP_SD` → `02_TEMP_IMAGES`), hier bleiben exakte Ordnernamen erhalten.
+
+#### Datum-basiertes Merge (Standard: `merge_by_date_prefix: true`)
+
+Standardmäßig werden Ordner mit gleichem Datumsprefix zusammengeführt. **Suffix-Namen haben dabei immer Priorität** (manuell benannte Ordner bleiben erhalten).
+
+**Beispiele:**
+
+| Quelle | Ziel existiert | Merge nach | Begründung |
+|--------|---------------|------------|------------|
+| `2025-11-02` | `2025-11-02` | `2025-11-02` | Exakter Match |
+| `2025-11-02` | `2025-11-02_Urlaub` | `2025-11-02_Urlaub` | Suffix hat Priorität |
+| `2025-11-02_Urlaub` | `2025-11-02` | `2025-11-02_Urlaub` | Suffix hat Priorität |
+| `2025-11-02_Urlaub` | `2025-11-02_Hochzeit` | `2025-11-02_Hochzeit` | Suffix hat Priorität |
+| `2025-11-02` | keiner | `2025-11-02` | Neuer Ordner |
+
+**Beispiel-Ablauf:**
+
+Lauf 1: 2026-01-01 → 03_TEMP_DONE/2026-01-01/ ✅
+Lauf 2: 2026-01-01_Urlaub → 03_TEMP_DONE/2026-01-01/ ✅ (Merge nach 2026-01-01_Urlaub wenn existent)
+
+#### Merge-Strategie
+
+| Fall | Aktion |
+|------|--------|
+| Datei nur in Quelle | Nach Ziel kopieren |
+| Datei nur in Ziel | Bleibt unverändert |
+| Datei identisch (Name+Größe+mtime) | Überspringen |
+| Datei gleiche Größe, unterschiedlicher Inhalt | Neuere überschreibt |
+| Datei unterschiedliche Größe | Beide behalten, neuere mit `_NEW` Suffix |
+
+#### Nach Merge: `.MERGE` Datei
+
+Im Zielordner wird eine `.MERGE` Datei erstellt (konsistent zu `.DONE`, `.PROCESSED`):
+
+Merge Log - 2026-09-02 13:00:00
+Source: ../03_TEMP_DONE/2026-01-01
+Target: ../04_TEMP_FINAL/2026-01-01
+
+copied: 5
+overwritten: 2
+conflicts: 1
+skipped: 10
+errors: 0
+Conflict Files:
+
+    image_NEW.jpg (neuere Version von image.jpg)
+    
+
+#### Vorteile
+
+- ✅ Konsistente Benennung (alle Marker als `.DATEI`)
+- ✅ Keine `_MERGE`-Kaskaden (`2026-01-01_MERGE_MERGE`)
+- ✅ Merge-Information dokumentiert im Ordner
+- ✅ Einfacher zu parsen und zu prüfen
+- ✅ Suffix-Namen (manuell) haben Priorität
+
+#### Performance-Optimierung
+
+- Schnelle Vorab-Prüfung (Name + Größe + mtime) bevor SHA256 berechnet wird
+- Wenn identisch: Überspringen (kein SHA256 nötig)
+- Nur bei Unterschieden: SHA256 berechnen
+
+#### Konfiguration
+
+In `config/config.yaml`:
+
+```yaml
+phase2:
+  # Standard: true (datum-basiertes Merge aktiviert)
+  merge_by_date_prefix: true
+```
+
+**Deaktivieren** (exakte Ordnernamen erzwingen):
+
+```yaml
+phase2:
+  merge_by_date_prefix: false
+```
+
+
 ### 5.4 State-Übergänge
 
 ```text

@@ -393,6 +393,24 @@ phase2:
 # culling
 # Technisches JPG-Culling. ARWs werden niemals still überschrieben oder gelöscht.
 # -----------------------------------------------------------------------------
+
+# Optional: Merge-Ordner nach Datumsprefix statt exaktem Namen
+  # Wenn True (Standard): Ordner mit gleichem Datumsprefix (YYYY-MM-DD) werden zusammengeführt
+  # Wenn False: Jeder Ordnername bleibt separat (abwärtskompatibel)
+  # 
+  # Merge-Regeln (Suffix hat IMMER Priorität):
+  #   - "2025-11-02" + "2025-11-02_Urlaub" -> Merge nach "2025-11-02_Urlaub"
+  #   - "2025-11-02_Urlaub" + "2025-11-02" -> Merge nach "2025-11-02_Urlaub"
+  #   - "2025-11-02_Hochzeit" + "2025-11-02" -> Merge nach "2025-11-02_Hochzeit"
+  # 
+  # Gilt für:
+  #   - Handoff: 02_TEMP_IMAGES -> 03_TEMP_DONE (nach Phase 1 Eingangsprüfung)
+  #   - Phase 2: 03_TEMP_DONE -> 04_TEMP_FINAL (nach Bereinigung)
+  # 
+  # Nicht betroffen:
+  #   - Phase 1: 01_TEMP_SD -> 02_TEMP_IMAGES (Eingangsprüfung, exakte Namen)
+  merge_by_date_prefix: true
+
 culling:
   # enabled: Generische Bildbewertung aktivieren.
   # Mögliche Werte: true oder false.
