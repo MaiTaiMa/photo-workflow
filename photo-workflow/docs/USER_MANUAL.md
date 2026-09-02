@@ -406,12 +406,51 @@ paths:
 
 ```yaml
 automation:
+  enabled: false  # Haupt-Schalter
   mode: shadow  # off, shadow, assisted, auto_phase1, auto_phase2, full_auto
-  keep_score_min: 0.90
-  reject_score_max: 0.15
+  keep_score_min: 0.70  # assisted: 0.70, auto_phase1: 0.90
+  reject_score_max: 0.30  # assisted: 0.30, auto_phase1: 0.15
+  
+  # Trust-System
+  trustsystem:
+    enabled: false
+    min_validations_for_auto: 5
+    discrepancy_reset_trust: true
+    max_auto_approvals_before_revalidation: 10
+  
+  # Full-Auto Gate
+  full_auto_gate:
+    enabled: true
+    auto_execute: false
+    fallback_mode: assisted
+    min_overall_agreement: 0.95
+    min_batch_agreement: 0.90
+  
+  # Trust Override
+  trust_override:
+    auto_restore: false
+    min_new_confirmed_batches_since_override: 3
+    policy_version: "1.0"
+  
+  # Kalibrierung
+  evaluation_window_days: 90
   min_evaluated_batches: 10
+  min_evaluated_images: 500
   min_overall_agreement: 0.85
+  min_keep_precision: 0.95
+  min_reject_precision: 0.98
 ```
+
+**Modi:**
+- `off`: Keine Automation
+- `shadow`: Nur lernen, keine Vorschlaege (immer review)
+- `assisted`: Vorschlaege bei hoher Sicherheit
+- `auto_phase1`: Phase 1 automatisch, Phase 2 manuell
+- `auto_phase2`: Phase 1 + automatischer Handoff
+- `full_auto`: Vollautomatisch (nach Gate)
+
+**Empfehlung:** Start mit `shadow`, dann `assisted`, dann `auto_phase1`.
+
 
 ### 9.3 Culling
 
