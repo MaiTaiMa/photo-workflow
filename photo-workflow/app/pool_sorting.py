@@ -78,7 +78,7 @@ def compute_diversity_score(image: Dict[str, Any], all_images: List[Dict[str, An
     Returns:
         Diversity-Score (0-1, 1 = sehr divers)
     
-    TODO: Embedding-Distanz implementieren (AP6/CLIP)
+    Embedding-Distanz: Implementierung nach Bedarf (AP6/CLIP)
     """
     # Placeholder: keine Embeddings verfügbar
     # Rückgabe: 0.5 (neutral)

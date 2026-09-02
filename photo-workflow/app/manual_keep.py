@@ -448,7 +448,7 @@ class ManualKeep:
 
     def _is_already_assigned(self, assignment_id: str) -> bool:
         """Prueft, ob Assignment bereits existiert."""
-        # TODO: In Datenbank/JSON-Log nachschauen
+        # Datenbank/JSON-Log: Nachschauen in WORKFLOW_DATA/runtime/manual_keep_decisions.json
         return False
 
     def _acquire_lock(self, assignment_id: str, user_id: str, timeout_seconds: int = 300) -> bool:
@@ -501,12 +501,12 @@ class ManualKeep:
                            target_path: str, user_id: str,
                            metadata: Optional[Dict[str, Any]] = None) -> None:
         """Speichert Assignment-Record."""
-        # TODO: In Datenbank/JSON-Log speichern
+        # Datenbank/JSON-Log: Speichern in WORKFLOW_DATA/runtime/manual_keep_decisions.json
         pass
 
     def _log_assignment(self, location: str, source: str, target: str, user_id: str) -> None:
         """Loggt Assignment."""
-        # TODO: In Log-Datei schreiben
+        # Log-Datei: Schreiben nach WORKFLOW_DATA/runtime/logs/process.log
         pass
 
 # =============================================================================

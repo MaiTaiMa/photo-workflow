@@ -100,7 +100,7 @@ def check_automatic_handoff_gate(
     except Exception:
         return False, {"gate_ok": False, "gate_reason": "pause_check_failed"}
 
-    # TODO: Hier können weitere Gates ergänzt werden (Manifest, review_state_invalid, MANUAL_KEEP-Dokumentation).
+    # Weitere Gates: Manifest, review_state_invalid, MANUAL_KEEP-Dokumentation können hier ergänzt werden.
     # Für Paket C.1 belassen wir es bei den oben genannten, um die Komplexität klein zu halten.
 
     # Auto-Approve-Pruefung via TrustManager

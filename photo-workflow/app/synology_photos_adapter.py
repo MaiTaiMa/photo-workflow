@@ -172,6 +172,16 @@ class SynologyPhotosAdapter:
                 "status": "capability_unsupported",
                 "reason": "known_persons_disabled",
             }
+        # BEWUSST NICHT IMPLEMENTIERT:
+        # Die offizielle Synology-Photos-API bietet keine stabile, dokumentierte
+        # Schreiboperation für Personen-Zuordnungen (assign_existing_person).
+        # Inoffizielle SYNO.Foto.*-Web-APIs sind reverse-engineered und nicht
+        # offiziell dokumentiert; ihre Stabilität und Schreibparameter sind nicht
+        # garantiert. Siehe docs/spec_v1-2/06_Synology_Photos_API.md, Abschnitt 9.4.
+        #
+        # Album-Operationen (list_albums, create_album, add_items_to_album) sind
+        # als Vorbereitung implementiert, aber apply_metadata() bleibt bewusst
+        # unvollständig, bis ein offizieller, stabiler API-Vertrag vorliegt.
         return {
             "status": "capability_unsupported",
             "reason": "adapter_not_implemented",

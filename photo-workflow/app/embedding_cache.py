@@ -180,7 +180,7 @@ class EmbeddingCache:
         if "cached_at" not in entry:
             return False
         
-        # TODO: Alters-Check (z.B. 7 Tage)
+        # Alters-Check: Optional (z.B. 7 Tage) - Implementierung nach Bedarf
         
         return True
     

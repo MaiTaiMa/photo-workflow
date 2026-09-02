@@ -1,6 +1,6 @@
 # 9. Synology-Photos-API-Integration
 
-- **Status:** Optional, capability-gesteuert und nur nach erfolgreichem Ziel-NAS-Pilotlauf aktivierbar.
+- **Status:** Optional, capability-gesteuert; Adapter ist vorbereitet, aber `apply_metadata()` noch nicht vollständig implementiert.
 - **Zweck:** PHASE3 kann die aus dem Photo Workflow stammenden, bereits lokal validierten Metadaten nach erfolgreicher Veroeffentlichung in Synology Photos abbilden. Vorrang hat die Uebertragung eines eindeutigen Treffers fuer eine **bekannte Person**. Rating, kontrollierte Tags und optional eine Beschreibung sind nachgelagert.
 
 > **Verbindliche Realitaetsgrenze:** Synology Photos bietet in der Anwendung Personenalben, Gesichtserkennung, manuelles Taggen von Personen sowie das Bearbeiten von Ratings, Tags und Beschreibungen. Eine stabile, vollstaendig offiziell dokumentierte Public-API samt dauerhaftem Python-SDK fuer die externe Zuweisung eines Gesichtes zu einer Synology-Person ist jedoch nicht nachgewiesen. Inoffizielle, reverse-engineerte `SYNO.Foto.*`-Web-APIs enthalten eine Personen-Komponente, ihre Endpunkte, Schreibparameter, Rechte und Stabilitaet sind aber nicht garantiert. Deshalb ist keine konkrete schreibende Personen- oder Metadatenmethode Teil dieses Vertrags.
@@ -77,6 +77,8 @@ Inoffizielle Dokumentation nennt `SYNO.Foto.Browse.Person` und Methoden wie `get
 
 Die alte Python-API fuer **Photo Station** ist kein Adapter fuer **Synology Photos** und darf nicht verwendet werden. Eine allgemeine Python-Bibliothek, die DSM- oder Photos-APIs auflistet, ersetzt ebenfalls keinen erfolgreichen Schreibtest auf dem Ziel-NAS.
 
+**Fazit:** `apply_metadata()` ist im Adapter bewusst nicht vollständig implementiert. Personen-Zuordnungen, Rating und Tags können nicht zuverlässig per API geschrieben werden, solange kein offizieller, stabiler API-Vertrag vorliegt. Album-Operationen sind als Vorbereitung vorhanden, aber die eigentliche Metadaten-Zuordnung bleibt unvollständig.
+
 ## 9.5 Voraussetzungen
 
 Die API-Integration darf nur aktiviert werden, wenn alle folgenden Bedingungen erfuellt sind:
@@ -103,23 +105,26 @@ finalization:
     enabled: false
     mode: copy
     target_folder: /volume1/photo/Workflow
-    wait_for_index_seconds: 30
-    max_index_wait_seconds: 900
+    indexing:
+      enabled: true
+      tool_path: /usr/local/bin/synofoto-bin-index-tool
+      index_type: basic
+      timeout_seconds: 120
+    album_upsert:
+      enabled: false
 
   synology_api:
     enabled: false
-    adapter: synology_photos_webapi
+    host: localhost
+    port: 5000
+    protocol: http
     space: shared
-    timeout_seconds: 10
-    retry_count: 3
-    retry_backoff_seconds: 3
     dry_run: true
-    require_readback: true
 
-    write_known_persons: false
     write_rating: true
     write_tags: true
-    write_description: false
+    write_known_persons: false
+    album_upsert: false
 ```
 
 **Konfigurationsvertrag:**
@@ -137,23 +142,22 @@ finalization:
 Die Synology-spezifische Kommunikation liegt ausschliesslich in einem Adapter, beispielsweise `app/synology_photos_adapter.py`. Transfer, Dateioperationen, PHASE3-State, Hashpruefungen und Recovery bleiben ausserhalb des Adapters.
 
 ```python
+# Vorbereitete Schnittstelle (nicht vollständig implementiert)
 class SynologyPhotosAdapterProtocol:
     def healthcheck(self) -> ApiCapabilityReport: ...
-    def resolve_item(self, relative_path: str, space: str) -> ResolvedPhotoItem: ...
-    def get_metadata(self, item_id: str) -> PublishedMetadata: ...
-    def resolve_existing_person(self, slug: str, space: str) -> ResolvedPerson: ...
-    def assign_existing_person(
+    def apply_metadata(
         self,
-        item_id: str,
-        person_id: str,
-        bounding_box: NormalizedBoundingBox,
-    ) -> ApiWriteResult: ...
-    def set_rating(self, item_id: str, rating: int) -> ApiWriteResult: ...
-    def ensure_tags(self, item_id: str, tags: list[str]) -> ApiWriteResult: ...
-    def set_description(self, item_id: str, description: str) -> ApiWriteResult: ...
+        *,
+        relative_path: str,
+        rating: int | None,
+        tags: list[str],
+        person_slug: str | None = None,
+    ) -> dict: ...
 ```
 
-Diese Schnittstelle ist ein lokaler Vertrag, keine Behauptung bestimmter Synology-Endpunkte. `assign_existing_person` darf nur implementiert und aufgerufen werden, wenn sie im Ziel-NAS-Pilotlauf als sicher, idempotent und ruecklesbar nachgewiesen wurde.
+**Status:** `apply_metadata()` ist bewusst nicht vollständig implementiert. Die offizielle Synology-Photos-API bietet keine stabile, dokumentierte Schreiboperation für Personen-Zuordnungen. Album-Operationen (`list_albums`, `create_album`, `add_items_to_album`) sind als Vorbereitung implementiert.
+
+Diese Schnittstelle ist ein lokaler Vertrag, keine Behauptung bestimmter Synology-Endpunkte. `apply_metadata` darf nur implementiert und aufgerufen werden, wenn ein offizieller, stabiler API-Vertrag vorliegt und im Ziel-NAS-Pilotlauf als sicher, idempotent und rücklesbar nachgewiesen wurde.
 
 Vor jedem produktiven Lauf muss `healthcheck()` einen secrets-freien `ApiCapabilityReport` erzeugen. Er muss mindestens pruefen:
 
@@ -229,7 +233,7 @@ Ein API-Fehler darf niemals eine Loeschung, ein Ueberschreiben, einen Ruecktrans
 
 ## 9.12 Abnahme
 
-Die Integration ist nur abnahmefaehig, wenn ein isolierter Pilot auf dem konkreten Ziel-NAS zeigt:
+Die Integration ist nur abnahmefaehig, wenn ein isolierter Pilot auf dem konkreten Ziel-NAS zeigt (für `apply_metadata()`):
 
 1. API-Discovery, Authentisierung und Space-Zugriff funktionieren ohne Secrets in Logs, CSVs, Manifests oder Reports.
 2. Ein eindeutig bekanntes Testbild wird nach Indexierung aufgeloest.

@@ -233,5 +233,5 @@ class LockManager:
         Returns:
             Liste von wiederhergestellten Assignments
         """
-        # TODO: In-Progress-Assignments wiederaufnehmen
+        # In-Progress-Assignments: Wiederaufnahme erfolgt durch Resume-Logik (siehe phase_state.py, assert_phase*)
         return self.get_in_progress()

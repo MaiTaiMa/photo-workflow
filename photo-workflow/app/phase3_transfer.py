@@ -222,7 +222,7 @@ def transfer_batch(
             from app.synology_photos_adapter import SynologyPhotosAdapter
             adapter = SynologyPhotosAdapter(cfg)
             if adapter.album_upsert and adapter.healthcheck().status == "ready":
-                # TODO: Personen aus Batch ermitteln und Alben zuordnen
+                # Personen aus Batch: Implementierung nach Bedarf (siehe family_recognition.py, write_native_tags)
                 # Dies erfordert Zugriff auf die erkannten Personen aus dem Batch
                 # Implementierung nach Bedarf
                 manifest["album_upsert"] = {"status": "ready", "adapter": "SynologyPhotosAdapter"}

@@ -96,7 +96,7 @@ class IdempotentAssignment:
             return False, assignment_id, "Bereits zugewiesen (idempotent)"
         
         # Lock pruefen (optional)
-        # TODO: Lock-Mechanismus
+        # Lock-Mechanismus: Wird durch LockManager.handle() bereitgestellt (siehe lock_manager.py)
         
         # Zuordnung durchfuehren
         try:

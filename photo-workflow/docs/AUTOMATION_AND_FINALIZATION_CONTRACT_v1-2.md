@@ -1,21 +1,22 @@
-# Lokaler Automations- und Finalisierungsvertrag v1.2
+# Lokaler Automations- und Finalisierungsvertrag v1.4
 
-**Status:** Verbindlicher v1.2-Erweiterungsvertrag
-**Geltung:** Lokaler Photo-Workflow bis einschließlich Phase 2
-**Zweck:** Definiert sichere KI-Assistenz, Vollautomatik, kontrollierte Phase-2-Übergabe und lokale Finalisierung.
+**Status:** Verbindlicher v1.4-Erweiterungsvertrag
+**Geltung:** Lokaler Photo-Workflow einschließlich Phase 3 (lokaler Transfer)
+**Zweck:** Definiert sichere KI-Assistenz, Vollautomatik, kontrollierte Phase-2-Übergabe, lokale Finalisierung und Phase-3-Transfer.
 **Erstellt:** 2026-08-14
-**Version:** 1.0.0
-**Requires:** `docs/IMPLEMENTATION_RULES.md`, `docs/spec_v1-1/`, lokale Phase-1/2-Verträge
+**Version:** 1.2.0 (2026-09-02: Phase 3 ergänzt)
+**Requires:** `docs/IMPLEMENTATION_RULES.md`, `docs/spec_v1-1/`, lokale Phase-1/2/3-Verträge
 
 ## Änderungsprotokoll
 
+- 2026-09-02 | 1.2.0 | Phase 3 (lokaler Transfer) ergänzt; Synology-Photos-API als capability-gated vorbereitet
 - 2026-08-14 | 1.0.0 | Initialer Vertrag für lokale Automation und Finalisierung in v1.2
 
 ## 1. Vorrang und Geltungsbereich
 
-Dieser Vertrag ergänzt die Spezifikation v1.1 für `release/v1.2`. Bei Konflikten gilt zuerst die Sicherheits- und Abwägungslogik aus der Spezifikation: Sicherheit vor Stabilität vor Nutzen vor Einfachheit vor Performance.
+Dieser Vertrag ergänzt die Spezifikation v1.1 für `release/v1.4`. Bei Konflikten gilt zuerst die Sicherheits- und Abwägungslogik aus der Spezifikation: Sicherheit vor Stabilität vor Nutzen vor Einfachheit vor Performance.
 
-Der Vertrag gilt ausschließlich für lokale Phase 1 und Phase 2. Er umfasst weder Synology Photos noch eine externe API, Cloud-KI, API-Credentials, API-Logs oder Phase-3-Implementierung. Bestehende Phase-3- und Synology-Module werden durch v1.2 nicht erweitert, gelöscht oder aufgerufen.
+Der Vertrag gilt für lokale Phase 1, Phase 2 und Phase 3 (lokaler Transfer). Phase 3 umfasst den Transfer von `04_TEMP_FINAL` nach `target_folder` (Synology-Photos-Zielpfad), Indexierung und vorbereitete Album-Operationen. Der Vertrag umfasst keine Synology-Photos-API-Schreiboperationen, Cloud-KI, API-Credentials oder API-Logs. Bestehende Synology-Module werden durch v1.4 nicht erweitert, gelöscht oder aufgerufen; die API-Integration ist capability-gated und vorbereitet, aber nicht vollständig implementiert.
 
 Alle Modelle bleiben lokal. Bildbytes, Face-Crops, Referenzbilder, Embeddings, Secrets und Tokens dürfen nicht in JSON, CSV, Logs, Reports, Metadaten oder sonstigen persistenten Artefakten gespeichert werden. Embeddings sind nur während eines aktiven Laufs im RAM zulässig.
 
@@ -110,18 +111,18 @@ Ein pausierter, unvollständiger oder recovery-pflichtiger Batch hat immer Vorra
 
 Bei Signal, Zeit- oder Mengenlimit darf kein neuer teurer Schritt beginnen. Der laufende sichere Schritt wird kontrolliert beendet; danach werden mindestens Batch-ID, WorkUnit-/Checkpoint-Referenz, Pausegrund, Zeitstempel, Config-Fingerprint und geeigneter Resume-Status atomar persistiert. Ein pausierter Teilbatch darf nicht als Phase-1-, Phase-2- oder Finalisierungsabschluss markiert werden.
 
-## 9. Nichtbestandteil von v1.2
+## 9. Nichtbestandteil von v1.4
 
 Nicht Bestandteil dieses Vertrags und aller v1.2-Umsetzungspakete sind:
 
-- Synology-Photos-Transfer;
-- Synology-Photos-API;
+- Synology-Photos-API-Schreiboperationen (`apply_metadata()` ist vorbereitet, aber nicht vollständig implementiert);
+- API-Credentials, API-Logging oder Capability-Gates (vorbereitet, aber nicht aktiv);
 - API-Credentials, API-Logging oder Capability-Gates;
-- Phase-3-Weiterentwicklung;
+- Cloud-basierte KI oder Datenübertragung;
 - Cloud-basierte KI oder Datenübertragung;
 - Erstellung, Wiederherstellung oder Aktualisierung eines `CHANGELOG.md`.
 
-Ein späteres separates Zusatzprojekt darf nur über einen eigenständigen, versionierten und secrets-freien Exportvertrag an einen stabilen, getesteten v1.2-Stand anschließen.
+Ein späteres separates Zusatzprojekt darf nur über einen eigenständigen, versionierten und secrets-freien Exportvertrag an einen stabilen, getesteten v1.4-Stand anschließen.
 
 ## 10. Abnahmekriterien
 
@@ -129,7 +130,9 @@ Ein späteres separates Zusatzprojekt darf nur über einen eigenständigen, vers
 - Kein Diagnosemodus verändert finale Entscheidungen oder Dateioperationen.
 - `automatic_handoff` und automatische Phase 2 sind fail-closed.
 - MANUAL_KEEP und Schutzregeln bleiben vorrangig.
-- Die lokale Endablage `04_TEMP_FINAL` ist eindeutig von Phase 3 und Synology getrennt.
+- Die lokale Endablage `04_TEMP_FINAL` ist von Phase 3 (lokaler Transfer) getrennt.
+- Phase 3 ist standardmäßig deaktiviert (`finalization.enabled: false`).
+- Phase-3-Transfer ist atomar, verifiziert und idempotent.
 - Pause und Resume haben Vorrang vor der Auswahl neuer Batches.
 - Persistierte Artefakte enthalten keine Bildbytes, Embeddings, Referenzen, Secrets oder Tokens.
 - Kein Bestandteil verlangt eine Änderung an `CHANGELOG.md`.

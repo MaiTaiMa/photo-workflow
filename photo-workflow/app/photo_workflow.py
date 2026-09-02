@@ -60,7 +60,7 @@ from app.series_report import write_batch_series_reports
 import warnings
 
 # face_recognition_models verwendet deprecated pkg_resources
-# TODO(v1.3): Auf Version migrieren, die importlib.resources verwendet
+
 warnings.filterwarnings(
     "ignore",
     category=UserWarning,
