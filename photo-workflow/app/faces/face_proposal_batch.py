@@ -1,3 +1,16 @@
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/faces/face_proposal_batch.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-09-03
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   2026-09-03 | 1.0.0 | P8.3: confidence_margin-Parameter hinzugefuegt.
+# =============================================================================
+
+
 from __future__ import annotations
 
 from collections.abc import Mapping

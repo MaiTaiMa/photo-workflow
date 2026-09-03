@@ -1,8 +1,16 @@
-"""Face-Proposal-Aktivierung.
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/faces/face_proposal_activation.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-09-03
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+#   Erkennt manuell verschobene Dateien new_faces/ → reference/ und registriert sie in selection.json als aktivierte Referenzbilder.
+# =============================================================================
 
-Erkennt manuell verschobene Dateien new_faces/ → reference/ und
-registriert sie in selection.json als aktivierte Referenzbilder.
-"""
 
 from __future__ import annotations
 

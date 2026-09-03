@@ -1,8 +1,16 @@
-"""Face-Proposal-Feature-Extractor.
+# =============================================================================
+# PROJECT:     photo-workflow
+# FILE:        app/faces/face_proposal_features.py
+# PURPOSE:     Photo Workflow Module
+# AUTHOR:      Matzethias
+# DATE:        2026-09-03
+# VERSION:     1.0.0
+# REQUIRES:    Python 3.11+
+# CHANGES:
+#   Initial version
+#   Berechnet echte Qualitäts- und Nutzenmerkmale für Face-Vorschlaege anstatt fester Ersatzwerte.
+# =============================================================================
 
-Berechnet echte Qualitäts- und Nutzenmerkmale für Face-Vorschlä¬¬ge
-anstatt fester Ersatzwerte.
-"""
 
 from __future__ import annotations
 
