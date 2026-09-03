@@ -16,15 +16,14 @@
 
 
 import sys
-import os
 import json
 import tempfile
 import pytest
 from datetime import datetime
 
 # Importiere selection_schema
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'output'))
-from selection_schema import (
+
+from app.selection_schema import (
     SelectionSchema,
     validate_selection,
     compute_fingerprint,
