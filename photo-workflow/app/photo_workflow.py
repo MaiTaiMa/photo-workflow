@@ -426,16 +426,20 @@ def find_merge_target(target_dir: Path, batch: Path, merge_by_date_prefix: bool 
     
 def print_start_banner(cfg: dict, command: str) -> None:
     """Druckt den Start-Banner für den Workflow."""
-    print(f"===== START: {datetime.now()} =====")
-    print(f"SCRIPT : {SCRIPT_NAME}")
-    print(f"VERSION : {SCRIPT_VERSION}")
-    print(f"COMMAND : {command}")
-    print(f"PURPOSE : {SCRIPT_DESCRIPTION}")
-    print(f"BASE_DIR : {cfg['paths']['base_dir']}")
-    print(f"SRC : {cfg['paths']['temp_sd']}")
-    print(f"DEST : {cfg['paths']['temp_images']}")
-    print(f"DONE : {cfg['paths']['temp_done']}")
-    print('========================================')
+    print("=" * 72)
+    print("🚀 INIT")
+    print("=" * 72)
+    print(f"Workflow:           {SCRIPT_NAME}")
+    print(f"Version:            {SCRIPT_VERSION}")
+    print(f"Command:            {command}")
+    print(f"Start:              {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print()
+    print("Pfade:")
+    print(f"  BASE_DIR:         {cfg['paths']['base_dir']}")
+    print(f"  TEMP_SD:          {cfg['paths']['temp_sd']}")
+    print(f"  TEMP_IMAGES:      {cfg['paths']['temp_images']}")
+    print(f"  TEMP_DONE:        {cfg['paths']['temp_done']}")
+    print("=" * 72)
 
 
 
@@ -528,24 +532,60 @@ def write_json_summary(cfg: dict, payload: dict) -> str | None:
 
 def print_scheduler_summary(cfg: dict, payload: dict) -> None:
     """Druckt die Scheduler-Zusammenfassung auf dem Terminal."""
-    print('SUMMARY')
-    print(f"Status: {payload['status']}")
-    print(f"Command: {payload['command']}")
-    print(f"Found folders in TEMP_SD: {payload['counts']['found_temp_sd']}")
-    print(f"Found folders in TEMP_DONE: {payload['counts']['found_temp_done']}")
-    print(f"Processed folders: {payload['counts']['processed']}")
-    print(f"Moved/Merged: {payload['counts']['moved_merged']}")
-    print(f"Skipped folders: {payload['counts']['skipped']}")
-    print(f"Errors: {payload['counts']['errors']}")
+    print()
+    print("=" * 72)
+    print("📊 SUMMARY")
+    print("=" * 72)
+    print(f"Status:             {payload['status']}")
+    print(f"Command:            {payload['command']}")
+    print()
+    print("Ordner:")
+    print(f"  Found TEMP_SD:    {payload['counts']['found_temp_sd']}")
+    print(f"  Found TEMP_DONE:  {payload['counts']['found_temp_done']}")
+    print(f"  Processed:        {payload['counts']['processed']}")
+    print(f"  Moved/Merged:     {payload['counts']['moved_merged']}")
+    print(f"  Skipped:          {payload['counts']['skipped']}")
+    print(f"  Errors:           {payload['counts']['errors']}")
     if payload.get('family_recognition'):
-        print(f"Family recognition: {payload['family_recognition']}")
-    print(f"Log file: {payload['paths']['log_file']}")
-    print(f"Error log: {payload['paths']['error_log']}")
+        print()
+        print("Face Recognition:")
+        print(f"  Status:           {payload['family_recognition']}")
+    print()
+    print("Logs:")
+    print(f"  Log file:         {payload['paths']['log_file']}")
+    print(f"  Error log:        {payload['paths']['error_log']}")
     if payload.get('json_summary_path'):
-        print(f"JSON summary: {payload['json_summary_path']}")
-    print(f"Started: {payload['started_at']}")
-    print(f"Finished: {payload['finished_at']}")
-    print('===== END =====')
+        print(f"  JSON summary:     {payload['json_summary_path']}")
+    print()
+    print("Zeit:")
+    print(f"  Started:          {payload['started_at']}")
+    print(f"  Finished:         {payload['finished_at']}")
+    print("=" * 72)
+    print()
+    print("=" * 72)
+    print("✅ ABSCHLUSSBERICHT")
+    print("=" * 72)
+    print(f"Pipeline:           {'✅ ERFOLGREICH' if payload['status'] == 'success' else '❌ FEHLER'}")
+    print(f"Verarbeitete Ordner: {payload['counts']['processed']}")
+    print(f"Moved/Final:         {payload['counts']['moved_merged']}")
+    print()
+    # Hinweise
+    has_warnings = False
+    if payload.get('face_proposal_status') and payload['face_proposal_status'].get('pending_review', 0) > 0:
+        has_warnings = True
+        print("⚠️ HINWEISE:")
+        print(f"  - Face-Vorschläııge: {payload['face_proposal_status']['pending_review']} pending")
+        print()
+    if not has_warnings:
+        print("⚠️ HINWEISE:")
+        print("  - Keine ausstehenden Aktionen")
+        print()
+    # Nächste Schritte
+    print("📝 NAECHSTE SCHRITTE:")
+    batch_id = payload.get('batch_id', 'unknown')
+    print(f"  1. Neue Gesichter prüfen: {'Ausstehend' if has_warnings else 'Keine ausstehend'}")
+    print(f"  2. Validierung: python -m app.photo_workflow validate-reviews --batch {batch_id}")
+    print("=" * 72)
 
 
 def ensure_dir(path: str | Path) -> Path:

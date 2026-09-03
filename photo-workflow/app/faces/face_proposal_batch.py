@@ -21,6 +21,7 @@ def build_face_proposal_batch(
     batch_id: str,
     output_root: str | Path,
     min_quality_score: float = 0.65,
+    confidence_margin: float = 0.1,
 ) -> dict[str, Any]:
     """Create only eligible known-face crops under ``new_faces``.
 
@@ -32,6 +33,8 @@ def build_face_proposal_batch(
         raise FaceProposalBatchError("batch_id must be a non-empty string")
     if not 0.0 <= float(min_quality_score) <= 1.0:
         raise FaceProposalBatchError("min_quality_score must be between 0 and 1")
+    if not 0.0 <= float(confidence_margin) <= 1.0:
+        raise FaceProposalBatchError("confidence_margin must be between 0 and 1")
 
     root = Path(output_root)
     created: list[dict[str, Any]] = []
