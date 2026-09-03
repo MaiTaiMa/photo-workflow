@@ -63,12 +63,25 @@ def predict_decision(
     # shadow: Nur lernen, keine Automation
     # -------------------------------------------------------------------------
     if mode == "shadow":
-        return "review", "shadow_mode_learning_only"
+        # Shadow erzeugt diagnostische Prediction ohne operative Wirkung
+        if personal_score is None or final_score is None:
+            return "review", "shadow_score_unavailable"
+        keep_min = float(automation["keep_score_min"])
+        reject_max = float(automation["reject_score_max"])
+        if personal_score >= keep_min and final_score >= keep_min:
+            return "keep", "shadow_diagnostic_keep"
+        if personal_score <= reject_max and final_score <= reject_max:
+            return "reject", "shadow_diagnostic_reject"
+        return "review", "shadow_diagnostic_uncertain"
 
     # -------------------------------------------------------------------------
     # assisted: Vorschlaege bei hoher Sicherheit, sonst review
     # -------------------------------------------------------------------------
     if mode == "assisted":
+        # Fehlende Scores sind fail-closed review
+        if personal_score is None or final_score is None:
+            return "review", "score_unavailable"
+
         # assisted braucht hoehere Scores als full_auto (konservativer)
         keep_min = float(automation["keep_score_min"])
         reject_max = float(automation["reject_score_max"])
@@ -86,10 +99,6 @@ def predict_decision(
     if personal_score is None or final_score is None:
         return "review", "score_unavailable"
 
-    # -------------------------------------------------------------------------
-    # Beide Scores müssen dieselbe sichere Schwellenlogik erfüllen.
-    # Uneindeutige Werte verbleiben bewusst in der manuellen Review-Zone.
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     # Beide Scores müssen dieselbe sichere Schwellenlogik erfüllen.
     # Uneindeutige Werte verbleiben bewusst in der manuellen Review-Zone.

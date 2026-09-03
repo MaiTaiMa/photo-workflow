@@ -26,6 +26,7 @@ from pathlib import Path
 
 from app.faces.matcher import FaceMatcher
 from app.faces.opencv_backend import OpenCVFaceBackend
+from app.faces import crop_contract
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".JPG", ".JPEG", ".png", ".PNG"}
 
@@ -299,6 +300,23 @@ def rebuild_family_cache(cfg: dict[str, object]) -> dict:
     return report
 
 
+def _face_pool_limits(cfg: dict[str, object]) -> dict[str, int]:
+    """Liest die gemeinsamen und optionalen Face-Pool-Limits."""
+    pools = cfg.get("reference_pools", {}) or {}
+    common = pools.get("common", {}) or {}
+    faces = pools.get("faces", {}) or {}
+
+    return {
+        "max_new": int(faces.get("max_new", common.get("max_new", 20))),
+        "max_new_per_batch": int(
+            faces.get(
+                "max_new_per_batch",
+                common.get("max_new_per_batch", 5),
+            )
+        ),
+    }
+
+
 def build_family_tags(people: list[str]) -> list[str]:
     """Erzeugt deterministische namespaced Familien- und Personentags."""
     if not people:
@@ -378,6 +396,10 @@ def detect_family_members(
             for person in seen
         ),
     )
+
+    # Face-Crop-Vorschläge werden in einem separaten, ausdrücklich
+    # freigegebenen Vorschlagslauf erzeugt. Die normale Erkennung darf
+    # keine Bilddatei als Nebenwirkung persistieren.
 
     result.update({
         "status": "matched" if seen else "no_family_match",

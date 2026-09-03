@@ -2,6 +2,30 @@
 
 Dieses Repository enthält einen konservativen Zwei-Phasen-Workflow für Kamera- und Foto-Batches auf Synology NAS und in Docker-Umgebungen. Das Projekt inventarisiert Eingänge, bereitet eine manuelle Sichtprüfung vor und führt freigegebene Batches erst danach in eine kontrollierte Archiv- und Bereinigungsphase über.
 
+
+## Gesichtsvorschlaege (P5)
+
+Das System kann bekannte Gesichter als manuell aktivierbare Referenzvorschlaege erzeugen.
+
+**Ablauf:**
+1. Bekannte Personen in `faces/<slug>/reference/` werden gematcht.
+2. Eindeutige, hochwertige Treffer erzeugen Crops unter `faces/<slug>/new_faces/`.
+3. Crops werden in `selection.json` registriert (Status `new`).
+4. Aktivierung durch manuelles Verschieben `new_faces/` nach `reference/`.
+
+**Konfiguration (`config/config.yaml`):**
+```yaml
+face_proposals:
+  enabled: true
+  min_quality_score: 0.7
+  confidence_margin: 0.1
+  crop_size: 256
+```
+
+**Wichtig:**
+- Unbekannte Gesichter werden nicht gespeichert.
+- Aktivierung erfolgt ausschliesslich manuell.
+- Limits (`max_new`, `max_new_per_batch`) gelten vor Crop-Erzeugung.
 ## Einstieg
 
 - [Benutzerhandbuch](photo-workflow/docs/USER_MANUAL.md)
@@ -53,6 +77,31 @@ pipeline:
   stop_on_error: true
 ```
 
+## KI-Assistenz und Betriebsmodi
+
+### Modus-Empfehlung
+
+| Situation | Empfehlung |
+|---|---|
+| Keine oder wenige auswertbare Daten | `shadow` – Diagnose und Messung |
+| Ausreichende Daten, kein bewusster Trust | `assisted` – Vorschlaege mit manueller Pruefung |
+| Ausreichende Daten + Trust aktiv + Gates erfuellt | `auto_phase1` – automatische Phase 1 |
+| Wie oben + Handoff-Gates erfuellt | `auto_phase2` oder `full_auto` |
+
+### Trust-System
+
+- **Ziel:** `mode: full_auto` in Config
+- **Wirkung ohne Trust:** Fail-closed bei `assisted`
+- **Not trusted:** `trust-revoke --reason "..."` sperrt operative Automatik
+- **Wiederaufstieg:** Manuelle Validierung + `trust-restore`
+
+### Face-Vorschlaege
+
+- Bekannte Gesichter erzeugen Vorschlaege in `WORKFLOW_DATA/faces/<slug>/new_faces/`
+- Aktivierung nur durch manuelles Verschieben nach `reference/`
+- Begrenzung: `max_new_per_batch` (Config)
+
+
 ### Commands
 
 ```bash
@@ -70,6 +119,27 @@ python -m app.photo_workflow --config config/config.yaml pipeline
 
 # Alias für die konfigurierte Pipeline.
 python -m app.photo_workflow --config config/config.yaml phase12
+
+# Batch-Status: KI-Statusausgabe mit Trefferquote und Modus-Empfehlung.
+python -m app.photo_workflow --config config/config.yaml batch-status --batch <BATCH_ID>
+
+# Menschliche Entscheidung nachtragen.
+python -m app.photo_workflow --config config/config.yaml review-decision --batch <BATCH_ID> --image <IMAGE> --decision keep
+
+# Readiness-Report: Aggregierte Automation-Readiness.
+python -m app.photo_workflow --config config/config.yaml readiness-report
+
+# Trust-Override: Manueller Widerruf bei Qualitaetsabweichungen ("not trusted").
+python -m app.photo_workflow --config config/config.yaml trust-revoke --reason "Ergebnisse nicht gut genug"
+
+# Trust-Restore: Bewusster Wiederaufstieg nach manueller Validierung.
+python -m app.photo_workflow --config config/config.yaml trust-restore
+
+# Trust-Status: Batchbezogenen Trust-Status anzeigen.
+python -m app.photo_workflow --config config/config.yaml trust-status
+
+# Trust-Reset: Batchbezogenen Trust zuruecksetzen.
+python -m app.photo_workflow --config config/config.yaml trust-reset --batch <BATCH_ID>
 ```
 
 ### Ablauf

@@ -524,13 +524,17 @@ culling:
   # name wird ausschliesslich als XMP-mwg-rs:RegionName geschrieben.
   # Fehlt ein Eintrag, wird die id auch als RegionName verwendet.
   persons:
-    - name: "Peter"
-      id: "peter"
-    - name: "Anna"
-      id: "anna"
+  - name: Peter
+    id: peter
+  - name: Anna
+    id: anna
+face_proposals:
+  enabled: true
+  min_quality_score: 0.7
+  confidence_margin: 0.1
+  crop_size: 256
 
-
-# -----------------------------------------------------------------------------
+  # -----------------------------------------------------------------------------
 # reference_pools
 # AP3–AP5-Vertrag: selection.json ist je Pool die alleinige Wahrheit.
 # -----------------------------------------------------------------------------

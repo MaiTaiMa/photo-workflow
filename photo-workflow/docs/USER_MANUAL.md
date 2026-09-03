@@ -412,14 +412,14 @@ automation:
   reject_score_max: 0.30  # assisted: 0.30, auto_phase1: 0.15
   
   # Trust-System
-  trustsystem:
+  trust_system:
     enabled: false
     min_validations_for_auto: 5
     discrepancy_reset_trust: true
     max_auto_approvals_before_revalidation: 10
   
   # Full-Auto Gate
-  full_auto_gate:
+  fullauto_gate:
     enabled: true
     auto_execute: false
     fallback_mode: assisted
@@ -573,6 +573,32 @@ python -m app.photo_workflow --config config/config.yaml phase3 --folder <batch>
 # Phase 3 (Echter Transfer)
 python -m app.photo_workflow --config config/config.yaml phase3 --folder <batch> --target <ziel>
 
+
+### Trust-System
+
+```bash
+# Trust widerrufen (Automatik sperren)
+python -m app.photo_workflow --config config/config.yaml trust-revoke --reason "<Grund>"
+
+# Trust wiederherstellen (Automatik freigeben)
+python -m app.photo_workflow --config config/config.yaml trust-restore
+
+# Trust-Status pruefen
+python -m app.photo_workflow --config config/config.yaml trust-status
+
+# Trust fuer Batch zuruecksetzen
+python -m app.photo_workflow --config config/config.yaml trust-reset --batch <BATCH_ID>
+```
+
+### Validierung
+
+```bash
+# Batch validieren
+python -m app.photo_workflow --config config/config.yaml validate-reviews --batch <BATCH_ID>
+
+# Readiness-Report
+python -m app.photo_workflow --config config/config.yaml readiness-report
+```
 # Menschliche Entscheidung nachtragen
 python -m app.photo_workflow --config config/config.yaml review-decision --batch <BATCH_ID> --image <IMAGE> --decision keep
 

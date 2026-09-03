@@ -72,10 +72,6 @@ def build_readiness_report(
     # Eingabereports werden erst gesammelt und danach deterministisch ausgewertet.
     # So bleibt die Diagnose unabhängig von der Art des gelieferten Iterables.
     # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Eingabereports werden erst gesammelt und danach deterministisch ausgewertet.
-    # So bleibt die Diagnose unabhängig von der Art des gelieferten Iterables.
-    # -------------------------------------------------------------------------
     report_list = list(reports)
     totals = {
         "evaluated_predictions": 0,
@@ -90,10 +86,6 @@ def build_readiness_report(
     evaluable_batch_count = 0
     batch_agreements: list[dict[str, Any]] = []
 
-    # -------------------------------------------------------------------------
-    # Nur strukturell gültige Reports derselben aktiven Policy zählen als Evidenz.
-    # Abweichende Policy-Versionen werden nicht still mit aktuellen Daten vermischt.
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     # Nur strukturell gültige Reports derselben aktiven Policy zählen als Evidenz.
     # Abweichende Policy-Versionen werden nicht still mit aktuellen Daten vermischt.
@@ -125,10 +117,6 @@ def build_readiness_report(
                 }
             )
 
-    # -------------------------------------------------------------------------
-    # Gesamt- und Klassenpräzision werden getrennt berechnet und nachweisbar geführt.
-    # Fehlende Nenner liefern None und verhindern später eine unzulässige Freigabe.
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     # Gesamt- und Klassenpräzision werden getrennt berechnet und nachweisbar geführt.
     # Fehlende Nenner liefern None und verhindern später eine unzulässige Freigabe.
@@ -195,10 +183,6 @@ def load_validation_reports(runtime_path: str | Path) -> list[dict[str, Any]]:
     # Ausschließlich der kontrollierte Validation-Unterordner wird als Quelle akzeptiert.
     # Fehlende Verzeichnisse bedeuten fehlende Evidenz und nicht eine implizite Freigabe.
     # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Ausschließlich der kontrollierte Validation-Unterordner wird als Quelle akzeptiert.
-    # Fehlende Verzeichnisse bedeuten fehlende Evidenz und nicht eine implizite Freigabe.
-    # -------------------------------------------------------------------------
     validation_dir = Path(runtime_path) / "automation" / "validation"
     if not validation_dir.exists():
         return []
@@ -224,10 +208,6 @@ def load_validation_reports(runtime_path: str | Path) -> list[dict[str, Any]]:
 
 def write_readiness_report(runtime_path: str | Path, report: dict[str, Any]) -> Path:
     """Atomically write the aggregate readiness report below controlled runtime data."""
-    # -------------------------------------------------------------------------
-    # Die Diagnose wird über eine temporäre Datei atomar veröffentlicht.
-    # Ein Abbruch darf daher keinen teilweise geschriebenen Readiness-Report erzeugen.
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     # Die Diagnose wird über eine temporäre Datei atomar veröffentlicht.
     # Ein Abbruch darf daher keinen teilweise geschriebenen Readiness-Report erzeugen.
@@ -361,10 +341,6 @@ def is_fullauto_ready(
     # Ein fehlender Automation-Block ist keine Bereitschaft und wird explizit abgelehnt.
     # Die Gate-Prüfung startet erst nach erfolgreicher struktureller Konfigurationsprüfung.
     # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Ein fehlender Automation-Block ist keine Bereitschaft und wird explizit abgelehnt.
-    # Die Gate-Prüfung startet erst nach erfolgreicher struktureller Konfigurationsprüfung.
-    # -------------------------------------------------------------------------
     automation = config.get("automation")
     if not isinstance(automation, Mapping):
         raise ValueError("automation configuration is required")
@@ -391,10 +367,6 @@ def is_fullauto_ready(
         }
         return False, report
 
-    # -------------------------------------------------------------------------
-    # Readiness wird aus den Rohdaten neu aggregiert, nie aus manipulierten Altberichten.
-    # Nur ein positiver Report der erwarteten Policy kann die nächste Gate-Prüfung erreichen.
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     # Readiness wird aus den Rohdaten neu aggregiert, nie aus manipulierten Altberichten.
     # Nur ein positiver Report der erwarteten Policy kann die nächste Gate-Prüfung erreichen.

@@ -97,6 +97,9 @@ from app.family_recognition import (
 )
 
 from app.metadata_writer import write_culling_metadata
+from app.faces.face_proposal_reporting import format_registration_status_block
+from app.faces.face_proposal_batch import build_face_proposal_batch
+from app.faces.face_proposal_registration import register_face_proposals
 
 from app.manual_keep import (
     detect_manual_keep_images,
@@ -435,6 +438,48 @@ def print_start_banner(cfg: dict, command: str) -> None:
     print('========================================')
 
 
+
+
+def build_batch_ki_status_table(cfg: dict) -> list[dict]:
+    """Erstellt batchweise KI-Status-Tabelle fuer Run-Summary."""
+    from app.automation_readiness import load_validation_reports
+
+    runtime_path = Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "runtime"
+    reports = load_validation_reports(runtime_path)
+
+    table = []
+    for r in reports:
+        batch_id = r.get("batch_id", "unknown")
+        evaluated = r.get("evaluated_predictions", 0)
+        agreement = r.get("overall_agreement")
+        keep_precision = r.get("keep_precision")
+        reject_precision = r.get("reject_precision")
+
+        # Empfehlung ableiten (fail-closed)
+        automation = cfg.get("automation", {})
+        trust_cfg = automation.get("trust_system", {})
+        trust_enabled = trust_cfg.get("enabled", False)
+
+        if evaluated == 0 or agreement is None:
+            recommended = "shadow (keine Evidenz)"
+        elif agreement >= 0.95 and trust_enabled:
+            recommended = "auto_phase1"
+        elif agreement >= 0.85:
+            recommended = "assisted"
+        else:
+            recommended = "shadow"
+
+        table.append({
+            "batch_id": batch_id,
+            "evaluated": evaluated,
+            "agreement": agreement,
+            "keep_precision": keep_precision,
+            "reject_precision": reject_precision,
+            "recommended": recommended,
+        })
+
+    return table
+
 def build_summary_payload(cfg: dict, command: str, status: str, started_at: str, finished_at: str, json_summary_path: str | None) -> dict:
     """Erstellt den Summary-Payload für JSON-Report und Terminal-Ausgabe."""
     return {
@@ -463,6 +508,7 @@ def build_summary_payload(cfg: dict, command: str, status: str, started_at: str,
         'family_recognition': LAST_FAMILY_RUN_INFO,
         'zip_conflicts': LAST_ZIP_CONFLICTS,
         'json_summary_path': json_summary_path,
+        'batch_ki_status': build_batch_ki_status_table(cfg),
     }
 
 
@@ -1768,6 +1814,130 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         / 'runtime'
     )
 
+    # FACE_PROPOSALS_HOOK: aktive P5-Pipeline nur bei expliziter Config.
+    reference_pools_cfg = cfg.get("reference_pools", {})
+    face_proposal_cfg = dict(reference_pools_cfg.get("faces", {}))
+    face_proposal_cfg["enabled"] = bool(
+        cfg.get("face_proposals", {}).get("enabled", False)
+    )
+    if face_proposal_cfg["enabled"] and not face_proposal_cfg.get("root_dir"):
+        raise ValueError("face proposal root_dir is required when enabled")
+    face_proposal_status = {
+        "registered": [],
+        "registered_count": 0,
+        "skipped_count": 0,
+        "error": None,
+        "error_reason": None,
+    }
+    if bool(face_proposal_cfg.get("enabled", False)):
+        proposal_rows = []
+        for row in rows:
+            regions = row.get("_family_regions", [])
+            if not isinstance(regions, list) or len(regions) == 0:
+                continue
+            for i, region in enumerate(regions):
+                if not isinstance(region, dict):
+                    continue
+            if not isinstance(region, dict):
+                continue
+            person_slug = region.get("name")
+            image_path = row.get("_source_path")
+            if not isinstance(person_slug, str) or not person_slug.strip():
+                continue
+            if not isinstance(image_path, Path) or not image_path.is_file():
+                continue
+            proposal_rows.append({
+                "batch_id": workdir.name,
+                "source_id": f"{workdir.name}:{row['file']}:face-{i}",
+                "person_slug": person_slug,
+                "known_person": True,
+                "original_path": str(image_path),
+                "bounding_box": {
+                    key: region.get(key)
+                    for key in ("left", "top", "right", "bottom")
+                },
+                "face_confidence": region.get(
+                    "confidence",
+                    region.get("face_confidence"),
+                ),
+                "face_area_ratio": region.get("face_area_ratio", 0.5),
+                "sharpness_score": row.get("sharp_score", 0.5) or 0.5,
+                "exposure_score": row.get("exposure_score", 0.5) or 0.5,
+                "framing_score": region.get("framing_score", 0.5),
+                "diversity_score": 0.5,
+                "robustness_score": 0.5,
+            })
+        limits = cfg.get("reference_pools", {}).get("common", {})
+        limits_dict = {
+            "max_new": int(limits.get("max_new", 20)),
+            "max_new_per_batch": int(limits.get("max_new_per_batch", 5)),
+        }
+        try:
+            batch_result = build_face_proposal_batch(
+                proposal_rows,
+                batch_id=workdir.name,
+                output_root=Path(
+                    face_proposal_cfg.get(
+                        "root_dir",
+                        Path(cfg["paths"]["base_dir"])
+                        / "WORKFLOW_DATA"
+                        / "faces",
+                    )
+                ),
+                min_quality_score=float(
+                    face_proposal_cfg.get("min_quality_score", 0.65)
+                ),
+                confidence_margin=float(
+                    face_proposal_cfg.get("confidence_margin", 0.1)
+                ),
+                limits=limits_dict,
+            )
+            face_proposal_status = register_face_proposals(
+                batch_result["candidates"],
+                pool_root=Path(cfg["paths"]["base_dir"])
+                / "WORKFLOW_DATA"
+                / "faces",
+                limits={
+                    "max_new": int(limits.get("max_new", 20)),
+                    "max_new_per_batch": int(
+                        limits.get("max_new_per_batch", 5)
+                    ),
+                },
+            )
+            face_proposal_status["known_matches"] = batch_result["counters"][
+                "known_matches"
+            ]
+            face_proposal_status["skipped_unknown"] = batch_result["counters"][
+                "skipped_unknown"
+            ]
+            face_proposal_status["skipped_ambiguous"] = batch_result["counters"][
+                "skipped_ambiguous"
+            ]
+            face_proposal_status["skipped_quality"] = batch_result["counters"][
+                "skipped_quality"
+            ]
+        except Exception as error:
+            face_proposal_status["error"] = "blocked"
+            face_proposal_status["error_reason"] = str(error)
+            log(cfg, f"[FACE_PROPOSALS] blocked error={error}", error=True)
+            face_proposal_status = {
+                "registered": [],
+                "registered_count": 0,
+                "skipped_count": 0,
+            }
+
+    face_proposal_block = format_registration_status_block(
+        batch_id=workdir.name,
+        registration_result=face_proposal_status,
+        known_matches=int(face_proposal_status.get("known_matches", 0)),
+        skipped_unknown=int(face_proposal_status.get("skipped_unknown", 0)),
+        skipped_ambiguous=int(face_proposal_status.get("skipped_ambiguous", 0)),
+        skipped_quality=int(face_proposal_status.get("skipped_quality", 0)),
+        remaining_batch_slots=0,
+        remaining_global_slots=0,
+    )
+    print(face_proposal_block)
+
     prediction_artifact_path = write_prediction_batch(
         runtime_path=runtime_path,
         batch_id=workdir.name,
@@ -2774,6 +2944,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Aggregiert Validierungsreports zu einer Automation-Readiness-Metrik.",
     )
     
+    batch_status_parser = sub.add_parser(
+        "batch-status",
+        help="Zeigt batchweise KI-Statusausgabe mit Trefferquote und Modus-Empfehlung.",
+    )
+    batch_status_parser.add_argument(
+        "--batch",
+        required=True,
+        help="Batch-ID.",
+    )
+
     trust_revoke = sub.add_parser(
         'trust-revoke',
         help='Setzt den manuellen Trust-Override.',
@@ -2823,9 +3003,11 @@ def main() -> int:
 
     if args.command in ("trust-revoke", "trust-restore"):
         try:
+            cfg = load_config(Path(args.config))
+            runtime_path = Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "runtime"
             store = TrustOverrideStore(
-                Path(args.config).resolve().parent,
-                SCRIPT_VERSION,
+                runtime_path,
+                cfg["automation"]["policy_version"],
             )
             if args.command == "trust-revoke":
                 payload = store.write(args.reason)
@@ -2853,10 +3035,10 @@ def main() -> int:
                 trust_manager.reset_trust(args.batch)
                 print(f"Trust fuer Batch {args.batch} zurueckgesetzt")
             return 0
-        except Exception as exc:
+        except TrustOverrideError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
-        except TrustOverrideError as exc:
+        except Exception as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
 
@@ -2936,6 +3118,65 @@ def main() -> int:
 
         except Exception as exc:
             print(f"[VALIDATION ERROR] {exc}", file=sys.stderr)
+            return 1
+
+
+    # batch-status: Batch-Status mit Trefferquote und Empfehlung
+    if args.command == "batch-status":
+        try:
+            runtime_path = (
+                Path(cfg["paths"]["base_dir"])
+                / "WORKFLOW_DATA"
+                / "runtime"
+            )
+
+            # Validation-Report laden
+            from app.automation_readiness import load_validation_reports
+            from app.automation_readiness import build_readiness_report
+
+            reports = load_validation_reports(runtime_path)
+            batch_report = None
+            for r in reports:
+                if r.get("batch_id") == args.batch:
+                    batch_report = r
+                    break
+
+            if batch_report is None:
+                print(f"[BATCH-STATUS] Kein Report gefunden fuer Batch {args.batch}")
+                return 1
+
+            # Status ausgeben
+            print(f"[BATCH-STATUS] batch={args.batch}")
+            print(f"  evaluated={batch_report['evaluated_predictions']}")
+            print(f"  agreement={batch_report['overall_agreement']}")
+            print(f"  keep_precision={batch_report['keep_precision']}")
+            print(f"  reject_precision={batch_report['reject_precision']}")
+
+            # Empfehlung ableiten (fail-closed bei None)
+            automation = cfg.get("automation", {})
+            mode = automation.get("mode", "off")
+            trust_cfg = automation.get("trust_system", {})
+            trust_enabled = trust_cfg.get("enabled", False)
+
+            agreement = batch_report.get("overall_agreement")
+            evaluated = batch_report.get("evaluated_predictions", 0)
+
+            if evaluated == 0 or agreement is None:
+                recommended = "shadow (keine Evidenz)"
+            elif agreement >= 0.95 and trust_enabled:
+                recommended = "auto_phase1"
+            elif agreement >= 0.85:
+                recommended = "assisted"
+            else:
+                recommended = "shadow"
+
+            print(f"  mode={mode}")
+            print(f"  trust_enabled={trust_enabled}")
+            print(f"  recommended={recommended}")
+            return 0
+
+        except Exception as exc:
+            print(f"[BATCH-STATUS ERROR] {exc}", file=sys.stderr)
             return 1
 
     # readiness-report ist rein auswertend:

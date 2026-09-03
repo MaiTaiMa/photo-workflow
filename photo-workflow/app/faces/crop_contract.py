@@ -44,6 +44,26 @@ def validate_box(box: dict, width: int, height: int) -> None:
         raise CropContractError("Face crop is empty")
 
 
+
+def check_new_faces_limit(destination_root: str | Path, slug: str, max_new_per_batch: int = 5) -> tuple[bool, int]:
+    """
+    Prueft ob max_new_per_batch fuer einen Slug erreicht ist.
+
+    Returns (ok, current_count).
+    """
+    root = Path(destination_root)
+    new_faces_dir = root / slug / "new_faces"
+
+    if not new_faces_dir.exists():
+        return True, 0
+
+    current_count = len(list(new_faces_dir.glob("*.jpg"))) + len(list(new_faces_dir.glob("*.JPG"))) + len(list(new_faces_dir.glob("*.png")))
+
+    if current_count >= max_new_per_batch:
+        return False, current_count
+
+    return True, current_count
+
 def save_new_face_crop(
     source: str | Path,
     destination_root: str | Path,
@@ -51,16 +71,22 @@ def save_new_face_crop(
     slug: str,
     filename: str,
     box: dict,
+    max_new_per_batch: int = 5,
 ) -> Path:
     """
     Speichert einen neuen Face-Crop ausschließlich unter `<slug>/new_faces`.
 
-    Pfadtraversal, vorhandene Ziele und ungültige Bounding-Boxen blockieren.
+    Pfadtraversal, vorhandene Ziele, ungültige Bounding-Boxen und max_new_per_batch blockieren.
     """
     source_path = Path(source)
     root = Path(destination_root)
     if Path(filename).name != filename or Path(slug).name != slug:
         raise CropContractError("Unsafe crop filename or slug")
+
+    # max_new_per_batch Pruefung
+    ok, count = check_new_faces_limit(root, slug, max_new_per_batch)
+    if not ok:
+        raise CropContractError(f"max_new_per_batch ({max_new_per_batch}) reached for {slug}: {count} crops")
 
     target_dir = root / slug / "new_faces"
     target_dir.mkdir(parents=True, exist_ok=True)

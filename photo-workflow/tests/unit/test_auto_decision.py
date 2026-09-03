@@ -45,15 +45,16 @@ def automation_config(mode: str = "auto_phase1") -> dict:
 # -----------------------------------------------------------------------------
 
 def test_shadow_mode_predicts_high_confidence_keep() -> None:
-    """shadow mode always returns review (learning only)."""
+    """shadow mode produces diagnostic predictions (no operational effect)."""
     decision, reason = predict_decision(
         personal_score=0.95,
         final_score=0.92,
         config=automation_config(mode="shadow"),
     )
 
-    assert decision == "review"
-    assert reason == "shadow_mode_learning_only"
+    # Diagnostic prediction: keep bei hohen Scores
+    assert decision == "keep"
+    assert reason == "shadow_diagnostic_keep"
 
 
 # -----------------------------------------------------------------------------
@@ -62,18 +63,17 @@ def test_shadow_mode_predicts_high_confidence_keep() -> None:
 # -----------------------------------------------------------------------------
 
 def test_shadow_mode_predicts_high_confidence_reject() -> None:
-    """shadow mode always returns review (learning only)."""
+    """shadow mode produces diagnostic predictions (no operational effect)."""
     decision, reason = predict_decision(
         personal_score=0.10,
         final_score=0.08,
         config=automation_config(mode="shadow"),
     )
 
-    assert decision == "review"
-    assert reason == "shadow_mode_learning_only"
+    # Diagnostic prediction: reject bei niedrigen Scores
+    assert decision == "reject"
+    assert reason == "shadow_diagnostic_reject"
 
-
-    assert reason == "shadow_mode_learning_only"
 
 @pytest.mark.parametrize('mode', ['auto_phase1', 'auto_phase2', 'full_auto'])
 def test_contract_operational_modes_remain_prediction_only(mode: str) -> None:

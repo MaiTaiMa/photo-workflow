@@ -72,9 +72,14 @@ class TrustManager:
         """Lade Trust-State aus persistenter Datei."""
         if self.state_file.exists():
             try:
-                return json.loads(self.state_file.read_text(encoding="utf-8"))
+                loaded = json.loads(self.state_file.read_text(encoding="utf-8"))
+                # B9: Validiere State fail-closed
+                if loaded.get("hash") != _digest(loaded):
+                    # Beschadigter State → neu starten
+                    return self._empty_state()
+                return loaded
             except (OSError, json.JSONDecodeError):
-                # Beschädigter State → neu starten
+                # Beschadigter State → neu starten
                 return self._empty_state()
         return self._empty_state()
 
