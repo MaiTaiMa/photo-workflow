@@ -254,3 +254,80 @@ def load_or_rebuild_personal_model(cfg: dict):
     info['used_cache'] = bool(model)
     _write_personal_report(cfg, info | {'reference_state': state})
     return model, info
+
+
+KEEP_EXPORT_RATING = 4.0
+
+_KEEP_RATING_XMP_TEMPLATE = (
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/">\n'
+    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n'
+    '<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmp:Rating="{rating}"/>\n'
+    '</rdf:RDF>\n'
+    '</x:xmpmeta>\n'
+)
+
+
+def _write_keep_rating_sidecar(target: Path) -> None:
+    """Schreibt die Keep-Rating-Sidecar neben die exportierte Kopie.
+
+    Nur die Trainingskopie erhaelt das Keep-Rating; das Original im
+    Batch bleibt unveraendert. read_rating() prueft Sidecars vor den
+    eingebetteten Metadaten, daher steuert die Sidecar das Lernsignal.
+    """
+    sidecar = target.with_suffix(target.suffix + '.xmp')
+    sidecar.write_text(
+        _KEEP_RATING_XMP_TEMPLATE.format(rating=f"{KEEP_EXPORT_RATING:g}"),
+        encoding='utf-8',
+    )
+
+
+def export_keep_samples(rows: list, workdir: Path, cfg: dict) -> dict:
+    """Exportiert behaltene Keep-Bilder eines Batches als Trainingsreferenz.
+
+    Laeuft automatisch am Ende jedes Cull-Laufs, solange
+    personal_scoring.enabled aktiv ist. Dateinamen erhalten die Batch-ID
+    als Prefix; vorhandene Duplikate werden uebersprungen, damit
+    Wiederholungslaeufe idempotent bleiben. Der naechste Lauf erkennt den
+    geaenderten Referenzstand und trainiert automatisch weiter.
+    """
+    pcfg = _personal_cfg(cfg)
+    result = {
+        'enabled': pcfg['enabled'],
+        'exported': 0,
+        'skipped': 0,
+        'errors': [],
+        'target_dir': pcfg['source_dir'],
+    }
+    if not pcfg['enabled']:
+        return result
+    target_dir = Path(pcfg['source_dir'])
+    for row in rows:
+        if row.get('decision') != 'keep':
+            continue
+        rel = row.get('final_path')
+        if not rel:
+            result['skipped'] += 1
+            continue
+        rel_path = Path(rel)
+        if rel_path.is_absolute() or '..' in rel_path.parts:
+            result['skipped'] += 1
+            continue
+        src = workdir / rel_path
+        if not src.is_file():
+            result['skipped'] += 1
+            continue
+        target = target_dir / f"{workdir.name}__{src.name}"
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+            if target.exists() and target.stat().st_size == src.stat().st_size:
+                result['skipped'] += 1
+                continue
+            target.write_bytes(src.read_bytes())
+            try:
+                _write_keep_rating_sidecar(target)
+            except OSError as exc:
+                result['errors'].append(f"{src.name}: sidecar: {exc}")
+            result['exported'] += 1
+        except OSError as exc:
+            result['errors'].append(f"{src.name}: {exc}")
+    return result

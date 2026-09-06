@@ -24,6 +24,22 @@ from app.faces.face_proposal_scoring import (
 )
 
 
+def resolve_person_pool_dir(root, person_slug):
+    """Bestehenden Personen-Ordner case-insensitiv aufloesen.
+
+    Verhindert doppelte Ordner (z. B. 'Nelly' vs. 'nelly') auf
+    case-sensitiven Dateisystemen. Faellt auf den Slug zurueck,
+    wenn noch kein Ordner existiert.
+    """
+    base = Path(root)
+    slug_fold = str(person_slug).casefold()
+    if base.is_dir():
+        for child in sorted(base.iterdir()):
+            if child.is_dir() and child.name.casefold() == slug_fold:
+                return child
+    return base / str(person_slug)
+
+
 class FaceProposalBatchError(ValueError):
     """Beschreibt einen ungültigen Face-Vorschlagsbatch."""
 
@@ -35,6 +51,7 @@ def build_face_proposal_batch(
     output_root: str | Path,
     min_quality_score: float = 0.65,
     confidence_margin: float = 0.1,
+    limits: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Create only eligible known-face crops under ``new_faces``.
 
@@ -58,7 +75,9 @@ def build_face_proposal_batch(
         "skipped_unknown": 0,
         "skipped_ambiguous": 0,
         "skipped_quality": 0,
+        "skipped_limits": 0,
     }
+    created_per_person: dict[str, int] = {}
     people: set[str] = set()
 
     for row in rows:
@@ -106,7 +125,18 @@ def build_face_proposal_batch(
             raise FaceProposalBatchError("eligible candidate source_id is missing")
         face_index = row.get("face_index", 0)
         filename = f"{batch_id}__{Path(str(source_id)).stem}__face-{int(face_index):03d}.jpg"
-        crop_path = root / person_slug / "new_faces" / filename
+        # Limits vor Crop-Erzeugung
+        if limits:
+            _max_batch = int(limits.get("max_new_per_batch") or 0)
+            _max_total = int(limits.get("max_new") or 0)
+            if (_max_batch and created_per_person.get(person_slug, 0) >= _max_batch) or (
+                _max_total and counters["created_new"] >= _max_total
+            ):
+                counters["skipped_limits"] += 1
+                continue
+        created_per_person[person_slug] = created_per_person.get(person_slug, 0) + 1
+
+        crop_path = resolve_person_pool_dir(root, person_slug) / "new_faces" / filename
         create_square_face_crop(image_path, box, crop_path)
         created.append({
             "source_id": source_id,

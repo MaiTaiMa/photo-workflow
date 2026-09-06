@@ -436,13 +436,13 @@ def format_ai_status_block(
 
     gate_reason = report.get("gate_reason", status)
     lines = [
-        "=" * 60,
+        "=" * 72,
         "🤖 KI-ASSISTENT STATUS",
-        "=" * 60,
+        "=" * 72,
         f"Modus:                    {mode}",
         f"Batch:                    {batch_id}",
         f"Gate-Status:              {'✅ BEREIT' if ready else f'❌ NICHT BEREIT ({gate_reason})'}",
-        "-" * 60,
+        "-" * 72,
         f"Validierte Batches:       {report.get('evaluable_batch_count', 0)} / {policy.get('minimum_evaluable_batches', '?')} (Minimum)",
         f"Ausgewertete Vorhersagen: {report.get('evaluated_predictions', 0)} / {policy.get('minimum_evaluated_predictions', '?')} (Minimum)",
         f"Gesamt-Übereinstimmung:   {pct(report.get('overall_agreement'))} (Ziel: >= {pct(policy.get('minimum_overall_agreement'))})",
@@ -451,9 +451,10 @@ def format_ai_status_block(
     ]
     if not ready:
         lines += [
-            "-" * 60,
-            "Nächster Schritt:",
-            f"  python -m app.photo_workflow --config {config_path} validate-reviews --batch {batch_id}",
+            "-" * 72,
+            "Hinweis:                Validierung laeuft automatisch",
+            "                        (AUTO-VALIDATE), sobald menschliche",
+            "                        Reviews vorliegen.",
         ]
-    lines.append("=" * 60)
+    lines.append("=" * 72)
     return "\n".join(lines)

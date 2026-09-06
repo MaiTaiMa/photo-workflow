@@ -50,6 +50,10 @@ def build_registration_status(
         state = "no_candidates"
         reason = "all_candidates_skipped"
         action = "none"
+    elif int(skipped_quality) > 0:
+        state = "no_candidates"
+        reason = "all_candidates_below_quality_threshold"
+        action = "none"
     else:
         state = "no_candidates"
         reason = "no_eligible_known_faces"

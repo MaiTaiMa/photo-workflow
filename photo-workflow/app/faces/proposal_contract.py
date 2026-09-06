@@ -169,6 +169,7 @@ def add_face_proposal(
     entry = {
         "source_id": source_id,
         "batch_id": batch_id,
+        "person_slug": slug,
         "path": relative_crop.as_posix(),
         "status": "new",
         "quality_score": float(quality_score),

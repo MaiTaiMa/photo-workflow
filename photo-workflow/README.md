@@ -48,8 +48,6 @@ python /app/app/photo_workflow.py --config /app/config/config.yaml pipeline
 # Family-Cache gezielt neu aufbauen
 python /app/app/photo_workflow.py --config /app/config/config.yaml rebuild-family-cache
 
-# Persönliches Geschmacksmodell trainieren
-python /app/app/photo_workflow.py --config /app/config/config.yaml train-personal
 ```
 
 Für den produktiven Betrieb (Docker, DSM Task Scheduler) nutze `run_photo_workflow.sh` oder `docker-compose.yml` – beide rufen konsistent `pipeline` auf.
@@ -65,10 +63,39 @@ Jeder Lauf schreibt einen Startblock, laufende Statusmeldungen und eine Abschlus
 ## Sicherheit
 
 - Alle produktiven Pfade liegen innerhalb von `base_dir`.
-- Löschungen von Originaldaten sind nur in eng begrenzten, vertraglich definierten Fällen erlaubt (siehe `docs/AUTOMATION_AND_FINALIZATION_CONTRACT_v1-2.md`).
+- Löschungen von Originaldaten sind nur in eng begrenzten, vertraglich definierten Fällen erlaubt (siehe `docs/spec_v1-2/` für Spezifikation).
 - Lockfiles verhindern parallele Läufe auf demselben Batch.
 - Vor produktivem Einsatz sollte immer ein Testlauf mit Kopien echter Ordner erfolgen.
 
+
+
+## Face-Vorschläge für bekannte Personen
+
+Der Workflow kann automatisch neue Gesichtsausschnitte (Crops) für bereits bekannte Personen vorschlagen:
+
+- **Aktivierung:** `face_proposals.enabled: true` in `config.yaml`
+- **Ablauf:** Bei jedem Lauf werden passende Gesichtsregionen in `<person>/new_faces/` gespeichert
+- **Limits:** `max_new_per_batch` (pro Person/Lauf) und `max_new` (global) begrenzen die Anzahl
+- **Human-Review:** Neue Crops müssen manuell geprüft und nach `reference/` verschoben werden, um aktiviert zu werden
+- **Case-Sicherheit:** Personenordner werden case-insensitiv aufgelöst (verhindert `Nelly`/`nelly`-Duplikate)
+
+**Statusanzeige:** Der Abschlussbericht unterscheidet "Neu in diesem Lauf" (gerade erzeugte Crops) von "Bereits ausstehend" (früher erzeugte, noch nicht reviewte Crops).
+
+## Auto-Learn und Personal-Modell
+
+Der KI-Assistent lernt aus manuell als "Keep" markierten Bildern:
+
+- **Auto-Learn-Exporte:** Keep-Bilder werden idempotent nach `samples/personal_training/reference/` exportiert
+- **Personal-Modell:** Der Cache wird bei geänderter Referenzmenge im nächsten Lauf neu aufgebaut
+- **Kein manuelles Training:** Der alte `train-personal`-CLI-Befehl wurde entfernt; Auto-Learn ist der Standardweg
+
+## AUTO-VALIDATE
+
+Human Reviews werden automatisch validiert:
+
+- **Automatische Validation:** Am Batch-Ende wird geprüft, ob ausreichende menschliche Entscheidungen vorliegen
+- **Validation-Dateien:** Ergebnisse unter `WORKFLOW_DATA/runtime/automation/validation/`
+- **Kein `validate-reviews`-CLI nötig:** Der alte CLI-Befehl wurde entfernt; AUTO-VALIDATE ist der Standardweg
 
 ## Phase 3: Finalisierung und Veröffentlichung
 

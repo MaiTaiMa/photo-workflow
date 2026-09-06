@@ -146,8 +146,6 @@ def save_human_decisions_from_batch(
     """
     from pathlib import Path
     from datetime import datetime, timezone
-    import json
-    import hashlib
     
     runtime_path = Path(runtime_path)
     base_dir = runtime_path.parent.parent  # ../NAS_EXAMPLE
@@ -195,27 +193,33 @@ def save_human_decisions_from_batch(
                     "producer_version": producer_version,
                 })
     
-    # Payload erstellen
-    payload = {
-        "batch_id": batch_id,
-        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "producer_version": producer_version,
-        "decisions": decisions,
-        "decision_count": len(decisions),
-    }
-    
-    # Hash berechnen
-    unsigned = dict(payload)
-    unsigned.pop("hash", None)
-    payload["hash"] = hashlib.sha256(
-        json.dumps(unsigned, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    ).hexdigest()
-    
-    # Speichern
-    target = runtime_path / "automation" / "reviews" / f"{batch_id}.json"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    
-    return {"status": "ok", "decision_count": len(decisions)}, target
+    # Kontrakt-konforme Records bauen und atomar schreiben.
+    # Werte ausserhalb des Kontrakts (z. B. "review") werden gezaehlt
+    # statt die Bereinigung abzubrechen; sie landen in skipped_records.
+    now_iso = datetime.now(timezone.utc).isoformat()
+    records = []
+    skipped = []
+    for decision in decisions:
+        try:
+            records.append(
+                build_human_review_record(
+                    producer_version=producer_version,
+                    batch_id=batch_id,
+                    image_id=decision["image_id"],
+                    human_decision=decision["human_decision"],
+                    human_decided_at=now_iso,
+                    reason=decision.get("reason"),
+                )
+            )
+        except ValueError as exc:
+            skipped.append(f"{decision.get('image_id')}: {exc}")
 
-    raise SystemExit(main())
+    result = {"status": "ok", "decision_count": len(records)}
+    if skipped:
+        result["skipped_records"] = len(skipped)
+    if not records:
+        result["status"] = "no_contract_records"
+        return result, runtime_path / "automation" / "reviews" / f"{batch_id}.json"
+
+    target = write_human_review_batch(runtime_path, batch_id, records)
+    return result, target

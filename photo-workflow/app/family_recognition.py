@@ -227,6 +227,7 @@ def prepare_family_model(cfg: dict[str, object], force_rebuild: bool = False, al
     model.update({
         "backend": backend,
         "matcher": matcher,
+        "people": {person: {} for person in loaded_people},
         "person_count": len(loaded_people),
     })
 
@@ -259,7 +260,6 @@ def prepare_family_model(cfg: dict[str, object], force_rebuild: bool = False, al
 
     # Cache nur bei rebuild schreiben
     if model["rebuilt_cache"] and fr_cfg.get("cache_enabled", True):
-        model.update(_write_cache(cfg, state, loaded_people))
         model.update(_write_cache(cfg, state, loaded_people))
     
     return model

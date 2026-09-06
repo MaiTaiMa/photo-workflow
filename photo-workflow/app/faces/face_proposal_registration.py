@@ -17,6 +17,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from app.faces.face_proposal_batch import resolve_person_pool_dir
 from app.faces.proposal_contract import add_face_proposal
 
 
@@ -41,7 +42,9 @@ def register_face_proposals(
     for candidate in sorted(candidates, key=lambda item: str(item.get("source_id", ""))):
         try:
             entry = add_face_proposal(
-                pool_root=Path(pool_root) / _required(candidate, "person_slug"),
+                pool_root=resolve_person_pool_dir(
+                Path(pool_root), _required(candidate, "person_slug")
+            ),
                 slug=_required(candidate, "person_slug"),
                 source_id=_required(candidate, "source_id"),
                 batch_id=_required(candidate, "batch_id"),

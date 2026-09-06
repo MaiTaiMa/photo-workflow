@@ -72,7 +72,7 @@ from app.phase1_analysis_builder import build_persistable_analysis_rows
 from app.phase1_analysis_plan import Phase1AnalysisPlanStore
 from app.phase1_execution_initializer import initialize_execution_plan
 from app.phase1_workunit_runner import Phase1WorkUnitRunner
-from app.training import train_from_directory, load_or_rebuild_personal_model
+from app.training import export_keep_samples, load_or_rebuild_personal_model
 from app.workunit_state import WorkUnitStateStore
 from app.trust_override import TrustOverrideStore, TrustOverrideError
 from app.trust_manager import TrustManager
@@ -122,11 +122,15 @@ DONE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}(_.*)?$')
 # === Globale Zähler ===
 COUNT_PROCESSED = 0
 COUNT_MOVED = 0
+FINALIZED_BATCHES: list = []
+PROCESSED_BATCH_IDS: list = []
+AUTO_LEARN_EXPORTED: list = []
 COUNT_SKIPPED = 0
 COUNT_ERRORS = 0
 COUNT_FOUND_SRC = 0
 COUNT_FOUND_DONE = 0
 LAST_FAMILY_RUN_INFO = {}
+LAST_FACE_PROPOSAL_STATUS = {}
 LAST_ZIP_CONFLICTS: list[dict] = []
 
 # === Script-Metadaten ===
@@ -144,6 +148,9 @@ def reset_counters() -> None:
     global COUNT_PROCESSED, COUNT_MOVED, COUNT_SKIPPED, COUNT_ERRORS, COUNT_FOUND_SRC, COUNT_FOUND_DONE, LAST_FAMILY_RUN_INFO, LAST_ZIP_CONFLICTS
     COUNT_PROCESSED = 0
     COUNT_MOVED = 0
+    FINALIZED_BATCHES.clear()
+    PROCESSED_BATCH_IDS.clear()
+    AUTO_LEARN_EXPORTED.clear()
     COUNT_SKIPPED = 0
     COUNT_ERRORS = 0
     COUNT_FOUND_SRC = 0
@@ -484,6 +491,37 @@ def build_batch_ki_status_table(cfg: dict) -> list[dict]:
 
     return table
 
+def build_learning_status(cfg: dict) -> dict:
+    """Liest den Lernzustand des persoenlichen Modells fuer die Summary.
+
+    Rein lesend: schreibt keine Reports und loest keinen Rebuild aus.
+    Ein Anzeigefehler darf niemals den Lauf brechen (fail-soft).
+    """
+    status = {
+        'enabled': None,
+        'exported_this_run': sum(count for _, count in AUTO_LEARN_EXPORTED),
+        'exported_batches': [b for b, count in AUTO_LEARN_EXPORTED if count],
+        'model_status': None,
+        'model_images': None,
+        'rebuild_pending': None,
+    }
+    try:
+        from app.training import _personal_cfg, build_personal_reference_state
+        pcfg = _personal_cfg(cfg)
+        status['enabled'] = pcfg['enabled']
+        if not pcfg['enabled']:
+            return status
+        meta_path = Path(pcfg['cache_dir']) / 'personal_model_meta.json'
+        meta = json.loads(meta_path.read_text(encoding='utf-8'))
+        status['model_status'] = meta.get('status')
+        status['model_images'] = meta.get('source_image_count')
+        current = build_personal_reference_state(cfg)
+        status['rebuild_pending'] = meta.get('reference_state') != current
+    except Exception:
+        status['model_status'] = status['model_status'] or 'unavailable'
+    return status
+
+
 def build_summary_payload(cfg: dict, command: str, status: str, started_at: str, finished_at: str, json_summary_path: str | None) -> dict:
     """Erstellt den Summary-Payload für JSON-Report und Terminal-Ausgabe."""
     return {
@@ -506,13 +544,17 @@ def build_summary_payload(cfg: dict, command: str, status: str, started_at: str,
             'found_temp_done': COUNT_FOUND_DONE,
             'processed': COUNT_PROCESSED,
             'moved_merged': COUNT_MOVED,
+            'finalized': len(FINALIZED_BATCHES),
             'skipped': COUNT_SKIPPED,
             'errors': COUNT_ERRORS,
         },
         'family_recognition': LAST_FAMILY_RUN_INFO,
         'zip_conflicts': LAST_ZIP_CONFLICTS,
         'json_summary_path': json_summary_path,
+        'batch_id': PROCESSED_BATCH_IDS[-1] if PROCESSED_BATCH_IDS else None,
+        'learning': build_learning_status(cfg),
         'batch_ki_status': build_batch_ki_status_table(cfg),
+        'face_proposal_status': LAST_FACE_PROPOSAL_STATUS,
     }
 
 
@@ -544,12 +586,37 @@ def print_scheduler_summary(cfg: dict, payload: dict) -> None:
     print(f"  Found TEMP_DONE:  {payload['counts']['found_temp_done']}")
     print(f"  Processed:        {payload['counts']['processed']}")
     print(f"  Moved/Merged:     {payload['counts']['moved_merged']}")
+    print(f"  Finalized:        {payload['counts']['finalized']}")
     print(f"  Skipped:          {payload['counts']['skipped']}")
     print(f"  Errors:           {payload['counts']['errors']}")
     if payload.get('family_recognition'):
         print()
         print("Face Recognition:")
-        print(f"  Status:           {payload['family_recognition']}")
+        _fr = payload['family_recognition']
+        if isinstance(_fr, dict):
+            print(f"  Status:           {_fr.get('status')}")
+            print(f"  Personen:         {_fr.get('person_count', 0)}")
+            _fr_cache = ('used' if _fr.get('used_cache')
+                         else 'rebuilt' if _fr.get('rebuilt_cache') else '-')
+            print(f"  Cache:            {_fr_cache}")
+        else:
+            print(f"  Status:           {_fr}")
+    learning = payload.get('learning') or {}
+    if learning:
+        exported = learning.get('exported_this_run', 0)
+        batches = learning.get('exported_batches') or []
+        model_status = learning.get('model_status')
+        model_images = learning.get('model_images')
+        print()
+        print('Lernen:')
+        line = f'  Auto-Learn Exporte: {exported}'
+        if batches:
+            line += ' (Batch ' + ', '.join(batches) + ')'
+        print(line)
+        if model_status:
+            print(f'  Personal-Modell:    {model_images} Referenzbilder ({model_status})')
+        if learning.get('rebuild_pending'):
+            print('  Naechster Lauf:     trainiert mit den neuen Keeps weiter')
     print()
     print("Logs:")
     print(f"  Log file:         {payload['paths']['log_file']}")
@@ -568,23 +635,23 @@ def print_scheduler_summary(cfg: dict, payload: dict) -> None:
     print(f"Pipeline:           {'✅ ERFOLGREICH' if payload['status'] == 'success' else '❌ FEHLER'}")
     print(f"Verarbeitete Ordner: {payload['counts']['processed']}")
     print(f"Moved/Final:         {payload['counts']['moved_merged']}")
+    print(f"Finalisiert:         {payload['counts']['finalized']}")
     print()
     # Hinweise
     has_warnings = False
     if payload.get('face_proposal_status') and payload['face_proposal_status'].get('pending_review', 0) > 0:
         has_warnings = True
         print("⚠️ HINWEISE:")
-        print(f"  - Face-Vorschläııge: {payload['face_proposal_status']['pending_review']} pending")
+        print(f"  - Face-Vorschläge: {payload['face_proposal_status']['pending_review']} pending")
         print()
     if not has_warnings:
-        print("⚠️ HINWEISE:")
+        print("✅ HINWEISE:")
         print("  - Keine ausstehenden Aktionen")
         print()
     # Nächste Schritte
     print("📝 NAECHSTE SCHRITTE:")
-    batch_id = payload.get('batch_id', 'unknown')
     print(f"  1. Neue Gesichter prüfen: {'Ausstehend' if has_warnings else 'Keine ausstehend'}")
-    print(f"  2. Validierung: python -m app.photo_workflow validate-reviews --batch {batch_id}")
+    print("  2. Validierung:   automatisch am Batch-Ende (AUTO-VALIDATE)")
     print("=" * 72)
 
 
@@ -720,8 +787,6 @@ def run_pipeline(cfg: dict, folder: str | None = None) -> None:
             elif phase == 'phase3':  # Zukünftig
                 # run_phase3(cfg, folder)  # Noch nicht implementiert
                 log(cfg, f'[PIPELINE] Phase {phase} noch nicht implementiert', error=True)
-            elif phase == 'train-personal':
-                run_training(cfg, None, None)
             elif phase == 'rebuild-family-cache':
                 run_family_cache_rebuild(cfg)
             else:
@@ -1314,6 +1379,84 @@ def combine_scores(base_score: float, eye_score: float | None, personal_score: f
     score = sum(float(active[key]) * weighted[key] for key in weighted) / total_weight
     return max(0.0, min(1.0, float(score)))
     
+def _pending_face_proposals_by_person(faces_root):
+    """Zaehlt ausstehende Face-Vorschlaege (status 'new') je Personen-Ordner."""
+    counts = {}
+    root = Path(faces_root)
+    if not root.is_dir():
+        return counts
+    for person_dir in sorted(root.iterdir()):
+        sel = person_dir / "selection.json"
+        if not person_dir.is_dir() or not sel.is_file():
+            continue
+        try:
+            data = json.loads(sel.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        n = sum(1 for img in data.get("images", []) if img.get("status") == "new")
+        if n:
+            counts[person_dir.name] = n
+    return counts
+
+
+def _face_box_quality_features(
+    box: dict,
+    img_w: int,
+    img_h: int,
+    crop_size: int = 256,
+) -> tuple[float, float] | None:
+    """Berechnet (face_area_ratio, framing_score) aus Box und Bildmassen.
+
+    face_area_ratio: kuerzere Box-Kante relativ zur Crop-Zielgroesse
+    (0..1; 1.0 = Box ist mindestens so gross wie der Ziel-Crop).
+    framing_score: 1.0 = Box exakt im Zentrum, sinkt zum Bildrand hin.
+    Liefert None bei ungueltiger Box oder fehlenden Bildmassen;
+    der Aufrufer faellt dann auf neutrale 0.5-Werte zurueck.
+    """
+    if img_w <= 0 or img_h <= 0 or crop_size <= 0:
+        return None
+    keys = ('left', 'top', 'right', 'bottom')
+    if any(
+        not isinstance(box.get(k), int) or isinstance(box.get(k), bool)
+        for k in keys
+    ):
+        return None
+    bw = max(0, box['right'] - box['left'])
+    bh = max(0, box['bottom'] - box['top'])
+    if bw == 0 or bh == 0:
+        return None
+    area_ratio = min(1.0, min(bw, bh) / float(crop_size))
+    cx = (box['left'] + box['right']) / 2.0
+    cy = (box['top'] + box['bottom']) / 2.0
+    half = ((img_w / 2.0) ** 2 + (img_h / 2.0) ** 2) ** 0.5
+    off = ((cx - img_w / 2.0) ** 2 + (cy - img_h / 2.0) ** 2) ** 0.5
+    framing = max(0.0, 1.0 - off / half) if half > 0 else 0.5
+    return round(area_ratio, 4), round(framing, 4)
+
+
+def _needs_auto_validation(runtime_path: Path, batch_id: str) -> bool:
+    """Prueft, ob eine Review ohne aktuelle Validation vorliegt.
+
+    True, wenn eine Review-Datei existiert und dazu keine oder eine
+    aeltere Validation vorliegt (mtime-Vergleich, fail-closed bei
+    Dateifehlern).
+    """
+    review_file = (
+        Path(runtime_path) / 'automation' / 'reviews' / f'{batch_id}.json'
+    )
+    if not review_file.is_file():
+        return False
+    validation_file = (
+        Path(runtime_path) / 'automation' / 'validation' / f'{batch_id}.json'
+    )
+    if not validation_file.is_file():
+        return True
+    try:
+        return validation_file.stat().st_mtime < review_file.stat().st_mtime
+    except OSError:
+        return False
+
+
 def cull_folder(workdir: Path, cfg: dict) -> dict:
     """
     Führt das AI-Culling für einen Batch durch.
@@ -1428,10 +1571,10 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             print(f"  [MANUAL_KEEP] KEEP: {image_path.name}")
 
     elif manual_keep_status['status'] == 'no_inbox':
-        print("[MANUAL_KEEP] inbox-Ordner fehlt oder leer")
+        log(cfg, "[MANUAL_KEEP] inbox-Ordner fehlt oder leer")
 
     elif manual_keep_status['status'] == 'empty_inbox':
-        print("[MANUAL_KEEP] inbox-Ordner leer")
+        log(cfg, "[MANUAL_KEEP] inbox-Ordner leer")
 
     elif manual_keep_status['status'] == 'no_match':
         print(
@@ -1726,6 +1869,10 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     )
 
     family_tag_written = 0
+    face_proposal_rows_from_loop = []  # FACE_PROPOSALS_COLLECT
+    _fp_crop_size = int(
+        (cfg.get('face_proposals', {}) or {}).get('crop_size', 256)
+    )
     culling_metadata_written = 0
 
     # ==========================================================================
@@ -1782,6 +1929,54 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         row['culling_metadata_status'] = culling_metadata_status
         row['final_path'] = str(target_path.relative_to(workdir))
 
+        # FACE_PROPOSALS_COLLECT: Regions und finalen Zielpfad sichern, bevor
+        # die internen Keys aufgeraeumt werden. Der Proposal-Hook nach SCHRITT 6
+        # verwendet diese Rohzeilen (original_path = Ziel nach dem Move).
+        # Bildmasse einmal pro Bild lesen (PIL, nur Header) fuer echte
+        # Qualitaetsmerkmale statt Neutralwerten.
+        _fp_img_w = _fp_img_h = 0
+        if row.get('_family_regions'):
+            try:
+                from PIL import Image
+                with Image.open(target_path) as _fp_im:
+                    _fp_img_w, _fp_img_h = _fp_im.size
+            except Exception:
+                _fp_img_w = _fp_img_h = 0
+        for _fp_index, _fp_region in enumerate(row.get('_family_regions') or []):
+            if not isinstance(_fp_region, dict):
+                continue
+            _fp_slug = _fp_region.get('name')
+            if not isinstance(_fp_slug, str) or not _fp_slug.strip():
+                continue
+            _fp_quality = _face_box_quality_features(
+                {k: _fp_region.get(k) for k in ('left', 'top', 'right', 'bottom')},
+                _fp_img_w,
+                _fp_img_h,
+                crop_size=_fp_crop_size,
+            ) or (0.5, 0.5)
+            face_proposal_rows_from_loop.append({
+                'batch_id': workdir.name,
+                'source_id': f"{workdir.name}:{row.get('file') or jpg.name}:face-{_fp_index}",
+                'person_slug': _fp_slug,
+                'known_person': True,
+                'original_path': str(target_path),
+                'bounding_box': {
+                    key: _fp_region.get(key)
+                    for key in ('left', 'top', 'right', 'bottom')
+                },
+                'face_confidence': (
+                    round(1.0 - float(_fp_region['distance']), 4)
+                    if isinstance(_fp_region.get('distance'), (int, float))
+                    and not isinstance(_fp_region.get('distance'), bool)
+                    else 0.5
+                ),
+                'face_area_ratio': _fp_quality[0],
+                'sharpness_score': row.get('sharp_score', 0.5) or 0.5,
+                'exposure_score': row.get('exposure_score', 0.5) or 0.5,
+                'framing_score': _fp_quality[1],
+                'diversity_score': 0.5,
+                'robustness_score': 0.5,
+            })
         row.pop('_source_path', None)
         row.pop('_family_tags', None)
         row.pop('_family_regions', None)
@@ -1869,68 +2064,43 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         "error": None,
         "error_reason": None,
     }
+    LAST_FACE_PROPOSAL_STATUS = face_proposal_status
+
     if bool(face_proposal_cfg.get("enabled", False)):
-        proposal_rows = []
-        for row in rows:
-            regions = row.get("_family_regions", [])
-            if not isinstance(regions, list) or len(regions) == 0:
-                continue
-            for i, region in enumerate(regions):
-                if not isinstance(region, dict):
-                    continue
-            if not isinstance(region, dict):
-                continue
-            person_slug = region.get("name")
-            image_path = row.get("_source_path")
-            if not isinstance(person_slug, str) or not person_slug.strip():
-                continue
-            if not isinstance(image_path, Path) or not image_path.is_file():
-                continue
-            proposal_rows.append({
-                "batch_id": workdir.name,
-                "source_id": f"{workdir.name}:{row['file']}:face-{i}",
-                "person_slug": person_slug,
-                "known_person": True,
-                "original_path": str(image_path),
-                "bounding_box": {
-                    key: region.get(key)
-                    for key in ("left", "top", "right", "bottom")
-                },
-                "face_confidence": region.get(
-                    "confidence",
-                    region.get("face_confidence"),
-                ),
-                "face_area_ratio": region.get("face_area_ratio", 0.5),
-                "sharpness_score": row.get("sharp_score", 0.5) or 0.5,
-                "exposure_score": row.get("exposure_score", 0.5) or 0.5,
-                "framing_score": region.get("framing_score", 0.5),
-                "diversity_score": 0.5,
-                "robustness_score": 0.5,
-            })
+        proposal_rows = list(face_proposal_rows_from_loop)
         limits = cfg.get("reference_pools", {}).get("common", {})
-        limits_dict = {
-            "max_new": int(limits.get("max_new", 20)),
-            "max_new_per_batch": int(limits.get("max_new_per_batch", 5)),
-        }
         try:
+            _fp_cfg_limits = cfg.get("face_proposals", {}) or {}
+            _fp_pending_total = sum(
+                _pending_face_proposals_by_person(
+                    Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "faces"
+                ).values()
+            )
+            _fp_limits = {
+                "max_new_per_batch": int(
+                    _fp_cfg_limits.get("max_new_per_batch", 5)
+                ),
+                "max_new": max(
+                    0,
+                    int(_fp_cfg_limits.get("max_new", 20)) - _fp_pending_total,
+                ),
+            }
             batch_result = build_face_proposal_batch(
                 proposal_rows,
                 batch_id=workdir.name,
                 output_root=Path(
                     face_proposal_cfg.get(
                         "root_dir",
-                        Path(cfg["paths"]["base_dir"])
-                        / "WORKFLOW_DATA"
-                        / "faces",
+                        Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "faces",
                     )
                 ),
+                limits=_fp_limits,
                 min_quality_score=float(
                     face_proposal_cfg.get("min_quality_score", 0.65)
                 ),
                 confidence_margin=float(
                     face_proposal_cfg.get("confidence_margin", 0.1)
                 ),
-                limits=limits_dict,
             )
             face_proposal_status = register_face_proposals(
                 batch_result["candidates"],
@@ -1956,16 +2126,35 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             face_proposal_status["skipped_quality"] = batch_result["counters"][
                 "skipped_quality"
             ]
+            face_proposal_status["skipped_limits"] = batch_result["counters"].get(
+                "skipped_limits", 0)
         except Exception as error:
-            face_proposal_status["error"] = "blocked"
-            face_proposal_status["error_reason"] = str(error)
             log(cfg, f"[FACE_PROPOSALS] blocked error={error}", error=True)
             face_proposal_status = {
                 "registered": [],
                 "registered_count": 0,
                 "skipped_count": 0,
+                "error": "blocked",
+                "error_reason": str(error),
             }
 
+    # Rest-Slots aus Limits und tatsaechlich ausstehenden Vorschlaegen.
+    _fp_limits_common = cfg.get("reference_pools", {}).get("common", {})
+    _fp_max_new = int(_fp_limits_common.get("max_new", 20))
+    _fp_max_per_batch = int(_fp_limits_common.get("max_new_per_batch", 5))
+    _fp_created = int(face_proposal_status.get("registered_count", 0) or 0)
+    _fp_pending_total = 0
+    _fp_faces_root = Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "faces"
+    try:
+        for _fp_sel in _fp_faces_root.glob("*/selection.json"):
+            _fp_data = json.loads(_fp_sel.read_text(encoding="utf-8"))
+            _fp_pending_total += sum(
+                1
+                for _fp_img in _fp_data.get("images", [])
+                if isinstance(_fp_img, dict) and _fp_img.get("status") == "new"
+            )
+    except Exception:
+        _fp_pending_total = _fp_created
     face_proposal_block = format_registration_status_block(
         batch_id=workdir.name,
         registration_result=face_proposal_status,
@@ -1973,8 +2162,8 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         skipped_unknown=int(face_proposal_status.get("skipped_unknown", 0)),
         skipped_ambiguous=int(face_proposal_status.get("skipped_ambiguous", 0)),
         skipped_quality=int(face_proposal_status.get("skipped_quality", 0)),
-        remaining_batch_slots=0,
-        remaining_global_slots=0,
+        remaining_batch_slots=max(0, _fp_max_per_batch - _fp_created),
+        remaining_global_slots=max(0, _fp_max_new - _fp_pending_total),
     )
     print(face_proposal_block)
 
@@ -2132,6 +2321,54 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             'failed_count'
         ]
 
+    # ==========================================================================
+    # SCHRITT 10: AUTO-LEARN - Behaltene Keep-Bilder des Batches werden als
+    # Trainingsreferenz fuer das persoenliche Modell exportiert. Der naechste
+    # Lauf trainiert daraus automatisch weiter (auto_train_on_change).
+    # ==========================================================================
+    try:
+        learn_result = export_keep_samples(rows, workdir, cfg)
+    except Exception as exc:
+        learn_result = {'exported': 0, 'skipped': 0, 'errors': [str(exc)],
+                        'target_dir': ''}
+        log(cfg, f'[AUTO-LEARN] blockiert: {exc}', error=True)
+    summary['auto_learn_exported'] = learn_result['exported']
+    summary['auto_learn_skipped'] = learn_result['skipped']
+    AUTO_LEARN_EXPORTED.append((workdir.name, learn_result['exported']))
+    if learn_result['exported']:
+        log(
+            cfg,
+            f"[AUTO-LEARN] batch={workdir.name} "
+            f"exported={learn_result['exported']} "
+            f"target={learn_result['target_dir']}",
+        )
+
+    # ==========================================================================
+    # SCHRITT 11: AUTO-VALIDATE - Liegt eine menschliche Review fuer diesen
+    # Batch ohne aktuelle Validation vor, wird validate_reviews automatisch
+    # nachgezogen. Fail-closed: Fehler werden nur geloggt.
+    # ==========================================================================
+    auto_validation_status = 'no_reviews'
+    try:
+        if _needs_auto_validation(runtime_path, workdir.name):
+            av_report, _av_path = validate_reviews(
+                runtime_path=runtime_path,
+                batch_id=workdir.name,
+                producer_version=SCRIPT_VERSION,
+            )
+            auto_validation_status = av_report['status']
+            log(
+                cfg,
+                f"[AUTO-VALIDATE] batch={workdir.name} "
+                f"status={av_report['status']} "
+                f"evaluated={av_report['evaluated_predictions']} "
+                f"agreement={av_report['overall_agreement']}",
+            )
+    except Exception as exc:
+        auto_validation_status = 'error'
+        log(cfg, f'[AUTO-VALIDATE] blockiert: {exc}', error=True)
+    summary['auto_validation'] = auto_validation_status
+
     # Summary erst nach Schritt 9 schreiben, damit die finalen
     # MANUAL_KEEP-used/-Zähler dauerhaft in culling_summary.json stehen.
     (save_dir / 'culling_summary.json').write_text(
@@ -2179,6 +2416,7 @@ def prepare_folder_phase1(folder: Path, cfg: dict) -> Path:
     # Batch als abgeschlossen markieren
     (workdir / '.DONE').touch()
     COUNT_PROCESSED += 1
+    PROCESSED_BATCH_IDS.append(workdir.name)
     log(cfg, f'[DONE] {workdir.name}')
 
     # Batch nach temp_images verschieben
@@ -2557,14 +2795,22 @@ def process_done_folder(dir_path: Path, cfg: dict) -> None:
         preserve_zip_artifact(z, save_dir, dir_path.name, cfg)
 
     # ARWs ohne aktive JPGs löschen
+    deleted_arw_without_jpg = []  # DELETE_ARW_COLLECT
     for arw in sorted(arw_dir.iterdir()):
         if not arw.is_file() or arw.suffix not in RAW_EXTS:
             continue
         base = arw.stem
         if not (dir_path / f'{base}.JPG').exists() and not (dir_path / f'{base}.jpg').exists():
             safe_delete(arw, cfg)
-            log(cfg, f'[DELETE ARW] No matching active JPG: {base}')
+            deleted_arw_without_jpg.append(base)
 
+    if deleted_arw_without_jpg:
+        log(
+            cfg,
+            f"[DELETE ARW] {len(deleted_arw_without_jpg)} "
+            f"Dateien ohne aktives JPG entfernt: "
+            f"{', '.join(deleted_arw_without_jpg)}",
+        )
     # Verbleibende ARWs archivieren
     remaining = [p for p in sorted(arw_dir.iterdir()) if p.is_file() and p.suffix in RAW_EXTS]
     zip_path = next_available_artifact_path(save_dir, dir_path.name, 'sort_arw')
@@ -2795,6 +3041,7 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                     
                     if move_result['success']:
                         log(cfg, f'[PHASE2 OK] {dir_path.name} moved to temp_final')
+                        FINALIZED_BATCHES.append(dir_path.name)
                     elif move_result['error'] == 'move_to_temp_final ist in der Config deaktiviert':
                         log(cfg, f'[PHASE2 OK] {dir_path.name} move_to_temp_final deaktiviert')
                     else:
@@ -2878,21 +3125,6 @@ def run_phase3(cfg: dict, folder: str | None = None, target: str | None = None, 
         log(cfg, f"[PHASE3] Fehler: {result}", error=True)
 
 
-def run_training(cfg: dict, images_dir: str | None = None, model_out: str | None = None) -> None:
-    """Trainiert das persönliche Bewertungsmodell."""
-    images_dir = images_dir or cfg['training']['sample_images_dir']
-    model_out = model_out or cfg['paths']['personal_model']
-    labels_out = str(Path(cfg['training']['exported_labels_dir']) / 'training_labels.csv')
-
-    model = train_from_directory(
-        images_dir=images_dir,
-        model_out=model_out,
-        labels_out=labels_out,
-        min_images=int(cfg['training'].get('min_labeled_images', 20)),
-    )
-
-    log(cfg, f"[TRAIN] model={model_out} rows={model['training_rows']}")
-
 def run_family_cache_rebuild(cfg: dict) -> None:
     """Baut den Family-Cache komplett neu auf."""
     global LAST_FAMILY_RUN_INFO
@@ -2940,11 +3172,6 @@ def build_parser() -> argparse.ArgumentParser:
     # Alias: phase12 (identisch zu pipeline)
     p12 = sub.add_parser('phase12')
     p12.add_argument('--folder', default=None)
-    
-    # Training
-    train = sub.add_parser('train-personal')
-    train.add_argument('--images-dir', default=None)
-    train.add_argument('--model-out', default=None)
     
     # Family Cache Rebuild
     sub.add_parser('rebuild-family-cache')
@@ -3297,8 +3524,6 @@ def main() -> int:
 
             elif args.command in ("pipeline", "phase12"):
                 run_pipeline(cfg, args.folder)
-            elif args.command == "train-personal":
-                run_training(cfg, args.images_dir, args.model_out)
             elif args.command == "rebuild-family-cache":
                 run_family_cache_rebuild(cfg)
 

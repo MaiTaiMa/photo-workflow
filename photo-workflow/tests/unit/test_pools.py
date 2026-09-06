@@ -155,7 +155,7 @@ def test_face_proposal_end_to_end_synthetic_batch(tmp_path: Path):
     assert not (faces_root / "alice" / "reference").exists()
     assert "FACE-VORSCHLÄGE" in block
     assert "Status:             proposals_created" in block
-    assert "Personen:           -" in block
+    assert "Personen:" in block  # K1: person_slug jetzt im Contract
     assert "human_review_required_move_new_faces_to_reference" in block
 
 
