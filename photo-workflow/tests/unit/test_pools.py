@@ -1081,3 +1081,57 @@ def test_runtime_cache_rebuilds_after_fingerprint_change():
     cache.get_or_rebuild("a", lambda: calls.append(1) or {"x": 2})
     cache.get_or_rebuild("b", lambda: calls.append(1) or {"x": 3})
     assert len(calls) == 2
+
+
+def test_face_candidate_selection_diversity_with_embeddings():
+    from app.faces.face_proposal_selection import select_face_candidates
+    import math
+
+    # 4 Kandidaten, 2 sehr ähnlich (v1/v2), 2 unterschiedlich (v3/v4)
+    def unit(vec):
+        norm = math.sqrt(sum(x * x for x in vec)) or 1e-12
+        return [x / norm for x in vec]
+
+    v1 = unit([1.0, 0.0, 0.0])
+    v2 = unit([0.99, 0.01, 0.0])  # sehr ähnlich zu v1
+    v3 = unit([0.0, 1.0, 0.0])
+    v4 = unit([0.0, 0.0, 1.0])
+
+    candidates = [
+        {"known_person": True, "human_decision": "keep",
+         "quality_score": 0.9, "candidate_utility_score": 0.95,
+         "source_id": "c1", "embedding": v1},
+        {"known_person": True, "human_decision": "keep",
+         "quality_score": 0.9, "candidate_utility_score": 0.90,
+         "source_id": "c2", "embedding": v2},
+        {"known_person": True, "human_decision": "keep",
+         "quality_score": 0.9, "candidate_utility_score": 0.85,
+         "source_id": "c3", "embedding": v3},
+        {"known_person": True, "human_decision": "keep",
+         "quality_score": 0.9, "candidate_utility_score": 0.80,
+         "source_id": "c4", "embedding": v4},
+    ]
+
+    # Ohne Filter -> alle 4 (max_count gross genug)
+    all4 = select_face_candidates(candidates, min_quality_score=0.5, max_count=10)
+    assert len(all4) == 4
+
+    # Mit Filter (0.25) -> c2 fällt raus (zu ähnlich zu c1)
+    div = select_face_candidates(
+        candidates, min_quality_score=0.5, max_count=10, min_candidate_distance=0.25
+    )
+    ids = [c["source_id"] for c in div]
+    assert "c1" in ids and "c3" in ids and "c4" in ids
+    assert "c2" not in ids  # redundant zu c1
+
+    # Ohne Vektor -> altes Verhalten (keine Diversitaet)
+    no_emb = [
+        {"known_person": True, "human_decision": "keep",
+         "quality_score": 0.9, "candidate_utility_score": 0.95,
+         "source_id": "x1"},
+        {"known_person": True, "human_decision": "keep",
+         "quality_score": 0.9, "candidate_utility_score": 0.90,
+         "source_id": "x2"},
+    ]
+    sel = select_face_candidates(no_emb, min_quality_score=0.5, max_count=10, min_candidate_distance=0.25)
+    assert len(sel) == 2  # beide, weil keine Vektoren

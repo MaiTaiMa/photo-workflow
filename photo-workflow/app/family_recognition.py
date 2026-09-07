@@ -7,6 +7,7 @@
 # VERSION:     1.1
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool optional
 # CHANGES:
+#   2026-09-07 | X2 | XMP-Regionen: AppliedToDimensions aus EXIF-angewandter Sicht.
 #   2026-09-07 | P7 | person_weights casefold-normalisiert; persons[].weight mit Vorrang.
 #   2026-08-09 | 1.0 | OpenCV-Backend und RAM-only Matching ergänzt
 #   2026-08-09 | 1.1 | Dynamische Personen-Erkennung: faces/<Person>/reference/
@@ -512,9 +513,9 @@ def write_native_tags(
     # ======================================================================
     if write_regions and face_regions:
         try:
-            from PIL import Image
-            with Image.open(image_path) as image:
-                image_width, image_height = image.size
+            # EXIF-angewandte Sicht: Detection (cv2) liefert Boxen in dieser
+            # Sicht; MWG-RS-Regionen beziehen sich auf das angezeigte Bild.
+            image_width, image_height = _applied_dimensions(image_path)
         except Exception:
             return False, "regions_image_read_failed"
 
@@ -717,4 +718,16 @@ def _load_person_weights(fr_cfg: object) -> dict:
             except (TypeError, ValueError):
                 continue
     return weights
+
+
+def _applied_dimensions(image_path):
+    """Liefert (width, height) in der EXIF-angewandten (angezeigten) Sicht.
+
+    Detection-Boxen (cv2.imread rotiert implizit) und MWG-RS-Regionen beziehen
+    sich auf diese Sicht; PIL-Rohpixel ohne Transpose passen bei orient != 1
+    nicht dazu.
+    """
+    from PIL import Image, ImageOps
+    with Image.open(image_path) as image:
+        return ImageOps.exif_transpose(image).size
 
