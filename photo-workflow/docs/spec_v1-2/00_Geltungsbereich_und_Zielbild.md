@@ -107,3 +107,27 @@ Bildbytes und Embeddings dürfen nie in JSON, Cache, Log, Manifest, CSV, Report,
 - Bei deaktiviertem Transfer darf PHASE3 keine Bilddatei aus `03_TEMP_DONE` verschieben, kopieren, löschen oder umbenennen.
 - Die API darf nur bereits vorhandene lokale Workflow-Metadaten übertragen. Bildbytes, Face-Crops, Embeddings und Referenzbilder dürfen nicht an die API übermittelt werden.
 - API-Fehler dürfen niemals eine Löschung, ein Überschreiben, einen Rücktransfer oder eine sonstige unkontrollierte Dateiaänderung auslösen.
+
+---
+
+## 2026-09-07: Abweichung Manuelle Review-Evidenz (Paket 2)
+
+Bewusste Aufweichung des fail-closed Vertrags, vom Betreiber angeordnet:
+
+- Ein Ordner, der haendisch nach `03_TEMP_DONE` gelegt wird, gilt als menschlich
+  geprueft. Seine Keep-/Reject-Entscheidungen werden automatisch als
+  Review-Evidenz gespeichert (`save_human_decisions_from_batch`) und sofort
+  validiert (AUTO-VALIDATE im PHASE2-MANUAL-Zweig, `app/photo_workflow.py`).
+- Menschlich entschiedene `review`-Prognosen zaehlen als ausgewertete Evidenz
+  (`evaluated_predictions`), bleiben aber aus agreement/precision heraus
+  (`app/review_validation.py` v2.2.1, `app/automation_readiness.py`).
+
+Begruendung: Ohne diese Erweiterung konnte die Readiness nie fortschreiten
+(Henne-Ei: AUTO-VALIDATE lief nur in Phase 1, bevor menschliche Reviews
+existierten). Die Gates bleiben fail-closed; geaendert wird nur, wie Evidenz
+entsteht.
+
+Weitere Aenderungen desselben Tages: EXIF-konsistente Face-Crops (cv2.imread
+rotiert implizit, PIL nicht; Fix via `ImageOps.exif_transpose`),
+Review-Ordner-Logik restlos entfernt, `persons`+`person_weights` zu einem
+Block unter `family_recognition` zusammengefuehrt (id/name/weight).

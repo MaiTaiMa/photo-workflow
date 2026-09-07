@@ -53,7 +53,7 @@ Diese Datei dokumentiert die fachliche Trennung der 77 Module (Abschnitt 6.1.3).
 
 | Modul | Verantwortung |
 |---|---|
-| `phase2_contract.py` | Cleanup-Logik, Move nach `04_TEMP_FINAL` (`cleanup_review_rejected()`, `move_to_temp_final()`) |
+| `phase2_contract.py` | Rejected-Cleanup, Move nach `04_TEMP_FINAL` (`cleanup_review_rejected()`, `move_to_temp_final()`) |
 | `archive_contract.py` | Archiv-Vertrag (JPG-Zip, ARW-Zip) |
 | `archive_verification.py` | Archiv-Verifikation (SHA256, Vollständigkeit) |
 | `inventory.py` | Bestandsaufnahme, JSON-Report |

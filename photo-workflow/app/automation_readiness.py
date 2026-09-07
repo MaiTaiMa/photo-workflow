@@ -80,6 +80,8 @@ def build_readiness_report(
         "confirmed_keep": 0,
         "predicted_reject": 0,
         "confirmed_reject": 0,
+        "reviewed_predicted_keep": 0,
+        "reviewed_predicted_reject": 0,
         "excluded_review_predictions": 0,
         "unreviewed_predictions": 0,
     }
@@ -121,8 +123,10 @@ def build_readiness_report(
     # Gesamt- und Klassenpräzision werden getrennt berechnet und nachweisbar geführt.
     # Fehlende Nenner liefern None und verhindern später eine unzulässige Freigabe.
     # -------------------------------------------------------------------------
+    # Nenner: nur menschlich bewertete keep/reject-Prognosen (2b-kompatibel)
     overall_agreement = _ratio(
-        totals["matching_predictions"], totals["evaluated_predictions"]
+        totals["matching_predictions"],
+        totals["reviewed_predicted_keep"] + totals["reviewed_predicted_reject"],
     )
     keep_precision = _ratio(totals["confirmed_keep"], totals["predicted_keep"])
     reject_precision = _ratio(totals["confirmed_reject"], totals["predicted_reject"])

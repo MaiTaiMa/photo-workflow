@@ -4,10 +4,11 @@
 # PURPOSE:     Phase-2-Vertrag (Archivierung, Review/Rejected-Bereinigung, Move nach temp_final).
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.6
+# VERSION:     1.7
 # REQUIRES:    Python 3.11, pathlib, shutil
 # CHANGES:
 #   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
+#   2026-09-07 | 1.7 | Review-Ordner-Logik entfernt; nur noch Rejected-Bereinigung.
 #   2026-08-09 | 1.0 | Initiale Version mit Archive-Vertrag
 #   2026-08-09 | 1.5 | Review/Rejected-Bereinigung + Move nach temp_final
 # =============================================================================
@@ -25,17 +26,14 @@ from app.photo_workflow import merge_or_move_folder, find_merge_target
 
 def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, delete_files: bool = True) -> Dict[str, Any]:
     """
-    Bereinigt Review und Rejected Ordner nach Phase 2.
+    Bereinigt den Rejected Ordner nach Phase 2 (Review-Ordner entfallen, v1.7).
     
-    Review-Dateien:
-    - Keep-Entscheidungen: Nach 03_TEMP_DONE (für spätere manuelle Prüfung)
-    - Reject-Entscheidungen: Nach 00_TEMP_ERROR
     
     Rejected-Dateien:
     - Alle nach 00_TEMP_ERROR (keine automatische Löschung)
     
     Ordner-Logik:
-    - Review und Rejected werden nach dem Verschieben GELÖSCHT (auch wenn nicht leer)
+    - Rejected wird nach dem Verschieben GELÖSCHT (auch wenn nicht leer)
     - Dies erfolgt unabhängig von move_to_temp_final
     - Nicht verschobene Dateien im Ordner gehen dabei verloren (geplantes Verhalten)
     
@@ -52,14 +50,11 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, d
     
     Returns:
         dict mit:
-            - review_keep_moved: Anzahl Keep-Dateien nach temp_done
-            - review_reject_moved: Anzahl Reject-Dateien nach error
             - rejected_moved: Anzahl Rejected-Dateien nach error
             - errors: Liste von Fehlermeldungen (inkl. verbleibende Dateien)
             - status: 'ok', 'partial', 'failed'
     """
     batch = Path(batch_path)
-    review_path = batch / "Review"
     rejected_path = batch / "Rejected"
     
     # Phase-2-Config auslesen (konsistent mit Repo-Stil)
@@ -73,53 +68,14 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, d
     temp_error_dir = Path(cfg['paths'].get('temp_error', '../NAS_EXAMPLE/00_TEMP_ERROR'))
     
     result = {
-        'review_keep_moved': 0,
-        'review_reject_moved': 0,
         'rejected_moved': 0,
         'errors': [],
         'status': 'ok',
     }
     
-    # ==========================================================================
-    # SCHRITT 1: Review bereinigen
-    # ==========================================================================
-    if review_path.exists():
-        for img in review_path.iterdir():
-            if (
-                not img.is_file()
-                or img.is_symlink()
-                or img.suffix.lower() not in {".jpg", ".jpeg"}
-            ):
-                continue
-            
-            try:
-                # Entscheidung aus Metadaten lesen
-                decision = read_decision(img)
-                
-                if decision == "keep":
-                    # Nach temp_done für manuelle Prüfung
-                    target = temp_done_dir / f"{batch.name}_REVIEW_{img.name}"
-                    if not dry_run:
-                        temp_done_dir.mkdir(parents=True, exist_ok=True)
-                        shutil.move(str(img), str(target))
-                    result['review_keep_moved'] += 1
-                else:
-                    # Nach error oder löschen
-                    if delete_enabled:
-                        if not dry_run:
-                            img.unlink()
-                    else:
-                        target = temp_error_dir / f"{batch.name}_REVIEW_{img.name}"
-                        if not dry_run:
-                            temp_error_dir.mkdir(parents=True, exist_ok=True)
-                            shutil.move(str(img), str(target))
-                    result['review_reject_moved'] += 1
-                    
-            except Exception as e:
-                result['errors'].append(f"Review {img.name}: {e}")
     
     # ==========================================================================
-    # SCHRITT 2: Rejected bereinigen
+    # SCHRITT 1: Rejected bereinigen
     # ==========================================================================
     if rejected_path.exists():
         for img in rejected_path.iterdir():
@@ -146,19 +102,9 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, d
                 result['errors'].append(f"Rejected {img.name}: {e}")
     
     # ==========================================================================
-    # SCHRITT 3: Ordner löschen (IMMER nach dem Verschieben, auch wenn nicht leer)
+    # SCHRITT 2: Ordner löschen (IMMER nach dem Verschieben, auch wenn nicht leer)
     # ==========================================================================
     try:
-        # Review-Ordner löschen (auch wenn nicht leer)
-        if review_path.exists():
-            remaining_review = list(review_path.glob("*"))
-            if remaining_review and not dry_run:
-                # Warnung: Es sind noch Dateien im Ordner
-                result['errors'].append(f"Review-Ordner nicht leer: {[f.name for f in remaining_review]}")
-            
-            if not dry_run:
-                shutil.rmtree(review_path)
-            print(f"[CLEANUP] Ordner gelöscht: {review_path}")
         
         # Rejected-Ordner löschen (auch wenn nicht leer)
         if rejected_path.exists():
@@ -174,48 +120,14 @@ def cleanup_review_rejected(batch_path: str, cfg: dict, dry_run: bool = False, d
         result['errors'].append(f'Ordner löschen: {e}')
     
     # ==========================================================================
-    # SCHRITT 4: Status bestimmen
+    # SCHRITT 3: Status bestimmen
     # ==========================================================================
     if result['errors']:
-        result['status'] = 'partial' if result['review_keep_moved'] + result['review_reject_moved'] + result['rejected_moved'] > 0 else 'failed'
+        result['status'] = 'partial' if result['rejected_moved'] > 0 else 'failed'
     else:
         result['status'] = 'ok'
     
     return result
-
-
-def read_decision(image_path: Path) -> str:
-    """
-    Liest die Culling-Entscheidung aus den Metadaten einer JPG-Datei.
-    
-    98AP-Regeln:
-      - AP7: Nachvollziehbare Entscheidungen
-      - Metadaten bleiben erhalten
-    
-    Args:
-        image_path: Pfad zur JPG-Datei
-    
-    Returns:
-        'keep', 'review', 'reject' oder 'unknown'
-    """
-    try:
-        # ExifTool oder metadata_rating.py verwenden
-        from app.metadata_rating import read_rating_from_image
-        
-        rating = read_rating_from_image(image_path)
-        
-        if rating >= 4:
-            return 'keep'
-        elif rating >= 2:
-            return 'review'
-        else:
-            return 'reject'
-            
-    except Exception:
-        # Fallback: Entscheidung aus Dateinamen ableiten
-        # (falls keine Metadaten vorhanden)
-        return 'unknown'
-
 
 def move_to_temp_final(batch_path: str, cfg: dict, dry_run: bool = False) -> Dict[str, Any]:
     """
@@ -299,35 +211,19 @@ def verify_cleanup_complete(batch_path: str) -> Dict[str, Any]:
     
     Returns:
         dict mit:
-            - review_empty: bool
             - rejected_empty: bool
             - complete: bool
-            - review_remaining: list[str]
             - rejected_remaining: list[str]
     """
     batch = Path(batch_path)
-    review_path = batch / "Review"
     rejected_path = batch / "Rejected"
     
     result = {
-        'review_empty': False,
         'rejected_empty': False,
         'complete': False,
-        'review_remaining': [],
         'rejected_remaining': [],
     }
     
-    # Review prüfen
-    if review_path.exists():
-        remaining = [
-            item.name
-            for item in review_path.iterdir()
-            if item.is_file() and item.suffix.lower() in {".jpg", ".jpeg"}
-        ]
-        result['review_remaining'] = remaining
-        result['review_empty'] = len(remaining) == 0
-    else:
-        result['review_empty'] = True
     
     # Rejected prüfen
     if rejected_path.exists():
@@ -342,7 +238,7 @@ def verify_cleanup_complete(batch_path: str) -> Dict[str, Any]:
         result['rejected_empty'] = True
     
     # Gesamtstatus
-    result['complete'] = result['review_empty'] and result['rejected_empty']
+    result['complete'] = result['rejected_empty']
     
     return result
 
@@ -398,7 +294,6 @@ def run_phase2_with_cleanup(batch_path: str, cfg: dict, dry_run: bool = False) -
         result['state_warning'] = f"phase2_started failed: {e}"
 
     # ==========================================================================
-    # SCHRITT 1: Review/Rejected bereinigen
     # ==========================================================================
     cleanup_result = cleanup_review_rejected(batch_path, cfg, dry_run=dry_run)
     result['cleanup_result'] = cleanup_result

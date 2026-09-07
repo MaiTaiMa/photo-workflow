@@ -95,9 +95,10 @@ def save_new_face_crop(
         raise CropContractError(f"Crop already exists: {target}")
 
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
 
-        with Image.open(source_path) as image:
+        with Image.open(source_path) as _opened:
+            image = ImageOps.exif_transpose(_opened)
             validate_box(box, image.width, image.height)
             crop = image.crop(
                 (

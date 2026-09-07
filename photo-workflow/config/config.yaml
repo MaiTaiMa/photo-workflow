@@ -368,7 +368,7 @@ automation:
 # Review/Rejected-Bereinigung und Transfer nach temp_final.
 # -----------------------------------------------------------------------------
 phase2:
-  # cleanup_review_rejected: Review und Rejected nach Phase 2 bereinigen.
+  # cleanup_review_rejected: Rejected nach Phase 2 bereinigen (Review-Ordner entfallen).
   # Mögliche Werte: true oder false.
   # Auswirkung: true verschiebt Review-/Rejected-Dateien nach temp_error (oder löscht sie).
   cleanup_review_rejected: true
@@ -519,15 +519,6 @@ culling:
     # Auswirkung: true erzeugt Profil neu und muss danach wieder auf false gesetzt werden.
     force_cache_rebuild: false
 
-  # persons: Optionale lesbare Namen für bekannte technische Personen-IDs.
-  # Die id entspricht dem dynamisch erkannten Ordnernamen und dem person:<id>-Tag.
-  # name wird ausschliesslich als XMP-mwg-rs:RegionName geschrieben.
-  # Fehlt ein Eintrag, wird die id auch als RegionName verwendet.
-  persons:
-  - name: Peter
-    id: peter
-  - name: Anna
-    id: anna
 face_proposals:
   enabled: true
   min_quality_score: 0.7
@@ -697,22 +688,46 @@ family_recognition:
   # Auswirkung: Begrenzt Laufzeit und Poolgröße.
   max_reference_images_per_person: 100
 
-  # person_weights: OPTIONALE Gewichte fur BEKANNTE Personen
-  # Mögliche Werte: Slug -> Fließ·kommazahl von 0.0 bis 1.0.
-  # Auswirkung: Uberschreibt default_person_weight fur die jeweilige Person.
-  # WICHTIG: Nur bekannte Slugs eintragen! Neue Ordner automatisch mit Default.
-  # BEISPIEL: "chris" ist bekannt, "EXAMPLE_PERSON" bekommt Default (0.35).
-  person_weights:
-    chris: 0.35
-    daniel: 0.35
-    kind1: 0.55
-    kind2: 0.55
-    michele: 0.35
-    mutter: 0.35
-    nelly: 0.35
-    oma: 0.30
-    opa: 0.30
-    vater: 0.35
+  # persons: Bekannte Personen. id = Slug = Ordnername (person:<id>-Tag).
+  # name = XMP-mwg-rs:RegionName (fehlt name, wird id verwendet).
+  # weight (optional, 0.0-1.0): Gewicht; ueberschreibt default_person_weight.
+  # (P7b: frueheres person_weights-Mapping hierhin migriert.)
+  persons:
+  - name: Peter
+    id: peter
+  - name: Anna
+    id: anna
+  - name: Nelly (Mama)
+    id: nelly
+    weight: 0.35
+  - name: Chris
+    id: chris
+    weight: 0.35
+  - name: Daniel
+    id: daniel
+    weight: 0.35
+  - name: Finn
+    id: finn
+    weight: 0.55
+  - name: Lilly
+    id: lilly
+    weight: 0.55
+  - name: Michele
+    id: michele
+    weight: 0.35
+  - name: Mutter
+    id: mutter
+    weight: 0.35
+  - name: Oma
+    id: oma
+    weight: 0.30
+  - name: Opa
+    id: opa
+    weight: 0.30
+  - name: Vater
+    id: vater
+    weight: 0.35
+
 
   # write_native_tags: Personen-Tags per ExifTool schreiben.
   # Mögliche Werte: true oder false.

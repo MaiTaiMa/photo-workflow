@@ -19,7 +19,7 @@ Der Python-Workflow ersetzt das ursprüngliche Bash-Skript (siehe `legacy/`) und
 | `MANUAL_KEEP` | Extern ausgewählte Vergleichsbilder |
 | `WORKFLOW_DATA` | Zustände, Logs, Modelle, Referenzpools |
 
-**Wichtigste Regel:** Nur JPGs im Hauptordner eines Batches gelten als aktiv ausgewählt. Bilder in `Review/` oder `Rejected/` sind bewusst ausgelagert; ein manuelles Zurückschieben in den Hauptordner erhält auch das passende ARW.
+**Wichtigste Regel:** Nur JPGs im Hauptordner eines Batches gelten als aktiv ausgewählt. Bilder in `Rejected/` sind bewusst ausgelagert; ein manuelles Zurückschieben in den Hauptordner erhält auch das passende ARW.
 
 ## CLI-Befehle
 
@@ -27,7 +27,7 @@ Der Python-Workflow ersetzt das ursprüngliche Bash-Skript (siehe `legacy/`) und
 # Nur Phase 1: Import, Bewertung, Übergabe nach TEMP_IMAGES
 python /app/app/photo_workflow.py --config /app/config/config.yaml phase1
 
-# Nur Phase 2: ARW-Archivierung, Review/Rejected-Bereinigung
+# Nur Phase 2: ARW-Archivierung, Rejected-Bereinigung
 python /app/app/photo_workflow.py --config /app/config/config.yaml phase2
 
 # Konfigurierte Pipeline (Standard: phase1 + phase2)
@@ -54,7 +54,7 @@ Für den produktiven Betrieb (Docker, DSM Task Scheduler) nutze `run_photo_workf
 
 ## Legacy-Bash-Fallback
 
-Das ursprüngliche Bash-Skript (`legacy/nas_photosort.sh`) bleibt als Rückfallebene erhalten und nutzt denselben Grundworkflow (`TEMP_SD` → `TEMP_IMAGES` → `TEMP_DONE`). Es kennt jedoch **keine** KI-Culling-Logik (`Review/`, `Rejected/`, Scoring) und ist daher nur ein Ordner-Fallback, kein vollwertiger Ersatz. Details siehe `legacy/README.md`.
+Das ursprüngliche Bash-Skript (`legacy/nas_photosort.sh`) bleibt als Rückfallebene erhalten und nutzt denselben Grundworkflow (`TEMP_SD` → `TEMP_IMAGES` → `TEMP_DONE`). Es kennt jedoch **keine** KI-Culling-Logik (`Rejected/`, Scoring) und ist daher nur ein Ordner-Fallback, kein vollwertiger Ersatz. Details siehe `legacy/README.md`.
 
 ## Logging für DSM Task Scheduler
 

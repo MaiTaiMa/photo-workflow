@@ -4,9 +4,10 @@
 # PURPOSE:     Erfasst menschliche Keep-/Reject-Entscheidungen fuer bekannte KI-Prognosen.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-29
-# VERSION:     1.0.0
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-07 | 1.1.0 | Review-Ordner-Quelle entfernt (nur Hauptordner/Rejected).
 #   Initial version
 # =============================================================================
 
@@ -138,8 +139,7 @@ def save_human_decisions_from_batch(
     Liest menschliche Entscheidungen aus einem Batch und speichert sie.
     
     Liest aus 03_TEMP_DONE/<batch_id>/ die Ordner:
-    - Hauptordner (ohne Review/Rejected) = keep
-    - Review/ = review
+    - Hauptordner (ohne Rejected) = keep
     - Rejected/ = reject
     
     Schreibt nach automation/reviews/<batch_id>.json
@@ -167,18 +167,6 @@ def save_human_decisions_from_batch(
                 "producer_version": producer_version,
             })
     
-    # 2. Review/ = review
-    review_dir = temp_done / "Review"
-    if review_dir.exists():
-        for f in sorted(review_dir.iterdir()):
-            if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg"):
-                decisions.append({
-                    "image_id": f.name,
-                    "human_decision": "review",
-                    "reason": "manual_review",
-                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                    "producer_version": producer_version,
-                })
     
     # 3. Rejected/ = reject
     rejected_dir = temp_done / "Rejected"

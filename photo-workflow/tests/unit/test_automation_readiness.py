@@ -54,6 +54,10 @@ def _report(*, policy_version: str = "1.0", **overrides) -> dict:
         "status": "not_evaluable",
     }
     report.update(overrides)
+    # 2d-Semantik: Ohne expliziten Override gelten alle ausgewerteten
+    # Prognosen als menschlich bewertete keep/reject-Faelle.
+    if "reviewed_predicted_keep" not in overrides and "reviewed_predicted_reject" not in overrides:
+        report["reviewed_predicted_keep"] = report["evaluated_predictions"]
     return report
 
 
@@ -768,3 +772,12 @@ def test_is_fullauto_ready_rejects_batch_threshold(tmp_path) -> None:
     assert report["gate_reason"] == (
         "fullauto_batch_agreement_below_threshold"
     )
+
+def test_readiness_agreement_none_when_only_review_evidence() -> None:
+    # 2b/2d: Menschlich entschiedene review-Prognosen zaehlen als Evidenz
+    # (evaluated), bleiben aber aus dem agreement-Nenner heraus.
+    report = build_readiness_report(
+        [_report(evaluated_predictions=58, reviewed_predicted_keep=0, reviewed_predicted_reject=0)]
+    )
+    assert report["evaluated_predictions"] == 58
+    assert report["overall_agreement"] is None

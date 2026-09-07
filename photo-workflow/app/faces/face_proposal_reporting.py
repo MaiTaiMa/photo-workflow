@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.0.0
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-07 | 1.1.0 | new_per_person gezaehlt; pending_per_person als Parameter.
 #   Initial version
 # =============================================================================
 
@@ -29,6 +30,7 @@ def build_registration_status(
     skipped_quality: int = 0,
     remaining_batch_slots: int = 0,
     remaining_global_slots: int = 0,
+    pending_per_person: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     """Normalize registration results into a safe batch status payload."""
     registered = registration_result.get("registered", [])
@@ -41,6 +43,13 @@ def build_registration_status(
         and isinstance(item.get("person_slug"), str)
         and item["person_slug"].strip()
     })
+    new_per_person: dict[str, int] = {}
+    for item in registered:
+        if (isinstance(item, Mapping)
+                and isinstance(item.get("person_slug"), str)
+                and item["person_slug"].strip()):
+            slug = item["person_slug"].strip()
+            new_per_person[slug] = new_per_person.get(slug, 0) + 1
     created = len(registered)
     if created:
         state = "proposals_created"
@@ -72,6 +81,10 @@ def build_registration_status(
         "remaining_batch_slots": int(remaining_batch_slots),
         "remaining_global_slots": int(remaining_global_slots),
         "people_with_new_proposals": people,
+        "new_per_person": new_per_person,
+        "pending_per_person": (
+            dict(pending_per_person)
+            if isinstance(pending_per_person, Mapping) else {}),
         "reason": reason,
         "action": action,
     }

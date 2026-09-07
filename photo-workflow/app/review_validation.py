@@ -4,10 +4,11 @@
 # PURPOSE:     Vergleicht KI-Prognosen mit menschlichen Keep-/Reject-Entscheidungen.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-29
-# VERSION:     2.1.0
+# VERSION:     2.2.1
 # REQUIRES:    Python 3.11+
 # CHANGES:
 #   2026-08-22 | 2.1.0 | C1.2.4: Validierungsreports an eine Prediction-Policy gebunden.
+#   2026-09-07 | 2.2.0 | Regel-Erweiterung: manuell entschiedene review-Prognosen zaehlen als Evidenz.
 # =============================================================================
 
 
@@ -58,8 +59,14 @@ def validate_batch_predictions(
 
     for prediction in prediction_payload["predictions"]:
         decision = prediction["predicted_decision"]
+        review = reviews.get(prediction["image_id"])
         if decision == "review" or prediction["prediction_reason"] == "manual_keep_override":
             excluded_review_predictions += 1
+            # Regel-Erweiterung (2026-09-07): menschlich entschiedene Ausreisser
+            # zaehlen als ausgewertete Evidenz, bleiben aber aus
+            # agreement/precision heraus.
+            if review is not None and review["human_decision"] in ("keep", "reject"):
+                evaluated_predictions += 1
             continue
 
         eligible_predictions += 1
@@ -68,7 +75,6 @@ def validate_batch_predictions(
         else:
             predicted_reject += 1
 
-        review = reviews.get(prediction["image_id"])
         if review is None:
             unreviewed_predictions += 1
             continue
@@ -99,7 +105,7 @@ def validate_batch_predictions(
         "unreviewed_predictions": unreviewed_predictions,
         "evaluated_predictions": evaluated_predictions,
         "matching_predictions": matching_predictions,
-        "overall_agreement": _ratio(matching_predictions, evaluated_predictions),
+        "overall_agreement": _ratio(matching_predictions, reviewed_predicted_keep + reviewed_predicted_reject),
         "predicted_keep": predicted_keep,
         "predicted_reject": predicted_reject,
         "reviewed_predicted_keep": reviewed_predicted_keep,

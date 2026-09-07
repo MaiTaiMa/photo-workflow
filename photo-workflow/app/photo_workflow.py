@@ -431,6 +431,27 @@ def find_merge_target(target_dir: Path, batch: Path, merge_by_date_prefix: bool 
 
 
     
+
+def _pending_per_person(cfg: dict) -> dict:
+    """Zaehlt offene new_faces-Dateien pro Person (Review-Bestand gesamt)."""
+    ref = cfg.get('family_recognition', {}).get('reference_dir')
+    if not ref:
+        return {}
+    root = Path(ref)
+    counts = {}
+    try:
+        for pool in sorted(root.iterdir()):
+            nf = pool / 'new_faces'
+            if not nf.is_dir():
+                continue
+            n = sum(1 for p in nf.iterdir()
+                    if p.is_file() and p.suffix.lower() in ('.jpg', '.jpeg', '.png'))
+            if n:
+                counts[pool.name] = n
+    except Exception:
+        return {}
+    return counts
+
 def print_start_banner(cfg: dict, command: str) -> None:
     """Druckt den Start-Banner für den Workflow."""
     print("=" * 72)
@@ -446,6 +467,7 @@ def print_start_banner(cfg: dict, command: str) -> None:
     print(f"  TEMP_SD:          {cfg['paths']['temp_sd']}")
     print(f"  TEMP_IMAGES:      {cfg['paths']['temp_images']}")
     print(f"  TEMP_DONE:        {cfg['paths']['temp_done']}")
+    print(f"  TEMP_FINAL:       {cfg['paths'].get('temp_final', '-')}")
     print("=" * 72)
 
 
@@ -634,7 +656,7 @@ def print_scheduler_summary(cfg: dict, payload: dict) -> None:
     print("=" * 72)
     print(f"Pipeline:           {'✅ ERFOLGREICH' if payload['status'] == 'success' else '❌ FEHLER'}")
     print(f"Verarbeitete Ordner: {payload['counts']['processed']}")
-    print(f"Moved/Final:         {payload['counts']['moved_merged']}")
+    print(f"Moved:               {payload['counts']['moved_merged']}")
     print(f"Finalisiert:         {payload['counts']['finalized']}")
     print()
     # Hinweise
@@ -2164,6 +2186,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         skipped_quality=int(face_proposal_status.get("skipped_quality", 0)),
         remaining_batch_slots=max(0, _fp_max_per_batch - _fp_created),
         remaining_global_slots=max(0, _fp_max_new - _fp_pending_total),
+        pending_per_person=_pending_per_person(cfg),
     )
     print(face_proposal_block)
 
@@ -2979,11 +3002,41 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                 # ==========================================================================
                 from app.review_decision import save_human_decisions_from_batch
                 
-                save_human_decisions_from_batch(
+                save_result, _review_path = save_human_decisions_from_batch(
                     runtime_path=runtime_path,
                     batch_id=dir_path.name,
                     producer_version=SCRIPT_VERSION,
                 )
+
+                # AUTO-VALIDATE nach manuellem Abschluss (bewusste Regel-Erweiterung):
+                # Haendisch nach 03_TEMP_DONE gelegte Ordner gelten als geprueft;
+                # ihre Entscheidungen werden sofort validiert, damit die
+                # Readiness-Zaehler des KI-Assistenten fortschreiten.
+                log(
+                    cfg,
+                    f"[REVIEW SAVE] batch={dir_path.name} "
+                    f"status={save_result.get('status')} "
+                    f"decisions={save_result.get('decision_count', 0)}",
+                )
+                try:
+                    _pred = runtime_path / 'automation' / 'predictions' / f'{dir_path.name}.json'
+                    if _pred.is_file():
+                        av_report, _av_path = validate_reviews(
+                            runtime_path=runtime_path,
+                            batch_id=dir_path.name,
+                            producer_version=SCRIPT_VERSION,
+                        )
+                        log(
+                            cfg,
+                            f"[AUTO-VALIDATE] batch={dir_path.name} "
+                            f"status={av_report['status']} "
+                            f"evaluated={av_report['evaluated_predictions']} "
+                            f"agreement={av_report['overall_agreement']}",
+                        )
+                    else:
+                        log(cfg, f"[AUTO-VALIDATE] batch={dir_path.name} uebersprungen: keine Predictions")
+                except Exception as exc:
+                    log(cfg, f"[AUTO-VALIDATE] blockiert: {exc}", error=True)
 
                 # continue entfällt – Cleanup läuft normal weiter
 
@@ -3012,7 +3065,7 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                     delete_files=delete_enabled,
                 )
                 
-                log(cfg, f'[CLEANUP] {dir_path.name} keep={cleanup_result["review_keep_moved"]} reject={cleanup_result["review_reject_moved"]} rejected={cleanup_result["rejected_moved"]} status={cleanup_result["status"]}')
+                log(cfg, f'[CLEANUP] {dir_path.name} rejected={cleanup_result["rejected_moved"]} status={cleanup_result["status"]}')
                 
                 if cleanup_result['errors']:
                     for error in cleanup_result['errors']:

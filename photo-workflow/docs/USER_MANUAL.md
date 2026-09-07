@@ -104,7 +104,6 @@ Ein Batch enthält nach Phase 1:
 <BATCH_NAME>/
   ARW/           # Ausgelagerte ARW-Dateien
   SAVE/          # JPG-Archiv und Scores
-  Review/        # Zur Prüfung vorgemerkte Bilder
   Rejected/      # Abgelehnte Bilder
   *.JPG          # Aktive Bilder (im Hauptordner)
 ```
@@ -153,7 +152,7 @@ Ein Batch enthält nach Phase 1:
 | Bedingung | Entscheidung |
 |---|---|
 | `score >= keep_threshold` | `keep` (Hauptordner) |
-| `reject_threshold < score < keep_threshold` | `review` (Review-Ordner) |
+| `reject_threshold < score < keep_threshold` | `review` |
 | `score <= reject_threshold` | `reject` (Rejected-Ordner) |
 
 **Ausnahmen:**
@@ -179,7 +178,7 @@ phase1_started -> phase1_moving -> phase1_completed
 ### 5.2 Ablauf
 
 1. **State-Update** – `phase2_started` setzen.
-2. **Review/Rejected bereinigen** – Keep-Dateien nach `temp_done`, Rejects nach `temp_error`.
+2. **Rejected bereinigen** – Rejects nach `temp_error` (oder gelöscht, je nach Config).
 3. **Bereinigung verifizieren** – Ordner müssen leer sein.
 4. **State-Update** – `phase2_completed` setzen.
 5. **Move nach `temp_final`** – (bei `phase2.move_to_temp_final: true`, unabhängig vom Automationsmodus).
@@ -718,14 +717,13 @@ python app/photo_workflow.py --config config/config.yaml pipeline
 ### Schritt 5: Ergebnisse prüfen
 
 - **Phase 1:** Bilder sollten jetzt in `02_TEMP_IMAGES/2026-08-29_Familienfeier/` sein
-  - `Review/`: Zur manuellen Prüfung vorgemerkte Bilder
   - `Rejected/`: Automatisch abgelehnte Bilder
   - Hauptordner: Automatisch behaltene Bilder
 - **Logs:** `WORKFLOW_DATA/runtime/logs/process.log`
 
 ### Nächste Schritte
 
-1. Bilder in `Review/` manuell sichten und nach `03_TEMP_DONE` verschieben
+1. Batch manuell sichten und nach `03_TEMP_DONE` verschieben
 2. Workflow erneut starten (Phase 2)
 3. Bei Erfolg: `automation.mode` auf `auto_phase2` oder `full_auto` erhöhen
 
@@ -833,13 +831,13 @@ culling:
 
 **Ablauf:**
 1. Batch in `01_TEMP_SD` ablegen
-2. `pipeline` starten → Phase 1 sortiert automatisch in `Keep/Review/Rejected`
-3. Nur `Review/`-Bilder manuell sichten
+2. `pipeline` starten → Phase 1 sortiert automatisch (Rejected wird abgelegt, Rest bleibt aktiv)
+3. Batch manuell sichten
 4. Batch nach `03_TEMP_DONE` verschieben
 5. `pipeline` erneut → Phase 2
 
 **Vorteil:** Deutlich weniger manueller Aufwand als `shadow`.
-**Nachteil:** KI-Entscheidungen können falsch sein (Review-Ordner prüfen!).
+**Nachteil:** KI-Entscheidungen können falsch sein (Batch prüfen!).
 
 ---
 

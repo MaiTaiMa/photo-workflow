@@ -4,7 +4,7 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.0.0
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
 #   Initial version
@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 class FaceCropError(ValueError):
@@ -45,7 +45,10 @@ def create_square_face_crop(
     _validate_box_shape(bounding_box)
 
     try:
-        with Image.open(source) as image:
+        with Image.open(source) as opened:
+            # EXIF-Orientierung anwenden: cv2.imread rotiert implizit,
+            # Boxen gelten daher im EXIF-angewandten Koordinatensystem.
+            image = ImageOps.exif_transpose(opened)
             image.load()
             width, height = image.size
             box = _validated_box(bounding_box, width, height)

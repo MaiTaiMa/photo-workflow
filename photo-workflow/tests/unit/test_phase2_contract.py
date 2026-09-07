@@ -10,6 +10,7 @@
 #   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
 #   2026-08-09 | 1.0 | Initiale Version mit Phase2GateError
 #   2026-08-09 | 2.0 | Umstellung auf cleanup_review_rejected + move_to_temp_final
+#   2026-09-07 | 2.1 | Review-Ordner aus Fixture und Assertions entfernt.
 # =============================================================================
 
 
@@ -33,21 +34,18 @@ def test_dirs():
         tmpdir = Path(tmpdir)
         
         batch = tmpdir / "2025-11-01"
-        review = batch / "Review"
         rejected = batch / "Rejected"
         temp_done = tmpdir / "03_TEMP_DONE"
         temp_error = tmpdir / "00_TEMP_ERROR"
         temp_final = tmpdir / "04_TEMP_FINAL"
         
         batch.mkdir()
-        review.mkdir()
         rejected.mkdir()
         temp_done.mkdir()
         temp_error.mkdir()
         temp_final.mkdir()
         
         # Test-Bilder erstellen
-        (review / "test_review.JPG").touch()
         (rejected / "test_rejected.JPG").touch()
         
         cfg = {
@@ -65,7 +63,6 @@ def test_dirs():
         
         yield {
             'batch': batch,
-            'review': review,
             'rejected': rejected,
             'temp_done': temp_done,
             'temp_error': temp_error,
@@ -83,11 +80,9 @@ def test_cleanup_review_rejected(test_dirs):
     )
     
     assert result['status'] == 'ok'
-    assert result['review_keep_moved'] + result['review_reject_moved'] >= 0
     assert result['rejected_moved'] >= 0
     
-    # Ordner sollten gelöscht sein
-    assert not test_dirs['review'].exists()
+    # Rejected-Ordner sollte geloescht sein; Review wird nicht mehr angelegt
     assert not test_dirs['rejected'].exists()
 
 
@@ -132,12 +127,10 @@ def test_move_to_temp_final(test_dirs):
 def test_verify_cleanup_complete(test_dirs):
     """Testet verify_cleanup_complete() mit leeren Ordnern."""
     # Ordner vorher bereinigen (shutil.rmtree für nicht-leere Ordner)
-    shutil.rmtree(test_dirs['review'])
     shutil.rmtree(test_dirs['rejected'])
     
     result = verify_cleanup_complete(str(test_dirs['batch']))
     
-    assert result['review_empty'] == True
     assert result['rejected_empty'] == True
     assert result['complete'] == True
 
@@ -146,10 +139,8 @@ def test_verify_cleanup_complete_with_files(test_dirs):
     """Testet verify_cleanup_complete() mit Dateien in Ordnern."""
     result = verify_cleanup_complete(str(test_dirs['batch']))
     
-    assert result['review_empty'] == False
     assert result['rejected_empty'] == False
     assert result['complete'] == False
-    assert len(result['review_remaining']) == 1
     assert len(result['rejected_remaining']) == 1
 
 def test_move_to_temp_final_date_prefix(test_dirs):
@@ -243,3 +234,18 @@ def test_move_to_temp_final_date_prefix_reverse(test_dirs):
     assert (existing_batch / 'new.jpg').exists()
     assert (existing_batch / 'existing.jpg').exists()
 
+
+
+def test_review_folder_is_ignored(test_dirs):
+    """Legacy-Review-Ordner wird weder bereinigt noch geprueft (Logik entfernt)."""
+    review = test_dirs['batch'] / "Review"
+    review.mkdir(exist_ok=True)
+    (review / "legacy.JPG").touch()
+
+    result = cleanup_review_rejected(
+        batch_path=str(test_dirs['batch']), cfg=test_dirs['cfg'], dry_run=False)
+    assert result['status'] == 'ok'
+    assert review.exists()
+
+    verify = verify_cleanup_complete(str(test_dirs['batch']))
+    assert verify['complete'] == True

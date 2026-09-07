@@ -24,7 +24,7 @@ def test_save_writes_contract_conformant_batch(tmp_path):
     )
     assert result["status"] == "ok"
     assert result["decision_count"] == 2
-    assert result.get("skipped_records") == 1
+    assert "skipped_records" not in result  # Review-Quelle entfernt (Paket 4)
     payload = json.loads(target.read_text(encoding="utf-8"))
     validate_human_review_batch(payload)
     decisions = {r["image_id"]: r["human_decision"] for r in payload["reviews"]}

@@ -4,10 +4,11 @@
 # PURPOSE:     Verwaltet die kanonische Batch-Struktur und JPG-/ARW-Paarungen.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-08
-# VERSION:     1.1
+# VERSION:     1.2
 # REQUIRES:    Python 3.11
 # CHANGES:
 #   2026-08-08 | 1.1 | AP22.2 Header, Kommentare und Formatierung ergänzt
+#   2026-09-07 | 1.2 | Review-Ordner aus dem kanonischen Layout entfernt.
 # =============================================================================
 
 
@@ -15,7 +16,7 @@ from __future__ import annotations
 
 # === Standardbibliothek ===
 # Zweck: Beschreibt Paarungsbefunde und verarbeitet Batchpfade.
-# Eingabe: Batch-Ordner mit Hauptordner, ARW, Review und Rejected.
+# Eingabe: Batch-Ordner mit Hauptordner, ARW und Rejected.
 # Ausgabe: Kanonische Pfade oder blockierende Paarungsfehler.
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,7 +27,7 @@ from pathlib import Path
 # Wirkung: Andere Endungen werden von der aktiven JPG-/ARW-Prüfung ignoriert.
 JPG_EXTENSIONS = {".jpg", ".jpeg"}
 ARW_EXTENSIONS = {".arw"}
-CANONICAL_DIRS = ("ARW", "SAVE", "Review", "Rejected")
+CANONICAL_DIRS = ("ARW", "SAVE", "Rejected")
 
 
 @dataclass(frozen=True)
@@ -46,7 +47,7 @@ class PairingIssue:
 
 def ensure_layout(batch: str | Path) -> dict[str, Path]:
     """
-    Legt die vier kanonischen Batch-Unterordner an.
+    Legt die kanonischen Batch-Unterordner an.
 
     Die Funktion verändert keine Bilddateien.
     Sie stellt nur die im Batchvertrag erforderlichen Zielordner bereit.

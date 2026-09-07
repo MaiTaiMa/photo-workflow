@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.0.0
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-07 | 1.1.0 | Emoji-Header + optionale Pro-Person-Zeilen (neu/offen).
 #   Initial version
 # =============================================================================
 
@@ -57,12 +58,13 @@ def build_face_proposal_status_block(status: Mapping[str, Any]) -> str:
     lines = [
         "",
         "=" * 72,
-        "FACE-VORSCHLÄGE",
+        "🙂 FACE-VORSCHLÄGE",
         "=" * 72,
         f"Batch:              {batch_id}",
         f"Status:             {state}",
         f"Personen:           {people}",
     ]
+    lines += _per_person_lines(status)
     for label, value in fields:
         lines.append(f"{label + ':':22}{value}")
 
@@ -75,6 +77,25 @@ def build_face_proposal_status_block(status: Mapping[str, Any]) -> str:
 
     lines.extend(("=" * 72, ""))
     return "\n".join(lines)
+
+
+
+def _per_person_lines(status: Mapping[str, Any]) -> list[str]:
+    """Optionale Pro-Person-Zeilen (neu/offen), nur wenn Daten vorliegen."""
+    out: list[str] = []
+    for key, label in (("new_per_person", "Neu pro Person"),
+                       ("pending_per_person", "Review offen")):
+        value = status.get(key)
+        if not isinstance(value, Mapping) or not value:
+            continue
+        parts = []
+        for name in sorted(value):
+            count = value[name]
+            if isinstance(count, int) and not isinstance(count, bool) and count >= 0:
+                parts.append(f"{name}: {count}")
+        if parts:
+            out.append(f"{label + ':':22}{', '.join(parts)}")
+    return out
 
 
 def _required_text(status: Mapping[str, Any], key: str) -> str:

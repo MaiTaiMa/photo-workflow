@@ -77,11 +77,11 @@ class HuggingFaceFaceBackend:
 
         Das Bild und der Vektor werden nicht in Workflow-Artefakte geschrieben.
         """
-        from PIL import Image
+        from PIL import Image, ImageOps
 
         self._load()
         with Image.open(Path(image_path)) as image:
-            rgb_image = image.convert("RGB")
+            rgb_image = ImageOps.exif_transpose(image).convert("RGB")
 
         inputs = self._processor(
             images=rgb_image,

@@ -7,6 +7,7 @@
 # VERSION:     1.1
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool optional
 # CHANGES:
+#   2026-09-07 | P7 | person_weights casefold-normalisiert; persons[].weight mit Vorrang.
 #   2026-08-09 | 1.0 | OpenCV-Backend und RAM-only Matching ergänzt
 #   2026-08-09 | 1.1 | Dynamische Personen-Erkennung: faces/<Person>/reference/
 # =============================================================================
@@ -363,7 +364,8 @@ def detect_family_members(
         return result
 
     # Gewichte aus Config laden (optional fur bekannte Personen)
-    weights = fr_cfg.get("person_weights", {}) or {}
+    # Gewichte: Slug-Schluessel, casefold-normalisiert; persons[].weight hat Vorrang
+    weights = _load_person_weights(fr_cfg)
     default_weight = float(fr_cfg.get("default_person_weight", 0.35))
     
     seen = []
@@ -392,7 +394,7 @@ def detect_family_members(
     score = min(
         1.0,
         sum(
-            float(weights.get(person, default_weight))
+            float(weights.get(str(person).casefold(), default_weight))
             for person in seen
         ),
     )
@@ -683,3 +685,36 @@ def write_native_tags(
         return False, "regions_readback_mismatch"
 
     return True, "ok"
+
+
+def _load_person_weights(fr_cfg: object) -> dict:
+    """Laedt person_weights und persons[].weight, casefold-normalisiert.
+
+    Schluessel sind Slugs (Ordnernamen); Gross-/Kleinschreibung spielt keine
+    Rolle. Ein optionales 'weight' im persons-Eintrag hat Vorrang vor
+    person_weights.
+    """
+    weights: dict = {}
+    if not isinstance(fr_cfg, dict):
+        return weights
+    raw = fr_cfg.get("person_weights", {}) or {}
+    if isinstance(raw, dict):
+        for key, value in raw.items():
+            try:
+                weights[str(key).casefold()] = float(value)
+            except (TypeError, ValueError):
+                continue
+    persons = fr_cfg.get("persons", []) or []
+    if isinstance(persons, list):
+        for person in persons:
+            if not isinstance(person, dict):
+                continue
+            pid = str(person.get("id", "")).strip()
+            if not pid or person.get("weight") is None:
+                continue
+            try:
+                weights[pid.casefold()] = float(person["weight"])
+            except (TypeError, ValueError):
+                continue
+    return weights
+
