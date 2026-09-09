@@ -27,6 +27,21 @@ Der Workflow trennt Eingang, Review, Freigabe und endgültige Archivierung:
 | `photo-workflow/legacy/` | Historisches Bash-Skript als Fallback |
 | `NAS_EXAMPLE/` | Persistente Zielstruktur für den NAS-Betrieb |
 
+## Arbeitsordner
+
+| Ordner | Zweck |
+|---|---|
+| `01_TEMP_SD` | Eingang für neue Kamera-Batches |
+| `02_TEMP_IMAGES` | Phase-1-Ergebnis zur manuellen Sichtung |
+| `03_TEMP_DONE` | Manuell freigegebene Batches für Phase 2 |
+| `04_TEMP_FINAL` | Finalisierte Batches (nur bei aktiviertem Move, siehe Handbuch) |
+| `00_TEMP_ERROR` | Quarantäne für fehlerhafte Batches |
+| `MANUAL_KEEP` | Extern ausgewählte Vergleichsbilder |
+| `WORKFLOW_DATA` | Zustände, Logs, Modelle, Referenzpools |
+
+**Wichtigste Regel:** Nur JPGs im Hauptordner eines Batches gelten als aktiv ausgewählt. Bilder in `Rejected/` sind bewusst ausgelagert; ein manuelles Zurückschieben in den Hauptordner erhält auch das passende ARW.
+
+
 ## Wichtige Hinweise
 
 - Der Repository-Root ist nur der Einstiegspunkt; die operative NAS-Struktur liegt in `NAS_EXAMPLE/`.
@@ -41,8 +56,33 @@ Der Workflow kann einzelne Phasen oder eine konfigurierbare Pipeline ausführen.
 **Beispiel (CLI):**
 ```bash
 cd photo-workflow
-python -m app.photo_workflow --config config/config.yaml pipeline
+
+# Konfigurierte Pipeline (Standard: phase1 + phase2)
+python /app/app/photo_workflow.py --config /app/config/config.yaml pipeline
+
+# Nur Phase 1: Import, Bewertung, Übergabe nach TEMP_IMAGES
+python /app/app/photo_workflow.py --config /app/config/config.yaml phase1
+
+# Nur Phase 2: ARW-Archivierung, Rejected-Bereinigung
+python /app/app/photo_workflow.py --config /app/config/config.yaml phase2
+
+# Alias, identisch zu pipeline
+python /app/app/photo_workflow.py --config /app/config/config.yaml phase12
+
+# Nur Phase 3: Finalisierung und Transfer nach targetfolder
+python /app/app/photo_workflow.py --config /app/config/config.yaml phase3
+
+# Phase 3 mit explizitem Ziel
+python /app/app/photo_workflow.py --config /app/config/config.yaml phase3 --folder 2025-11-01 --target /volume1/photo/wirser
+
+# Pipeline mit allen Phasen (phase1 + phase2 + phase3)
+python /app/app/photo_workflow.py --config /app/config/config.yaml pipeline
+
+# Family-Cache gezielt neu aufbauen
+python /app/app/photo_workflow.py --config /app/config/config.yaml rebuild-family-cache
+
 ```
+
 
 **Konfiguration:**
 ```yaml
@@ -75,8 +115,34 @@ pipeline:
 - Aktivierung nur durch manuelles Verschieben nach `reference/`
 - Begrenzung: `max_new_per_batch` (Config)
 
+
+## Auto-Learn und Personal-Modell
+
+Der KI-Assistent lernt aus manuell als "Keep" markierten Bildern:
+
+- **Auto-Learn-Exporte:** Keep-Bilder werden idempotent nach `samples/personal_training/reference/` exportiert
+- **Personal-Modell:** Der Cache wird bei geänderter Referenzmenge im nächsten Lauf neu aufgebaut
+- **Kein manuelles Training:** Der alte `train-personal`-CLI-Befehl wurde entfernt; Auto-Learn ist der Standardweg
+
+## AUTO-VALIDATE
+
+Human Reviews werden automatisch validiert:
+
+- **Automatische Validation:** Am Batch-Ende wird geprüft, ob ausreichende menschliche Entscheidungen vorliegen
+- **Validation-Dateien:** Ergebnisse unter `WORKFLOW_DATA/runtime/automation/validation/`
+- **Kein `validate-reviews`-CLI nötig:** Der alte CLI-Befehl wurde entfernt; AUTO-VALIDATE ist der Standardweg
+
+
 **Details:** Siehe [`photo-workflow/README.md`](photo-workflow/README.md) und Handbuch.
 
----
+## Projektstruktur
 
-**Stand:** 2026-09-10 (nach A1-Codebereinigung, P7-Container)
+```text
+app/      Python-Fachmodule und CLI
+tests/    Automatisierte Prüfungen (Unit, Integration, Security)
+config/   Zentrale Konfiguration (config.yaml)
+docs/     Ausführliche Dokumentation, Spezifikation, Vertrag
+legacy/   Historisches Bash-Skript als Fallback
+```
+
+Eine vollständige Modulübersicht mit Kurzbeschreibung findest du in `app/MODULE_OVERVIEW.md`.
