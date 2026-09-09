@@ -1,142 +1,82 @@
-# Synology Photo Workflow (Python/Docker)
+# Basic Photo Workflow
 
-> **Vollständige Dokumentation:** Siehe [`docs/USER_MANUAL.md`](docs/USER_MANUAL.md) für Installation, Konfiguration, Phasenablauf, Score-Logik und Betriebsabläufe.
-> Diese Seite ist ein kompakter Einstieg.
+Dieses Repository enthält einen konservativen Zwei-Phasen-Workflow für Kamera- und Foto-Batches auf Synology NAS und in Docker-Umgebungen.
 
-## Überblick
+## Einstieg
 
-Der Python-Workflow ersetzt das ursprüngliche Bash-Skript (siehe `legacy/`) und ergänzt es um KI-gestütztes JPG-Culling, Gesichtserkennung für bekannte Personen und eine vertragsbasierte Phasenarchitektur mit nachvollziehbaren Zustandsübergängen.
+- **Ausführliche Dokumentation:** [`photo-workflow/docs/USER_MANUAL.md`](photo-workflow/docs/USER_MANUAL.md)
+- **Kompakte README:** [`photo-workflow/README.md`](photo-workflow/README.md)
+- **Konfiguration:** [`photo-workflow/config/config.yaml`](photo-workflow/config/config.yaml)
 
-## Arbeitsordner
+## Was das Projekt macht
 
-| Ordner | Zweck |
+Der Workflow trennt Eingang, Review, Freigabe und endgültige Archivierung:
+
+1. **Phase 1:** Batch aus `01_TEMP_SD` verarbeiten, Bilder bewerten und nach `02_TEMP_IMAGES` übertragen.
+2. **Phase 2:** ARW-Dateien archivieren, `_Review` und `_Rejected` bereinigen, optional nach `04_TEMP_FINAL` verschieben.
+3. **Phase 3 (optional):** Finalisierte Batches nach targetfolder transferieren, indexieren, Metadaten übertragen.
+
+## Inhalte des Repos
+
+| Pfad | Zweck |
 |---|---|
-| `01_TEMP_SD` | Eingang für neue Kamera-Batches |
-| `02_TEMP_IMAGES` | Phase-1-Ergebnis zur manuellen Sichtung |
-| `03_TEMP_DONE` | Manuell freigegebene Batches für Phase 2 |
-| `04_TEMP_FINAL` | Finalisierte Batches (nur bei aktiviertem Move, siehe Handbuch) |
-| `00_TEMP_ERROR` | Quarantäne für fehlerhafte Batches |
-| `MANUAL_KEEP` | Extern ausgewählte Vergleichsbilder |
-| `WORKFLOW_DATA` | Zustände, Logs, Modelle, Referenzpools |
+| `photo-workflow/app/` | Python-Fachmodule und CLI |
+| `photo-workflow/tests/` | Automatisierte Prüfungen (Unit, Integration) |
+| `photo-workflow/config/` | Zentrale Konfiguration (config.yaml) |
+| `photo-workflow/docs/` | Ausführliche Dokumentation, Spezifikation, Vertrag |
+| `photo-workflow/legacy/` | Historisches Bash-Skript als Fallback |
+| `NAS_EXAMPLE/` | Persistente Zielstruktur für den NAS-Betrieb |
 
-**Wichtigste Regel:** Nur JPGs im Hauptordner eines Batches gelten als aktiv ausgewählt. Bilder in `Rejected/` sind bewusst ausgelagert; ein manuelles Zurückschieben in den Hauptordner erhält auch das passende ARW.
+## Wichtige Hinweise
 
-## CLI-Befehle
+- Der Repository-Root ist nur der Einstiegspunkt; die operative NAS-Struktur liegt in `NAS_EXAMPLE/`.
+- Die aktive Konfiguration ist `photo-workflow/config/config.yaml`.
+- Die Shell-Skripte prüfen und starten nur; die fachliche Logik liegt in Python.
+- Für die ausführliche Inbetriebnahme und Nutzung nutze das Handbuch.
 
+## Pipeline-Ausführung
+
+Der Workflow kann einzelne Phasen oder eine konfigurierbare Pipeline ausführen. Die Pipeline führt die in `config/config.yaml` definierte Reihenfolge aus.
+
+**Beispiel (CLI):**
 ```bash
-# Nur Phase 1: Import, Bewertung, Übergabe nach TEMP_IMAGES
-python /app/app/photo_workflow.py --config /app/config/config.yaml phase1
-
-# Nur Phase 2: ARW-Archivierung, Rejected-Bereinigung
-python /app/app/photo_workflow.py --config /app/config/config.yaml phase2
-
-# Konfigurierte Pipeline (Standard: phase1 + phase2)
-python /app/app/photo_workflow.py --config /app/config/config.yaml pipeline
-
-# Alias, identisch zu pipeline
-python /app/app/photo_workflow.py --config /app/config/config.yaml phase12
-
-# Nur Phase 3: Finalisierung und Transfer nach targetfolder
-python /app/app/photo_workflow.py --config /app/config/config.yaml phase3
-
-# Phase 3 mit explizitem Ziel
-python /app/app/photo_workflow.py --config /app/config/config.yaml phase3 --folder 2025-11-01 --target /volume1/photo/wirser
-
-# Pipeline mit allen Phasen (phase1 + phase2 + phase3)
-python /app/app/photo_workflow.py --config /app/config/config.yaml pipeline
-
-# Family-Cache gezielt neu aufbauen
-python /app/app/photo_workflow.py --config /app/config/config.yaml rebuild-family-cache
-
+cd photo-workflow
+python -m app.photo_workflow --config config/config.yaml pipeline
 ```
 
-Für den produktiven Betrieb (Docker, DSM Task Scheduler) nutze `run_photo_workflow.sh` oder `docker-compose.yml` – beide rufen konsistent `pipeline` auf.
-
-## Legacy-Bash-Fallback
-
-Das ursprüngliche Bash-Skript (`legacy/nas_photosort.sh`) bleibt als Rückfallebene erhalten und nutzt denselben Grundworkflow (`TEMP_SD` → `TEMP_IMAGES` → `TEMP_DONE`). Es kennt jedoch **keine** KI-Culling-Logik (`Rejected/`, Scoring) und ist daher nur ein Ordner-Fallback, kein vollwertiger Ersatz. Details siehe `legacy/README.md`.
-
-## Logging für DSM Task Scheduler
-
-Jeder Lauf schreibt einen Startblock, laufende Statusmeldungen und eine Abschlusszusammenfassung auf `stdout` – das kann der DSM Task Scheduler direkt als E-Mail versenden. Zusätzlich wird pro Lauf eine strukturierte JSON-Zusammenfassung unter `WORKFLOW_DATA/runtime/run_summaries/` abgelegt (siehe Handbuch, Kapitel 10.1).
-
-## Sicherheit
-
-- Alle produktiven Pfade liegen innerhalb von `base_dir`.
-- Löschungen von Originaldaten sind nur in eng begrenzten, vertraglich definierten Fällen erlaubt (siehe `docs/spec_v1-2/` für Spezifikation).
-- Lockfiles verhindern parallele Läufe auf demselben Batch.
-- Vor produktivem Einsatz sollte immer ein Testlauf mit Kopien echter Ordner erfolgen.
-
-
-
-## Face-Vorschläge für bekannte Personen
-
-Der Workflow kann automatisch neue Gesichtsausschnitte (Crops) für bereits bekannte Personen vorschlagen:
-
-- **Aktivierung:** `face_proposals.enabled: true` in `config.yaml`
-- **Ablauf:** Bei jedem Lauf werden passende Gesichtsregionen in `<person>/new_faces/` gespeichert
-- **Limits:** `max_new_per_batch` (pro Person/Lauf) und `max_new` (global) begrenzen die Anzahl
-- **Human-Review:** Neue Crops müssen manuell geprüft und nach `reference/` verschoben werden, um aktiviert zu werden
-- **Case-Sicherheit:** Personenordner werden case-insensitiv aufgelöst (verhindert `Nelly`/`nelly`-Duplikate)
-
-**Statusanzeige:** Der Abschlussbericht unterscheidet "Neu in diesem Lauf" (gerade erzeugte Crops) von "Bereits ausstehend" (früher erzeugte, noch nicht reviewte Crops).
-
-## Auto-Learn und Personal-Modell
-
-Der KI-Assistent lernt aus manuell als "Keep" markierten Bildern:
-
-- **Auto-Learn-Exporte:** Keep-Bilder werden idempotent nach `samples/personal_training/reference/` exportiert
-- **Personal-Modell:** Der Cache wird bei geänderter Referenzmenge im nächsten Lauf neu aufgebaut
-- **Kein manuelles Training:** Der alte `train-personal`-CLI-Befehl wurde entfernt; Auto-Learn ist der Standardweg
-
-## AUTO-VALIDATE
-
-Human Reviews werden automatisch validiert:
-
-- **Automatische Validation:** Am Batch-Ende wird geprüft, ob ausreichende menschliche Entscheidungen vorliegen
-- **Validation-Dateien:** Ergebnisse unter `WORKFLOW_DATA/runtime/automation/validation/`
-- **Kein `validate-reviews`-CLI nötig:** Der alte CLI-Befehl wurde entfernt; AUTO-VALIDATE ist der Standardweg
-
-## Phase 3: Finalisierung und Veröffentlichung
-
-Phase 3 überführt finalisierte Batches aus `04_TEMP_FINAL` in den Synology-Photos-Bestand (targetfolder). Optional mit Indexierung, Album-Zuordnung und Metadaten-Transfer.
-
-**Voraussetzungen:**
-- Batch muss in `04_TEMP_FINAL` liegen (nach Phase 2)
-- `finalization.enabled: true` in config.yaml
-- `publishtosynologyphotos.enabled: true` für API-Transfer
-- Synology-Photos-API-Zugang (NAS-Docker-Deployment)
-
-**Ablauf:**
-1. Transfer nach targetfolder (copy oder move)
-2. Indexierung via synofoto-bin-index-tool (optional)
-3. Album-Upsert für erkannte Personen (optional)
-4. Metadaten-Transfer (Ratings, Tags, Personen)
-
-**Sicherheit:**
-- Atomare Manifest-Datei (finalizationmanifest.json)
-- SHA256-Verifikation vor Aktivierung
-- Capability-gated: Kein Transfer ohne erfolgreiche Pilotläufe
-
-
-## Erweiterte Themen
-
-Folgende Funktionen sind ausführlich im Benutzerhandbuch beschrieben:
-
-- Score-Gewichtung und Komponenten (Handbuch, Kapitel 4.2 und 9.3)
-- Familien-Gesichtserkennung, Referenzpools und Tag-Schema (Handbuch, Kapitel 7.3, 8.2 und Anhang D)
-- Serienerkennung und Best-Bild-Logik (Handbuch, Kapitel 7.4)
-- Legacy-Datumsrekonstruktion und Debug-Konfiguration (Handbuch, Anhang D.2)
-- Metadaten-Tag-Schema (Handbuch, Anhang D.1)
-
-## Projektstruktur
-
-```text
-app/      Python-Fachmodule und CLI
-tests/    Automatisierte Prüfungen (Unit, Integration, Security)
-config/   Zentrale Konfiguration (config.yaml)
-docs/     Ausführliche Dokumentation, Spezifikation, Vertrag
-legacy/   Historisches Bash-Skript als Fallback
+**Konfiguration:**
+```yaml
+pipeline:
+  phases:
+    - phase1
+    - phase2
+    # - phase3  # Optional: Transfer nach targetfolder
+  stop_on_error: true
 ```
 
-Eine vollständige Modulübersicht mit Kurzbeschreibung findest du in `app/MODULE_OVERVIEW.md`.
+## KI-Assistenz und Betriebsmodi
+
+| Situation | Empfehlung |
+|---|---|
+| Keine oder wenige auswertbare Daten | `shadow` – Diagnose und Messung |
+| Ausreichende Daten, kein bewusster Trust | `assisted` – Vorschläge mit manueller Prüfung |
+| Ausreichende Daten + Trust aktiv + Gates erfüllt | `auto_phase1` – automatische Phase 1 |
+| Wie oben + Handoff-Gates erfüllt | `auto_phase2` oder `full_auto` |
+
+**Trust-System:**
+- **Ziel:** `mode: full_auto` in Config
+- **Wirkung ohne Trust:** Fail-closed bei `assisted`
+- **Not trusted:** `trust-revoke --reason "..."` sperrt operative Automatik
+- **Wiederaufstieg:** Manuelle Validierung + `trust-restore`
+
+## Face-Vorschläge
+
+- Bekannte Gesichter erzeugen Vorschläge in `WORKFLOW_DATA/faces/<slug>/new_faces/`
+- Aktivierung nur durch manuelles Verschieben nach `reference/`
+- Begrenzung: `max_new_per_batch` (Config)
+
+**Details:** Siehe [`photo-workflow/README.md`](photo-workflow/README.md) und Handbuch.
+
+---
+
+**Stand:** 2026-09-10 (nach A1-Codebereinigung, P7-Container)

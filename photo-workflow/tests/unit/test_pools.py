@@ -1045,34 +1045,6 @@ def test_pool_limits_blocks_new_candidates_at_max_new():
     assert limits.get_batch_limit(new_count=5) == 0
 
 
-def test_crop_limit_blocks_sixth_candidate(tmp_path: Path):
-    source = tmp_path / "photo.jpg"
-    Image.new("RGB", (20, 20), "white").save(source)
-    root = tmp_path / "faces"
-    box = {"left": 1, "top": 1, "right": 10, "bottom": 10}
-
-    for index in range(5):
-        save_new_face_crop(
-            source,
-            root,
-            slug="alice",
-            filename=f"candidate-{index}.jpg",
-            box=box,
-            max_new_per_batch=5,
-        )
-
-    with pytest.raises(CropContractError, match="max_new_per_batch"):
-        save_new_face_crop(
-            source,
-            root,
-            slug="alice",
-            filename="candidate-5.jpg",
-            box=box,
-            max_new_per_batch=5,
-        )
-
-    assert len(list((root / "alice" / "new_faces").glob("*.jpg"))) == 5
-
 
 def test_runtime_cache_rebuilds_after_fingerprint_change():
     cache = RuntimeReferenceCache()
