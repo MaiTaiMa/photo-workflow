@@ -1,0 +1,7 @@
+.git
+.venv
+WORKFLOW_DATA
+__pycache__
+.pytest_cache
+paste.txt
+_paste_tmp

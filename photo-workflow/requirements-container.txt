@@ -1,0 +1,13 @@
+# =============================================================================
+# Projekt: photo-workflow
+# Datei: requirements-container.txt
+# Funktion: Minimale CPU-Laufzeit-Abhaengigkeiten fuer das Container-Image.
+# Hinweis: torch/transformers/dlib bewusst NICHT enthalten; produktiv ist
+#          das OpenCV-Face-Backend. CLIP-/HuggingFace-Pfade sind dann aus.
+# Version: 1.0.0
+# =============================================================================
+pillow==10.4.0
+numpy==2.1.1
+opencv-contrib-python-headless==5.0.0.93
+PyYAML==6.0.2
+requests>=2.31.0
