@@ -4,10 +4,12 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.7
+# VERSION:     1.9
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
 #   2026-08-27 | 1.7 | G7: 04_TEMP_FINAL nur für full_auto freigegeben.
+#   2026-09-09 | 1.8 | P5: Optionale Embedding-Diversitaet im Face-Hook.
+#   2026-09-09 | 1.9 | P6: not_used-Verschiebung verworfener Crops.
 #   2026-08-22 | 1.6 | C1.2.2: Prediction-Records an aktive Policy gebunden.
 #   2026-08-22 | C1.2.3 | Kanonische Review-/Rejected-Ordnernamen ohne Unterstrich vereinheitlicht.
 # =============================================================================
@@ -2087,6 +2089,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         "error_reason": None,
     }
     LAST_FACE_PROPOSAL_STATUS = face_proposal_status
+    _fp_not_used_per_person: dict[str, int] = {}
 
     if bool(face_proposal_cfg.get("enabled", False)):
         proposal_rows = list(face_proposal_rows_from_loop)
@@ -2124,6 +2127,53 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                     face_proposal_cfg.get("confidence_margin", 0.1)
                 ),
             )
+            # P5: Optionale Embedding-Diversitaet vor der Registrierung.
+            # Nur aktiv bei gesetztem min_candidate_distance und vorhandenem
+            # Backend; Vektoren bleiben fluechtig und werden nie persistiert.
+            _fp_min_distance = _fp_cfg_limits.get("min_candidate_distance")
+            if _fp_min_distance is not None and family_model.get("backend"):
+                from app.faces.face_proposal_selection import (
+                    diversify_face_candidates,
+                )
+
+                def _fp_embed(crop_path: str):
+                    try:
+                        values = family_model["backend"].embeddings(crop_path)
+                    except Exception:
+                        return None
+                    return list(values[0][0]) if values else None
+
+                batch_result["candidates"], _fp_dropped, _fp_diversity_info = (
+                    diversify_face_candidates(
+                        batch_result["candidates"],
+                        min_candidate_distance=float(_fp_min_distance),
+                        embedder=_fp_embed,
+                    )
+                )
+                batch_result["counters"]["diversity_dropped"] = (
+                    _fp_diversity_info["dropped"]
+                )
+                # P6: Verworfene Crops nach not_used/ schieben, nie loeschen.
+                from app.faces.crop_contract import (
+                    move_face_crop_to_not_used,
+                )
+
+                for _fp_dropped_cand in _fp_dropped:
+                    try:
+                        move_face_crop_to_not_used(
+                            _fp_dropped_cand.get("crop_path")
+                        )
+                    except Exception:
+                        batch_result["counters"]["not_used_failed"] = (
+                            batch_result["counters"].get("not_used_failed", 0)
+                            + 1
+                        )
+                        continue
+                    _fp_person = str(_fp_dropped_cand.get("person_slug", "?"))
+                    _fp_not_used_per_person[_fp_person] = (
+                        _fp_not_used_per_person.get(_fp_person, 0) + 1
+                    )
+
             face_proposal_status = register_face_proposals(
                 batch_result["candidates"],
                 pool_root=Path(cfg["paths"]["base_dir"])
@@ -2187,6 +2237,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         remaining_batch_slots=max(0, _fp_max_per_batch - _fp_created),
         remaining_global_slots=max(0, _fp_max_new - _fp_pending_total),
         pending_per_person=_pending_per_person(cfg),
+        not_used_moved_per_person=_fp_not_used_per_person,
     )
     print(face_proposal_block)
 

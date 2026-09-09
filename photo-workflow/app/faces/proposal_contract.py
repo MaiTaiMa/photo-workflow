@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.0.0
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-09 | 1.1.0 | P4: Dubletten-Update und Qualitaetsindex.
 #   Initial version
 # =============================================================================
 
@@ -99,6 +100,41 @@ def _atomic_write(path: Path, payload: dict[str, Any]) -> None:
             os.unlink(temporary)
 
 
+def load_proposal_quality_index(
+    pool_root: str | Path,
+    slug: str,
+) -> dict[str, dict[str, object]]:
+    """Liest bestehende Vorschläge als Qualitätsindex (read-only).
+
+    Liefert source_id -> {"quality_score": float, "status": str} für alle
+    Einträge der selection.json eines Face-Pools. Eine fehlende Datei
+    ergibt einen leeren Index; fremde oder kaputte Dateien blockieren.
+    """
+    selection_path = Path(pool_root) / "selection.json"
+    if not selection_path.exists():
+        return {}
+    try:
+        payload = json.loads(selection_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FaceProposalError(f"cannot load selection.json: {exc}") from exc
+    if payload.get("pool_type") != "face" or payload.get("slug") != slug:
+        raise FaceProposalError(
+            "selection.json does not belong to this face pool"
+        )
+    index: dict[str, dict[str, object]] = {}
+    for item in payload.get("images", []):
+        if not isinstance(item, dict):
+            continue
+        key = item.get("source_id")
+        if not isinstance(key, str) or not key.strip():
+            continue
+        index[key] = {
+            "quality_score": float(item.get("quality_score", 0.0)),
+            "status": str(item.get("status", "unknown")),
+        }
+    return index
+
+
 def add_face_proposal(
     pool_root: str | Path,
     *,
@@ -113,7 +149,12 @@ def add_face_proposal(
     face_confidence: float,
     limits: dict[str, int],
 ) -> dict[str, Any]:
-    """Registriert einen neuen Face-Vorschlag ohne Bilddaten oder Embeddings."""
+    """Registriert einen Face-Vorschlag ohne Bilddaten oder Embeddings.
+
+    Gleiche source_id dupliziert nie: Ein besserer oder gleich guter
+    Vorschlag ersetzt den bestehenden neuen Eintrag, ein schlechterer
+    wird abgelehnt. Einträge mit anderem Status als "new" blockieren.
+    """
     _validate_identifier(slug, "slug")
     _validate_identifier(source_id, "source_id")
     _validate_identifier(batch_id, "batch_id")
@@ -149,13 +190,37 @@ def add_face_proposal(
         limits=normalized_limits,
     )
     images = payload["images"]
-    new_images = [item for item in images if item.get("status") == "new"]
-    batch_images = [item for item in new_images if item.get("batch_id") == batch_id]
 
-    if len(new_images) >= normalized_limits["max_new"]:
-        raise FaceProposalError("max_new reached")
-    if len(batch_images) >= normalized_limits["max_new_per_batch"]:
-        raise FaceProposalError("max_new_per_batch reached")
+    # Dubletten-Regel: gleiche Quelle aktualisiert statt zu duplizieren.
+    duplicate_position = next(
+        (
+            index
+            for index, item in enumerate(images)
+            if item.get("source_id") == source_id
+        ),
+        None,
+    )
+    replacing = duplicate_position is not None
+    if replacing:
+        existing = images[duplicate_position]
+        existing_status = str(existing.get("status", "unknown"))
+        if existing_status != "new":
+            raise FaceProposalError(
+                f"source_id already registered with status {existing_status}"
+            )
+        if float(existing.get("quality_score", 0.0)) > float(quality_score):
+            raise FaceProposalError("existing proposal has better quality")
+    else:
+        new_images = [
+            item for item in images if item.get("status") == "new"
+        ]
+        batch_images = [
+            item for item in new_images if item.get("batch_id") == batch_id
+        ]
+        if len(new_images) >= normalized_limits["max_new"]:
+            raise FaceProposalError("max_new reached")
+        if len(batch_images) >= normalized_limits["max_new_per_batch"]:
+            raise FaceProposalError("max_new_per_batch reached")
 
     crop = Path(crop_path)
     try:
@@ -179,7 +244,10 @@ def add_face_proposal(
         "original_path": str(original),
         "added_at": _now(),
     }
-    images.append(entry)
+    if replacing:
+        images[duplicate_position] = entry
+    else:
+        images.append(entry)
     payload["images"] = images
     payload["updated_at"] = _now()
     payload["limits"] = normalized_limits

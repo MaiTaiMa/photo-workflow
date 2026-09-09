@@ -4,10 +4,11 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.1.0
+# VERSION:     1.2.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
 #   2026-09-07 | 1.1.0 | new_per_person gezaehlt; pending_per_person als Parameter.
+#   2026-09-09 | 1.2.0 | P6: Parameter not_used_moved_per_person ergaenzt.
 #   Initial version
 # =============================================================================
 
@@ -31,6 +32,7 @@ def build_registration_status(
     remaining_batch_slots: int = 0,
     remaining_global_slots: int = 0,
     pending_per_person: Mapping[str, int] | None = None,
+    not_used_moved_per_person: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     """Normalize registration results into a safe batch status payload."""
     registered = registration_result.get("registered", [])
@@ -85,6 +87,9 @@ def build_registration_status(
         "pending_per_person": (
             dict(pending_per_person)
             if isinstance(pending_per_person, Mapping) else {}),
+        "not_used_moved_per_person": (
+            dict(not_used_moved_per_person)
+            if isinstance(not_used_moved_per_person, Mapping) else {}),
         "reason": reason,
         "action": action,
     }

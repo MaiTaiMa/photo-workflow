@@ -142,7 +142,7 @@ def test_face_proposal_end_to_end_synthetic_batch(tmp_path: Path):
     )
 
     crop = faces_root / "alice" / "new_faces" / (
-        "synthetic-batch-a__synthetic-batch-a:family_photo__face-000.jpg"
+        "synthetic-batch-a__synthetic-batch-a-family_photo__face-000.jpg"
     )
     selection = faces_root / "alice" / "selection.json"
     assert registration["registered_count"] == 1, registration

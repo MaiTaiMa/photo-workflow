@@ -4,10 +4,11 @@
 # PURPOSE:     Validiert und speichert neue Face-Crops im erlaubten Poolbereich.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-08
-# VERSION:     1.2
+# VERSION:     1.3
 # REQUIRES:    Python 3.11, Pillow
 # CHANGES:
 #   2026-08-08 | 1.2 | AP22 Face-Crop-Vertrag nach 98AP formatiert
+#   2026-09-09 | 1.3 | P6: Verschiebe-Helper not_used ergaenzt.
 # =============================================================================
 
 
@@ -116,4 +117,30 @@ def save_new_face_crop(
             raise
         raise CropContractError(str(exc)) from exc
 
+    return target
+
+
+# === not_used-Verschiebung (P6) ===
+# Zweck: Entfernt nicht benoetigte Crops nachvollziehbar aus new_faces.
+# Eingabe: Pfad zu einem Crop unter <person>/new_faces.
+# Ausgabe: Zielpfad unter <person>/not_used; es wird nie geloescht.
+
+
+def move_face_crop_to_not_used(crop_path: str | Path) -> Path:
+    """Verschiebt einen nicht benötigten Crop von new_faces nach not_used.
+
+    Blockiert bei fehlender oder unsicherer Quelle, falschem Ordner und
+    vorhandenem Ziel; es wird niemals überschrieben oder gelöscht.
+    """
+    source = Path(crop_path)
+    if source.parent.name != "new_faces":
+        raise CropContractError(f"crop is not inside new_faces: {source}")
+    if not source.is_file() or source.is_symlink():
+        raise CropContractError(f"crop is missing or unsafe: {source}")
+    target_dir = source.parent.parent / "not_used"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / source.name
+    if target.exists():
+        raise CropContractError(f"not_used target already exists: {target}")
+    source.rename(target)
     return target

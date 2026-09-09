@@ -4,10 +4,11 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.1.0
+# VERSION:     1.2.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
 #   2026-09-07 | 1.1.0 | Emoji-Header + optionale Pro-Person-Zeilen (neu/offen).
+#   2026-09-09 | 1.2.0 | P6: Pro-Person-Zeile fuer not_used-Verschiebungen.
 #   Initial version
 # =============================================================================
 
@@ -84,7 +85,9 @@ def _per_person_lines(status: Mapping[str, Any]) -> list[str]:
     """Optionale Pro-Person-Zeilen (neu/offen), nur wenn Daten vorliegen."""
     out: list[str] = []
     for key, label in (("new_per_person", "Neu pro Person"),
-                       ("pending_per_person", "Review offen")):
+                       ("pending_per_person", "Review offen"),
+                       ("not_used_moved_per_person",
+                        "Nicht benötigt (verschoben)")):
         value = status.get(key)
         if not isinstance(value, Mapping) or not value:
             continue

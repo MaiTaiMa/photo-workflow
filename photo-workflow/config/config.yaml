@@ -4,9 +4,10 @@
 # Funktion: Zentrale, secrets-freie Betriebs-Konfiguration für AP2 bis AP8.
 # Hinweis: Pfade bilden die NAS_EXAMPLE-Struktur ab; Credentials gehören nur in
 #          Umgebungsvariablen und niemals in diese Datei.
-# Version: 2.1.1
+# Version: 2.1.2
 # =============================================================================
 # Änderungsprotokoll:
+#   2026-09-09 | 2.1.2 | P5: min_candidate_distance fuer face_proposals.
 #   2026-08-26 | 2.1.1 | Automation-Gate vollständig dokumentiert.
 #   2026-08-09 | 2.1.0 | NAS_EXAMPLE-Struktur, Pool-Pfade und Cache-Rebuild ergänzt
 #   2026-08-09 | 2.0.0 | Strikte 98AP-Konfiguration für AP2 bis AP8
@@ -524,6 +525,12 @@ face_proposals:
   min_quality_score: 0.7
   confidence_margin: 0.1
   crop_size: 256
+
+  # min_candidate_distance: Minimaler Cosine-Abstand zweier Pool-Crops.
+  # Mögliche Werte: Zahl zwischen 0.0 und 2.0 oder leer.
+  # Auswirkung: Ein Wert aktiviert den Diversitätsfilter und verwirft
+  #   zu ähnliche Crops; leer lässt die Auswahl unverändert.
+  min_candidate_distance:
 
   # -----------------------------------------------------------------------------
 # reference_pools
