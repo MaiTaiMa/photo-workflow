@@ -841,12 +841,12 @@ series_detection:
   # Auswirkung: true gruppiert zeitlich, numerisch und visuell ähnliche Bilder.
   enabled: true
   exif_time_enabled: true
-  time_window_seconds: 30
+  time_window_seconds: 8
   filename_sequence_enabled: true
-  max_filename_gap: 4
+  max_filename_gap: 2
   min_sequence_images: 2
   visual_clustering_enabled: true
-  cluster_eps: 0.22
+  cluster_eps: 0.18
   min_samples: 2
   preview_size: 32
   review_margin: 0.03
