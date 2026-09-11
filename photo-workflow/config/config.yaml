@@ -841,15 +841,20 @@ series_detection:
   # Auswirkung: true gruppiert zeitlich, numerisch und visuell ähnliche Bilder.
   enabled: true
   exif_time_enabled: true
-  time_window_seconds: 8
+  time_window_seconds: 30
   filename_sequence_enabled: true
-  max_filename_gap: 2
+  max_filename_gap: 4
   min_sequence_images: 2
   visual_clustering_enabled: true
-  cluster_eps: 0.18
+  cluster_eps: 0.22
   min_samples: 2
   preview_size: 32
   review_margin: 0.03
+
+  # max_series_size: Maximale Anzahl Bilder pro Serie.
+  # Mögliche Werte: positive Ganzzahl oder leer (aus).
+  # Auswirkung: Größere Gruppen werden zeitlich sortiert in Teilstücke geteilt.
+  max_series_size: 25
 
   # demote_non_best_to: Zielstatus nicht bester Serienbilder.
   # Mögliche Werte: review oder reject.
