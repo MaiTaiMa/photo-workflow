@@ -4,9 +4,10 @@
 # PURPOSE:     Pool-Verwaltung für selection.json (AP3)
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.0.0
+# VERSION:     1.0.1
 # REQUIRES:    Python 3.8+, selection_schema.py
 # CHANGES:
+#   2026-09-13 | 1.0.1 | A1.4: Import auf app.selection_schema vereinheitlicht.
 #   2026-08-09: Initiale Implementierung für AP3
 #               - SelectionPool-Klasse zum Lesen/Schreiben
 #               - load_selection() und save_selection()
@@ -23,7 +24,7 @@ from pathlib import Path
 
 # Importiere selection_schema
 try:
-    from selection_schema import (
+    from app.selection_schema import (
         SelectionSchema,
         validate_selection,
         compute_fingerprint,

@@ -4,9 +4,10 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.9.3
+# VERSION:     1.9.4
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
+#   2026-09-13 | 1.9.4 | A1.3: policy_version fail-closed via _require_policy_version.
 #   2026-09-12 | 1.9.3 | 3a-Nachzug: Automation-Defaults an kalibrierte Policy 1.1 angeglichen.
 #   2026-09-12 | 1.9.2 | F8: skipped_limits/pending_review korrekt verdrahtet, Waisen-Zeile im Face-Block.
 #   2026-08-27 | 1.7 | G7: 04_TEMP_FINAL nur für full_auto freigegeben.
@@ -316,7 +317,6 @@ def load_config(path: str | Path) -> dict:
     # Automation-Defaults und Validierung
     cfg.setdefault('automation', {})
     automation = cfg['automation']
-    automation.setdefault('policy_version', '1.1')
     automation.setdefault('mode', 'shadow')
     automation.setdefault('keep_score_min', 0.75)
     automation.setdefault('reject_score_max', 0.55)
@@ -585,6 +585,19 @@ def build_learning_status(cfg: dict) -> dict:
     except Exception:
         status['model_status'] = status['model_status'] or 'unavailable'
     return status
+
+
+def _require_policy_version(cfg: dict) -> str:
+    """Liest automation.policy_version, fail-closed bei fehlend/leer.
+
+    Die Version stempelt Vorhersagen und Validierungen; ein stiller
+    Default wuerde Evidenz der falschen Policy erzeugen (A1.3).
+    """
+    value = cfg.get("automation", {}).get("policy_version")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("automation.policy_version fehlt oder ist leer")
+    return value.strip()
+
 
 
 def build_summary_payload(cfg: dict, command: str, status: str, started_at: str, finished_at: str, json_summary_path: str | None) -> dict:
@@ -1680,7 +1693,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 model_version=str(
                     personal_info.get('model_version', 'personal-score-v1')
                 ),
-                policy_version=str(cfg["automation"]["policy_version"]),
+                policy_version=_require_policy_version(cfg),
                 predicted_decision='review',
                 prediction_reason='manual_keep_override',
                 personal_score=scored.get('personal_score'),
@@ -1809,7 +1822,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             model_version=str(
                 personal_info.get('model_version', 'personal-score-v1')
             ),
-            policy_version=str(cfg["automation"]["policy_version"]),
+            policy_version=_require_policy_version(cfg),
             predicted_decision=predicted_decision,
             prediction_reason=prediction_reason,
             personal_score=scored.get('personal_score'),
@@ -2832,7 +2845,7 @@ def run_phase1_analyze(
                     "personal-score-v1",
                 )
             ),
-            policy_version=str(cfg["automation"]["policy_version"]),
+            policy_version=_require_policy_version(cfg),
             predicted_decision=predicted_decision,
             prediction_reason=prediction_reason,
             personal_score=row.get("personal_score"),
@@ -3424,7 +3437,7 @@ def main() -> int:
             runtime_path = Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "runtime"
             store = TrustOverrideStore(
                 runtime_path,
-                cfg["automation"]["policy_version"],
+                _require_policy_version(cfg),
             )
             if args.command == "trust-revoke":
                 payload = store.write(args.reason)

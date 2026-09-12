@@ -4,9 +4,10 @@
 # PURPOSE:     Validiert und speichert neue Face-Crops im erlaubten Poolbereich.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-08
-# VERSION:     1.3
+# VERSION:     1.4
 # REQUIRES:    Python 3.11, Pillow
 # CHANGES:
+#   2026-09-13 | 1.4 | A1.2: Test-only-Vermerk save_new_face_crop.
 #   2026-08-08 | 1.2 | AP22 Face-Crop-Vertrag nach 98AP formatiert
 #   2026-09-09 | 1.3 | P6: Verschiebe-Helper not_used ergaenzt.
 # =============================================================================
@@ -46,6 +47,8 @@ def validate_box(box: dict, width: int, height: int) -> None:
 
 
 
+# A1-Befund: derzeit kein produktiver Caller (test-only);
+# API per tests/unit/test_pools.py vertraglich fixiert.
 def save_new_face_crop(
     source: str | Path,
     destination_root: str | Path,

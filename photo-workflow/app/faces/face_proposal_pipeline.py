@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.0.0
+# VERSION:     1.0.1
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-13 | 1.0.1 | A1.2: Test-only-Status ungenutzter Pipeline-Funktionen vermerkt.
 #   Initial version
 # =============================================================================
 
@@ -22,6 +23,8 @@ class FaceProposalPipelineError(ValueError):
     """Beschreibt einen Fehler bei der Face-Vorschlagsauswahl."""
 
 
+# A1-Befund: derzeit kein produktiver Caller (test-only);
+# API per tests/unit/test_pools.py vertraglich fixiert.
 def persist_selected_face_proposals(
     selected: list[dict[str, Any]],
     *,
@@ -63,6 +66,8 @@ def persist_selected_face_proposals(
     return persisted
 
 
+# A1-Befund: derzeit kein produktiver Caller (test-only);
+# API per tests/unit/test_pools.py vertraglich fixiert.
 def select_available_face_proposals(
     candidates: list[dict[str, Any]],
     existing_entries: list[dict[str, Any]],

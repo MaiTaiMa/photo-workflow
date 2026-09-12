@@ -256,3 +256,18 @@ def test_calibrated_prediction_thresholds_policy_1_1() -> None:
     assert auto["keep_score_min"] == 0.75
     assert auto["reject_score_max"] == 0.55
     assert auto["reject_score_max"] < auto["keep_score_min"]
+
+
+def test_require_policy_version_fail_closed() -> None:
+    """A1.3: Fehlende/leere policy_version wird klar gemeldet."""
+    import pytest
+    from app.photo_workflow import _require_policy_version
+
+    ok = {"automation": {"policy_version": " 1.1 "}}
+    assert _require_policy_version(ok) == "1.1"
+    for bad in ({}, {"automation": {}},
+                {"automation": {"policy_version": ""}},
+                {"automation": {"policy_version": "   "}},
+                {"automation": {"policy_version": 123}}):
+        with pytest.raises(ValueError, match="policy_version"):
+            _require_policy_version(bad)
