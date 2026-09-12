@@ -4,9 +4,10 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.9.4
+# VERSION:     1.9.5
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
+#   2026-09-13 | 1.9.5 | F9: Abschlussbericht liest pending_review live aus dem Pool.
 #   2026-09-13 | 1.9.4 | A1.3: policy_version fail-closed via _require_policy_version.
 #   2026-09-12 | 1.9.3 | 3a-Nachzug: Automation-Defaults an kalibrierte Policy 1.1 angeglichen.
 #   2026-09-12 | 1.9.2 | F8: skipped_limits/pending_review korrekt verdrahtet, Waisen-Zeile im Face-Block.
@@ -600,6 +601,26 @@ def _require_policy_version(cfg: dict) -> str:
 
 
 
+def _face_proposal_summary_status(cfg: dict) -> dict:
+    """Face-Proposal-Status fuer die Run-Summary.
+
+    Uebernimmt den Lauf-Status, haelt pending_review aber immer live
+    an der Pool-Basis: Ohne phase1-Batch bleibt der Modul-Status leer
+    und der Abschlussbericht muesste sonst faelschlich 'keine
+    ausstehenden Aktionen' melden (F9). Rein lesend, fail-soft.
+    """
+    status = (dict(LAST_FACE_PROPOSAL_STATUS)
+              if LAST_FACE_PROPOSAL_STATUS else {})
+    try:
+        faces_root = Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "faces"
+        status["pending_review"] = sum(
+            _pending_face_proposals_by_person(faces_root).values())
+    except Exception:
+        pass
+    return status
+
+
+
 def build_summary_payload(cfg: dict, command: str, status: str, started_at: str, finished_at: str, json_summary_path: str | None) -> dict:
     """Erstellt den Summary-Payload für JSON-Report und Terminal-Ausgabe."""
     return {
@@ -632,7 +653,7 @@ def build_summary_payload(cfg: dict, command: str, status: str, started_at: str,
         'batch_id': PROCESSED_BATCH_IDS[-1] if PROCESSED_BATCH_IDS else None,
         'learning': build_learning_status(cfg),
         'batch_ki_status': build_batch_ki_status_table(cfg),
-        'face_proposal_status': LAST_FACE_PROPOSAL_STATUS,
+        'face_proposal_status': _face_proposal_summary_status(cfg),
     }
 
 

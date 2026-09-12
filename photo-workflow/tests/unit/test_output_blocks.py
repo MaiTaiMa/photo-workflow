@@ -208,3 +208,26 @@ def test_orphaned_face_crops_erkennt_dateien_ohne_eintrag(tmp_path) -> None:
     (faces / "Chris").mkdir()
     assert _orphaned_face_crops_per_person(faces) == {"Lilly": 1}
     assert _orphaned_face_crops_per_person(tmp_path / "fehlt") == {}
+
+
+def test_face_proposal_summary_status_live_fallback(tmp_path, monkeypatch) -> None:
+    """F9: pending_review kommt zur Not live aus dem Pool."""
+    import app.photo_workflow as pw
+
+    person = tmp_path / "WORKFLOW_DATA" / "faces" / "Lilly"
+    person.mkdir(parents=True)
+    (person / "selection.json").write_text(
+        '{"images": [{"path": "new_faces/a.jpg", "status": "new"},'
+        ' {"path": "new_faces/b.jpg", "status": "new"},'
+        ' {"path": "new_faces/c.jpg", "status": "active"}]}',
+        encoding="utf-8")
+    cfg = {"paths": {"base_dir": str(tmp_path)}}
+
+    monkeypatch.setattr(pw, "LAST_FACE_PROPOSAL_STATUS", {})
+    assert pw._face_proposal_summary_status(cfg)["pending_review"] == 2
+
+    monkeypatch.setattr(pw, "LAST_FACE_PROPOSAL_STATUS",
+                        {"registered_count": 5, "pending_review": 0})
+    status = pw._face_proposal_summary_status(cfg)
+    assert status["pending_review"] == 2
+    assert status["registered_count"] == 5
