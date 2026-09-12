@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.1.0
+# VERSION:     1.1.1
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-13 | 1.1.1 | A1.5: selection_fingerprint wird bei jedem Upsert neu gerechnet.
 #   2026-09-09 | 1.1.0 | P4: Dubletten-Update und Qualitaetsindex.
 #   Initial version
 # =============================================================================
@@ -20,6 +21,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from app.faces.reference_pool import compute_selection_fingerprint
 
 
 class FaceProposalError(ValueError):
@@ -251,5 +254,10 @@ def add_face_proposal(
     payload["images"] = images
     payload["updated_at"] = _now()
     payload["limits"] = normalized_limits
+    payload["selection_fingerprint"] = compute_selection_fingerprint(
+        images,
+        str(payload.get("model_fingerprint", "")),
+        str(payload.get("preprocessing_fingerprint", "")),
+    )
     _atomic_write(selection_path, payload)
     return entry

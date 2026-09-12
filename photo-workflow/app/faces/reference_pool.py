@@ -4,9 +4,10 @@
 # PURPOSE:     Lädt verifizierte, aktive Referenzbilder ohne Embedding-Persistenz.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-08
-# VERSION:     1.2
+# VERSION:     1.3
 # REQUIRES:    Python 3.11
 # CHANGES:
+#   2026-09-13 | 1.3 | A1.5: compute_selection_fingerprint als oeffentliche Writer-API.
 #   2026-08-08 | 1.2 | AP22 Fingerprint-Prüfung an Pool-Rebuild angeglichen
 # =============================================================================
 
@@ -43,6 +44,19 @@ def _fingerprint(
         separators=(",", ":"),
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def compute_selection_fingerprint(
+    images: list[dict],
+    model_fingerprint: str = "",
+    preprocessing_fingerprint: str = "",
+) -> str:
+    """Oeffentliche Fingerprint-Funktion fuer selection.json-Writer.
+
+    Delegiert an _fingerprint und garantiert so, dass Writer und der
+    Reader load_active_references denselben Algorithmus nutzen (A1.5).
+    """
+    return _fingerprint(images, model_fingerprint, preprocessing_fingerprint)
 
 
 def load_active_references(

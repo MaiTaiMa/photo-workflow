@@ -233,3 +233,48 @@ def test_rerun_batch_stays_single_entry(tmp_path: Path) -> None:
     )
 
     assert len(_read_images(tmp_path / "faces" / "opa")) == 1
+
+
+def test_add_face_proposal_pflegt_selection_fingerprint(tmp_path) -> None:
+    """A1.5: Fingerprint stimmt nach Upsert mit der Reader-Pruefung ueberein."""
+    import json
+
+    from app.faces.proposal_contract import add_face_proposal
+    from app.faces.reference_pool import (
+        compute_selection_fingerprint,
+        load_active_references,
+    )
+
+    pool = tmp_path / "faces" / "alice"
+    (pool / "new_faces").mkdir(parents=True)
+    (pool / "reference").mkdir()
+    limits = {"max_new": 20, "max_new_per_batch": 5}
+    box = {"left": 0, "top": 0, "right": 10, "bottom": 10}
+
+    def add(source_id: str, quality: float) -> None:
+        crop = pool / "new_faces" / f"{source_id.replace(':', '_')}.jpg"
+        crop.write_text("x")
+        add_face_proposal(
+            pool, slug="alice", source_id=source_id, batch_id="b",
+            crop_path=crop, original_path="/o/img.jpg",
+            quality_score=quality, candidate_utility_score=0.6,
+            bounding_box=box, face_confidence=0.9, limits=limits,
+        )
+
+    add("b:img1:face-0", 0.7)
+    add("b:img2:face-0", 0.8)
+    data = json.loads((pool / "selection.json").read_text(encoding="utf-8"))
+    assert data["selection_fingerprint"]
+    assert data["selection_fingerprint"] == compute_selection_fingerprint(
+        data["images"])
+
+    add("b:img1:face-0", 0.9)  # Upsert: Ersetzen pflegt den Fingerprint
+    data = json.loads((pool / "selection.json").read_text(encoding="utf-8"))
+    assert data["selection_fingerprint"] == compute_selection_fingerprint(
+        data["images"])
+
+    # Haertetest: der harte Reader darf nicht mehr scheitern.
+    selection, active = load_active_references(pool, pool_type="face",
+                                               slug="alice")
+    assert selection["slug"] == "alice"
+    assert active == []
