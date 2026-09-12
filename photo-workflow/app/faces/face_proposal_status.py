@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.2.0
+# VERSION:     1.2.1
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-12 | 1.2.1 | F8: skipped_limits/pending_review korrekt verdrahtet, Waisen-Zeile im Face-Block.
 #   2026-09-07 | 1.1.0 | Emoji-Header + optionale Pro-Person-Zeilen (neu/offen).
 #   2026-09-09 | 1.2.0 | P6: Pro-Person-Zeile fuer not_used-Verschiebungen.
 #   Initial version
@@ -86,6 +87,7 @@ def _per_person_lines(status: Mapping[str, Any]) -> list[str]:
     out: list[str] = []
     for key, label in (("new_per_person", "Neu pro Person"),
                        ("pending_per_person", "Review offen"),
+                       ("orphaned_per_person", "Verwaiste Dateien"),
                        ("not_used_moved_per_person",
                         "Nicht benötigt (verschoben)")):
         value = status.get(key)

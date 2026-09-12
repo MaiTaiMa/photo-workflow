@@ -4,9 +4,10 @@
 # PURPOSE:     Aggregiert Batch-Validierungen zu einer rein diagnostischen Readiness-Metrik.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-22
-# VERSION:     1.2.1
+# VERSION:     1.2.2
 # REQUIRES:    Python 3.11, JSON, pathlib
 # CHANGES:
+#   2026-09-12 | 1.2.2 | 3c: Statusblock begruendet n/a bei reiner Review-Evidenz.
 #   2026-08-26 | 1.2.1 | Header und Funktionsdokumentation gemäß Implementierungsregeln ergänzt.
 #   2026-08-22 | 1.2.0 | C1.2.4: Fullauto-Gate fail-closed und nicht-operativ ergänzt.
 #   2026-08-22 | 1.1.0 | C1.2.4: Readiness nach Policy-Version filterbar gemacht.
@@ -454,11 +455,21 @@ def format_ai_status_block(
         f"Reject-Präzision:         {pct(report.get('reject_precision'))} (Ziel: >= {pct(policy.get('minimum_reject_precision'))})",
     ]
     if not ready:
-        lines += [
-            "-" * 72,
-            "Hinweis:                Validierung laeuft automatisch",
-            "                        (AUTO-VALIDATE), sobald menschliche",
-            "                        Reviews vorliegen.",
-        ]
+        evaluated = int(report.get("evaluated_predictions", 0) or 0)
+        if evaluated > 0 and report.get("overall_agreement") is None:
+            lines += [
+                "-" * 72,
+                f"Grund:                  Alle {evaluated} ausgewerteten",
+                "                        Vorhersagen sind 'review' - ohne",
+                "                        keep/reject-Vorhersagen bleibt die",
+                "                        Uebereinstimmung unbestimmt (n/a).",
+            ]
+        else:
+            lines += [
+                "-" * 72,
+                "Hinweis:                Validierung laeuft automatisch",
+                "                        (AUTO-VALIDATE), sobald menschliche",
+                "                        Reviews vorliegen.",
+            ]
     lines.append("=" * 72)
     return "\n".join(lines)

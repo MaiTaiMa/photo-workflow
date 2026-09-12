@@ -4,9 +4,11 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.9.1
+# VERSION:     1.9.3
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
+#   2026-09-12 | 1.9.3 | 3a-Nachzug: Automation-Defaults an kalibrierte Policy 1.1 angeglichen.
+#   2026-09-12 | 1.9.2 | F8: skipped_limits/pending_review korrekt verdrahtet, Waisen-Zeile im Face-Block.
 #   2026-08-27 | 1.7 | G7: 04_TEMP_FINAL nur für full_auto freigegeben.
 #   2026-09-09 | 1.8 | P5: Optionale Embedding-Diversitaet im Face-Hook.
 #   2026-09-09 | 1.9 | P6: not_used-Verschiebung verworfener Crops.
@@ -314,10 +316,10 @@ def load_config(path: str | Path) -> dict:
     # Automation-Defaults und Validierung
     cfg.setdefault('automation', {})
     automation = cfg['automation']
-    automation.setdefault('policy_version', '1.0')
+    automation.setdefault('policy_version', '1.1')
     automation.setdefault('mode', 'shadow')
-    automation.setdefault('keep_score_min', 0.90)
-    automation.setdefault('reject_score_max', 0.15)
+    automation.setdefault('keep_score_min', 0.75)
+    automation.setdefault('reject_score_max', 0.55)
     automation.setdefault('evaluation_window_days', 90)
     automation.setdefault('min_evaluated_batches', 10)
     automation.setdefault('min_evaluated_images', 500)
@@ -454,6 +456,44 @@ def _pending_per_person(cfg: dict) -> dict:
     except Exception:
         return {}
     return counts
+
+
+def _orphaned_face_crops_per_person(faces_root) -> dict:
+    """Zaehlt Crop-Dateien in new_faces ohne selection.json-Eintrag.
+
+    Waisen entstehen durch Legacy-Dateien oder abgebrochene Laeufe;
+    sie gehoeren nicht zum Review-Bestand. Rein lesend, fail-soft.
+    """
+    counts = {}
+    root = Path(faces_root)
+    if not root.is_dir():
+        return counts
+    for person_dir in sorted(root.iterdir()):
+        nf = person_dir / "new_faces"
+        if not person_dir.is_dir() or not nf.is_dir():
+            continue
+        files = {p.name for p in nf.iterdir()
+                 if p.is_file()
+                 and p.suffix.lower() in (".jpg", ".jpeg", ".png")}
+        if not files:
+            continue
+        tracked = set()
+        sel = person_dir / "selection.json"
+        if sel.is_file():
+            try:
+                data = json.loads(sel.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                data = {}
+            for img in data.get("images", []):
+                if isinstance(img, dict):
+                    name = Path(str(img.get("path", ""))).name
+                    if name:
+                        tracked.add(name)
+        n = sum(1 for f in files if f not in tracked)
+        if n:
+            counts[person_dir.name] = n
+    return counts
+
 
 def print_start_banner(cfg: dict, command: str) -> None:
     """Druckt den Start-Banner für den Workflow."""
@@ -2236,9 +2276,12 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         skipped_unknown=int(face_proposal_status.get("skipped_unknown", 0)),
         skipped_ambiguous=int(face_proposal_status.get("skipped_ambiguous", 0)),
         skipped_quality=int(face_proposal_status.get("skipped_quality", 0)),
+        skipped_limits=int(face_proposal_status.get("skipped_limits", 0)),
+        pending_review=_fp_pending_total,
         remaining_batch_slots=max(0, _fp_max_per_batch - _fp_created),
         remaining_global_slots=max(0, _fp_max_new - _fp_pending_total),
-        pending_per_person=_pending_per_person(cfg),
+        pending_per_person=_pending_face_proposals_by_person(_fp_faces_root),
+        orphaned_per_person=_orphaned_face_crops_per_person(_fp_faces_root),
         not_used_moved_per_person=_fp_not_used_per_person,
     )
     print(face_proposal_block)

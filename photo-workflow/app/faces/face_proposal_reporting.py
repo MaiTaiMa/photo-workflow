@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.2.0
+# VERSION:     1.2.1
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-12 | 1.2.1 | F8: skipped_limits/pending_review korrekt verdrahtet, Waisen-Zeile im Face-Block.
 #   2026-09-07 | 1.1.0 | new_per_person gezaehlt; pending_per_person als Parameter.
 #   2026-09-09 | 1.2.0 | P6: Parameter not_used_moved_per_person ergaenzt.
 #   Initial version
@@ -29,10 +30,13 @@ def build_registration_status(
     skipped_unknown: int = 0,
     skipped_ambiguous: int = 0,
     skipped_quality: int = 0,
+    skipped_limits: int | None = None,
+    pending_review: int | None = None,
     remaining_batch_slots: int = 0,
     remaining_global_slots: int = 0,
     pending_per_person: Mapping[str, int] | None = None,
     not_used_moved_per_person: Mapping[str, int] | None = None,
+    orphaned_per_person: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     """Normalize registration results into a safe batch status payload."""
     registered = registration_result.get("registered", [])
@@ -75,11 +79,15 @@ def build_registration_status(
         "known_matches": int(known_matches),
         "eligible_candidates": created,
         "created_new": created,
-        "pending_review": created,
+        "pending_review": (
+            int(pending_review) if pending_review is not None
+            else created),
         "skipped_unknown": int(skipped_unknown),
         "skipped_ambiguous": int(skipped_ambiguous),
         "skipped_quality": int(skipped_quality),
-        "skipped_limits": int(registration_result.get("skipped_count", 0)),
+        "skipped_limits": (
+            int(skipped_limits) if skipped_limits is not None
+            else int(registration_result.get("skipped_count", 0))),
         "remaining_batch_slots": int(remaining_batch_slots),
         "remaining_global_slots": int(remaining_global_slots),
         "people_with_new_proposals": people,
@@ -90,6 +98,9 @@ def build_registration_status(
         "not_used_moved_per_person": (
             dict(not_used_moved_per_person)
             if isinstance(not_used_moved_per_person, Mapping) else {}),
+        "orphaned_per_person": (
+            dict(orphaned_per_person)
+            if isinstance(orphaned_per_person, Mapping) else {}),
         "reason": reason,
         "action": action,
     }

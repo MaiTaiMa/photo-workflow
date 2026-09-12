@@ -316,7 +316,7 @@ automation:
   # policy_version: Version der validierten lokalen Automations-Policy.
   # Mögliche Werte: Nicht-leerer versionsierter String, zum Beispiel "1.0".
   # Auswirkung: Eine leere oder fehlende Version wird fail-closed abgelehnt.
-  policy_version: "1.0"
+  policy_version: "1.1"
 
   # mode: Explizit gewählter Betriebsmodus der Automations-Policy.
   # Mögliche Werte: off, shadow, assisted, auto_phase1, auto_phase2, full_auto.
@@ -327,12 +327,12 @@ automation:
   # keep_score_min: Mindestwert für eine automatische Keep-Prognose.
   # Mögliche Werte: 0.0 bis 1.0.
   # Auswirkung: Werte >= keep_score_min können als keep prognostiziert werden.
-  keep_score_min: 0.90
+  keep_score_min: 0.75
 
   # reject_score_max: Höchstwert für eine Reject-Prognose.
   # Mögliche Werte: 0.0 bis 1.0.
   # Auswirkung: Werte <= reject_score_max können als reject prognostiziert werden.
-  reject_score_max: 0.15
+  reject_score_max: 0.55
 
   # evaluation_window_days: Zeitraum der berücksichtigten Feedback-Daten.
   # Mögliche Werte: 1 bis 365.

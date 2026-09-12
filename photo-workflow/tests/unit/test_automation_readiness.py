@@ -781,3 +781,35 @@ def test_readiness_agreement_none_when_only_review_evidence() -> None:
     )
     assert report["evaluated_predictions"] == 58
     assert report["overall_agreement"] is None
+
+
+def test_status_block_begruendet_na_bei_reiner_review_evidenz() -> None:
+    """3c: n/a wird begruendet, wenn nur Review-Vorhersagen vorliegen."""
+    from app.automation_readiness import format_ai_status_block
+
+    report = {
+        "status": "not_ready",
+        "fullauto_gate_ready": False,
+        "gate_reason": "readiness_not_ready",
+        "evaluable_batch_count": 5,
+        "evaluated_predictions": 230,
+        "overall_agreement": None,
+        "keep_precision": None,
+        "reject_precision": None,
+        "policy": {
+            "minimum_evaluable_batches": 3,
+            "minimum_evaluated_predictions": 100,
+            "minimum_overall_agreement": 0.95,
+            "minimum_keep_precision": 0.95,
+            "minimum_reject_precision": 0.95,
+        },
+    }
+    block = format_ai_status_block(report, "full_auto", "2026-05-23")
+    assert "Grund:" in block
+    assert "230" in block
+    assert "'review'" in block
+
+    report["evaluated_predictions"] = 0
+    block = format_ai_status_block(report, "full_auto", "2026-05-23")
+    assert "Grund:" not in block
+    assert "AUTO-VALIDATE" in block
