@@ -100,3 +100,48 @@ def test_pending_per_person_zaehlt_new_faces(tmp_path) -> None:
     cfg = {"family_recognition": {"reference_dir": str(faces)}}
     assert _pending_per_person(cfg) == {"Lilly": 1, "Finn": 2}
     assert _pending_per_person({}) == {}
+
+
+def test_abschlussbericht_zeigt_pending_faces(capsys) -> None:
+    """F7: pending_review > 0 muss im Abschlussbericht als Hinweis erscheinen."""
+    from app.photo_workflow import print_scheduler_summary
+
+    payload = {
+        "status": "success",
+        "command": "pipeline",
+        "counts": {"found_temp_sd": 0, "found_temp_done": 0, "processed": 0,
+                   "moved_merged": 0, "finalized": 0, "skipped": 0,
+                   "errors": 0},
+        "paths": {"log_file": "l", "error_log": "e"},
+        "learning": {},
+        "started_at": "x",
+        "finished_at": "y",
+        "face_proposal_status": {"pending_review": 3},
+    }
+    print_scheduler_summary({}, payload)
+    out = capsys.readouterr().out
+    assert "HINWEISE:" in out
+    assert "Face-Vorschläge: 3 pending" in out
+    assert "Ausstehend" in out
+
+
+def test_abschlussbericht_ohne_pending_faces(capsys) -> None:
+    """F7: Ohne pending_review bleibt der Bericht im gruenen Zustand."""
+    from app.photo_workflow import print_scheduler_summary
+
+    payload = {
+        "status": "success",
+        "command": "pipeline",
+        "counts": {"found_temp_sd": 0, "found_temp_done": 0, "processed": 0,
+                   "moved_merged": 0, "finalized": 0, "skipped": 0,
+                   "errors": 0},
+        "paths": {"log_file": "l", "error_log": "e"},
+        "learning": {},
+        "started_at": "x",
+        "finished_at": "y",
+        "face_proposal_status": {"pending_review": 0},
+    }
+    print_scheduler_summary({}, payload)
+    out = capsys.readouterr().out
+    assert "Keine ausstehenden Aktionen" in out
+    assert "- Face-Vorschl" not in out

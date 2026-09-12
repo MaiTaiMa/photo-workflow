@@ -77,34 +77,6 @@ def _order_group(idxs: list, exif_datetimes: "list | None", filename_numbers: "l
         return sorted(idxs, key=lambda i: (filename_numbers[i] is None, filename_numbers[i] or 0, i))
     return sorted(idxs)
 
-def _read_exif_datetime(path: Path):
-    """Liest EXIF DateTimeOriginal (36867), Fallback DateTime (306)."""
-    try:
-        with Image.open(path) as img:
-            exif = img.getexif()
-            raw = exif.get(36867) or exif.get(306)
-            if not raw:
-                return None
-            return datetime.strptime(str(raw).strip(), "%Y:%m:%d %H:%M:%S")
-    except Exception:
-        return None
-
-
-def _extract_file_number(path: Path):
-    """Extrahiert die letzte Zifferngruppe des Dateinamens (MST06975 -> 6975)."""
-    match = re.search(r"(\d+)(?!.*\d)", Path(path).stem)
-    return int(match.group(1)) if match else None
-
-
-def _order_group(idxs: list, exif_datetimes, filename_numbers) -> list:
-    """Sortiert Gruppenmitglieder fuer das max_series_size-Splitting."""
-    if exif_datetimes is not None:
-        return sorted(idxs, key=lambda i: (exif_datetimes[i] is None, exif_datetimes[i] or datetime.min, i))
-    if filename_numbers is not None:
-        return sorted(idxs, key=lambda i: (filename_numbers[i] is None, filename_numbers[i] or 0, i))
-    return sorted(idxs)
-
-
 def cluster_series(paths: Iterable[str | Path], cluster_eps: float = 0.18, min_samples: int = 2, preview_size: int = 32, *, visual_enabled: bool = True, exif_datetimes: "list | None" = None, time_window_seconds: "float | None" = None, filename_numbers: "list | None" = None, max_filename_gap: "int | None" = None, max_series_size: "int | None" = None) -> tuple[list[int], list[np.ndarray | None]]:
     path_list = [Path(p) for p in paths]
     n = len(path_list)
@@ -151,9 +123,21 @@ def cluster_series(paths: Iterable[str | Path], cluster_eps: float = 0.18, min_s
             if 0 <= gap <= float(time_window_seconds):
                 union(timed[k - 1][1], timed[k][1])
 
-    # Mechanik 3: Dateinummern-Folge (benachbarte Nummern)
-    if filename_numbers is not None and max_filename_gap is not None:
-        numbered = [(num, idx) for idx, num in enumerate(filename_numbers) if num is not None]
+    # Mechanik 3 (Fallback): Dateinummern-Folge nur fuer Bilder ohne EXIF-Zeit.
+    # Greift nur, wenn die Zeitmechanik aktiv ist, aber einzelne Bilder keine
+    # EXIF-Zeit liefern. Verhindert Batch-weite Ketten bei durchgehender
+    # Kamera-Nummerierung.
+    if (
+        filename_numbers is not None
+        and max_filename_gap is not None
+        and exif_datetimes is not None
+        and time_window_seconds is not None
+    ):
+        numbered = [
+            (num, idx)
+            for idx, num in enumerate(filename_numbers)
+            if num is not None and exif_datetimes[idx] is None
+        ]
         numbered.sort(key=lambda t: t[0])
         for k in range(1, len(numbered)):
             gap = numbered[k][0] - numbered[k - 1][0]
@@ -241,7 +225,13 @@ def apply_series_culling(rows: list[dict], cfg: dict) -> list[dict]:
     exif_enabled = bool(series_cfg.get('exif_time_enabled', False))
     seq_enabled = bool(series_cfg.get('filename_sequence_enabled', False))
     exif_datetimes = [_read_exif_datetime(Path(p)) for p in path_list] if exif_enabled else None
-    filename_numbers = [_extract_file_number(Path(p)) for p in path_list] if seq_enabled else None
+    # Dateinummern nur als Fallback bei aktiver Zeitmechanik sammeln;
+    # ohne EXIF-Zeitbezug waere die Nummernfolge kein Seriensegmentierer.
+    filename_numbers = (
+        [_extract_file_number(Path(p)) for p in path_list]
+        if (seq_enabled and exif_enabled)
+        else None
+    )
     min_group = int(series_cfg.get('min_samples', 2))
     if exif_enabled or seq_enabled:
         min_group = min(min_group, int(series_cfg.get('min_sequence_images', 2)))

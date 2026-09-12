@@ -842,6 +842,11 @@ series_detection:
   enabled: true
   exif_time_enabled: true
   time_window_seconds: 8
+  # filename_sequence_enabled: REINER FALLBACK. Greift nur fuer Bilder ohne
+  # EXIF-Zeit (defekte/entfernte Metadaten) und nur wenn exif_time_enabled=true.
+  # Hintergrund: Bei fortlaufender Kamera-Nummerierung ist die Nummernfolge
+  # kein Seriensegmentierer (kein Motivbezug) und wuerde als eigenstaendiges
+  # Signal den gesamten Batch zu einer Kette verschmelzen.
   filename_sequence_enabled: true
   max_filename_gap: 2
   min_sequence_images: 2
