@@ -245,14 +245,14 @@ def test_fullauto_gate_rejects_invalid_threshold() -> None:
         validate_automation_config(value)
 
 
-def test_calibrated_prediction_thresholds_policy_1_1() -> None:
-    """3a: Kalibrierte Prognose-Schwellen in config/config.yaml (Policy 1.1)."""
+def test_calibrated_prediction_thresholds_policy_1_2() -> None:
+    """3a: Kalibrierte Prognose-Schwellen in config/config.yaml (Policy 1.2)."""
     from pathlib import Path
     import yaml
 
     cfg = yaml.safe_load(Path("config/config.yaml").read_text(encoding="utf-8"))
     auto = cfg["automation"]
-    assert auto["policy_version"] == "1.1"
+    assert auto["policy_version"] == "1.2"
     assert auto["keep_score_min"] == 0.75
     assert auto["reject_score_max"] == 0.55
     assert auto["reject_score_max"] < auto["keep_score_min"]

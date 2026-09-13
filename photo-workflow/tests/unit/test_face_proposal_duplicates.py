@@ -278,3 +278,60 @@ def test_add_face_proposal_pflegt_selection_fingerprint(tmp_path) -> None:
                                                slug="alice")
     assert selection["slug"] == "alice"
     assert active == []
+
+
+def test_sync_face_proposals_with_files(tmp_path) -> None:
+    """F10: Review-Sync new->active/entfernt, Fingerprint gepflegt, idempotent."""
+    import json
+
+    from app.faces.proposal_contract import (
+        add_face_proposal,
+        sync_face_proposals_with_files,
+    )
+    from app.faces.reference_pool import (
+        compute_selection_fingerprint,
+        load_active_references,
+    )
+
+    faces = tmp_path / "faces"
+    pool = faces / "alice"
+    (pool / "new_faces").mkdir(parents=True)
+    (pool / "reference").mkdir()
+    limits = {"max_new": 20, "max_new_per_batch": 5}
+    box = {"left": 0, "top": 0, "right": 10, "bottom": 10}
+
+    def add(sid: str) -> None:
+        crop = pool / "new_faces" / f"{sid.replace(':', '_')}.jpg"
+        crop.write_text("x")
+        add_face_proposal(
+            pool, slug="alice", source_id=sid, batch_id="b",
+            crop_path=crop, original_path="/o/i.jpg",
+            quality_score=0.7, candidate_utility_score=0.6,
+            bounding_box=box, face_confidence=0.9, limits=limits,
+        )
+
+    add("b:one:face-0")
+    add("b:two:face-0")
+    add("b:three:face-0")
+
+    # Review: one akzeptiert (reference/), two verworfen (weg), three offen
+    (pool / "new_faces" / "b_one_face-0.jpg").rename(
+        pool / "reference" / "b_one_face-0.jpg")
+    (pool / "new_faces" / "b_two_face-0.jpg").unlink()
+
+    result = sync_face_proposals_with_files(faces)
+    assert result == {"activated": 1, "removed": 1, "still_new": 1}
+
+    data = json.loads((pool / "selection.json").read_text(encoding="utf-8"))
+    by_src = {i["source_id"]: i["status"] for i in data["images"]}
+    assert by_src == {"b:one:face-0": "active", "b:three:face-0": "new"}
+    assert data["selection_fingerprint"] == compute_selection_fingerprint(
+        data["images"])
+
+    selection, active = load_active_references(pool, pool_type="face",
+                                               slug="alice")
+    assert len(active) == 1
+
+    # Idempotent: zweiter Lauf ohne Datei-Aenderung aendert nichts
+    assert sync_face_proposals_with_files(faces) == {
+        "activated": 0, "removed": 0, "still_new": 1}

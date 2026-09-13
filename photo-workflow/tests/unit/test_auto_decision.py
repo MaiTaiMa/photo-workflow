@@ -159,3 +159,25 @@ def test_wrapper_uses_the_same_prediction_contract() -> None:
         personal_score=0.97,
         final_score=0.93,
     ) == ("keep", "high_confidence_keep")
+
+
+def test_reject_fires_on_low_final_even_with_high_personal() -> None:
+    """F11: reject entscheidet ueber final_score (personal ist darin enthalten)."""
+    from app.auto_decision import predict_decision
+
+    cfg = {"automation": {"mode": "full_auto", "keep_score_min": 0.75,
+                          "reject_score_max": 0.55}}
+    result = predict_decision(personal_score=0.82, final_score=0.50,
+                              config=cfg)
+    assert result == ("reject", "high_confidence_reject")
+
+
+def test_keep_braucht_weiterhin_beide_scores() -> None:
+    """F11: keep bleibt doppelt abgesichert (konservative Richtung)."""
+    from app.auto_decision import predict_decision
+
+    cfg = {"automation": {"mode": "full_auto", "keep_score_min": 0.75,
+                          "reject_score_max": 0.55}}
+    decision, _ = predict_decision(personal_score=0.60, final_score=0.80,
+                                   config=cfg)
+    assert decision == "review"

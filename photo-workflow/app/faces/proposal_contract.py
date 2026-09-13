@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-09-03
-# VERSION:     1.1.1
+# VERSION:     1.1.2
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-13 | 1.1.2 | F10: sync_face_proposals_with_files bildet manuelles Review ab.
 #   2026-09-13 | 1.1.1 | A1.5: selection_fingerprint wird bei jedem Upsert neu gerechnet.
 #   2026-09-09 | 1.1.0 | P4: Dubletten-Update und Qualitaetsindex.
 #   Initial version
@@ -136,6 +137,62 @@ def load_proposal_quality_index(
             "status": str(item.get("status", "unknown")),
         }
     return index
+
+
+def sync_face_proposals_with_files(faces_root: str | Path) -> dict:
+    """Synchronisiert 'new'-Eintraege mit dem Dateisystem (F10).
+
+    Bildet das menschliche Review ab: Datei in reference/ => 'active',
+    Datei in new_faces/ => bleibt 'new', Datei weg => Eintrag entfernt.
+    Andere Status werden nicht angefasst. Schreibt nur bei Aenderungen,
+    atomar und mit gepflegtem selection_fingerprint.
+    """
+    result = {"activated": 0, "removed": 0, "still_new": 0}
+    root = Path(faces_root)
+    if not root.is_dir():
+        return result
+    for person_dir in sorted(root.iterdir()):
+        selection_path = person_dir / "selection.json"
+        if not person_dir.is_dir() or not selection_path.is_file():
+            continue
+        try:
+            payload = json.loads(selection_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        images = payload.get("images", [])
+        if not isinstance(images, list):
+            continue
+        changed = False
+        kept = []
+        for item in images:
+            if not isinstance(item, dict) or item.get("status") != "new":
+                kept.append(item)
+                continue
+            name = Path(str(item.get("path", ""))).name
+            if (person_dir / "new_faces" / name).is_file():
+                result["still_new"] += 1
+                kept.append(item)
+            elif (person_dir / "reference" / name).is_file():
+                item = dict(item)
+                item["status"] = "active"
+                item["path"] = f"reference/{name}"
+                kept.append(item)
+                result["activated"] += 1
+                changed = True
+            else:
+                result["removed"] += 1
+                changed = True
+        if not changed:
+            continue
+        payload["images"] = kept
+        payload["updated_at"] = _now()
+        payload["selection_fingerprint"] = compute_selection_fingerprint(
+            kept,
+            str(payload.get("model_fingerprint", "")),
+            str(payload.get("preprocessing_fingerprint", "")),
+        )
+        _atomic_write(selection_path, payload)
+    return result
 
 
 def add_face_proposal(

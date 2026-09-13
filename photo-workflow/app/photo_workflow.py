@@ -4,9 +4,10 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.9.5
+# VERSION:     1.9.6
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
+#   2026-09-13 | 1.9.6 | F10: Face-Pool-Sync vor Limit-Berechnung verdrahtet.
 #   2026-09-13 | 1.9.5 | F9: Abschlussbericht liest pending_review live aus dem Pool.
 #   2026-09-13 | 1.9.4 | A1.3: policy_version fail-closed via _require_policy_version.
 #   2026-09-12 | 1.9.3 | 3a-Nachzug: Automation-Defaults an kalibrierte Policy 1.1 angeglichen.
@@ -107,6 +108,7 @@ from app.metadata_writer import write_culling_metadata
 from app.faces.face_proposal_reporting import format_registration_status_block
 from app.faces.face_proposal_batch import build_face_proposal_batch
 from app.faces.face_proposal_registration import register_face_proposals
+from app.faces.proposal_contract import sync_face_proposals_with_files
 
 from app.manual_keep import (
     detect_manual_keep_images,
@@ -2165,6 +2167,13 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
     }
     LAST_FACE_PROPOSAL_STATUS = face_proposal_status
     _fp_not_used_per_person: dict[str, int] = {}
+
+    _fp_sync_root = Path(cfg["paths"]["base_dir"]) / "WORKFLOW_DATA" / "faces"
+    _fp_sync = sync_face_proposals_with_files(_fp_sync_root)
+    if _fp_sync.get("activated") or _fp_sync.get("removed"):
+        log(cfg, f"[FACE-SYNC] activated={_fp_sync['activated']} "
+                 f"removed={_fp_sync['removed']} "
+                 f"pending={_fp_sync['still_new']}")
 
     if bool(face_proposal_cfg.get("enabled", False)):
         proposal_rows = list(face_proposal_rows_from_loop)

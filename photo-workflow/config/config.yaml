@@ -316,7 +316,7 @@ automation:
   # policy_version: Version der validierten lokalen Automations-Policy.
   # Mögliche Werte: Nicht-leerer versionsierter String, zum Beispiel "1.0".
   # Auswirkung: Eine leere oder fehlende Version wird fail-closed abgelehnt.
-  policy_version: "1.1"
+  policy_version: "1.2"
 
   # mode: Explizit gewählter Betriebsmodus der Automations-Policy.
   # Mögliche Werte: off, shadow, assisted, auto_phase1, auto_phase2, full_auto.

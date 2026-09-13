@@ -4,9 +4,10 @@
 # PURPOSE:     Erstellt nicht-operative KI-Prognosen für den Review-Workflow.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-20
-# VERSION:     1.2.1
+# VERSION:     1.2.2
 # REQUIRES:    Python 3.11, typing
 # CHANGES:
+#   2026-09-13 | 1.2.2 | F11: Reject via final_score (AND mit personal_score war toter Code).
 #   2026-08-26 | 1.2.1 | Header und Kommentierung gemäß Implementierungsregeln ergänzt.
 #   2026-08-20 | 1.2.0 | A1: Vertragskonforme, nicht-operative Automationsmodi.
 # =============================================================================
@@ -100,8 +101,10 @@ def predict_decision(
         return "review", "score_unavailable"
 
     # -------------------------------------------------------------------------
-    # Beide Scores müssen dieselbe sichere Schwellenlogik erfüllen.
-    # Uneindeutige Werte verbleiben bewusst in der manuellen Review-Zone.
+    # Keep bleibt doppelt abgesichert (beide Scores hoch). Reject nutzt
+    # final_score allein: personal_score ist bereits Bestandteil von
+    # final_score; die UND-Bedingung machte Reject toten Code (F11).
+    # Uneindeutige Werte verbleiben in der manuellen Review-Zone.
     # -------------------------------------------------------------------------
     keep_min = float(automation["keep_score_min"])
     reject_max = float(automation["reject_score_max"])
@@ -110,7 +113,7 @@ def predict_decision(
 
     if personal_score >= keep_min and final_score >= keep_min:
         return "keep", "high_confidence_keep"
-    if personal_score <= reject_max and final_score <= reject_max:
+    if final_score <= reject_max:
         return "reject", "high_confidence_reject"
     return "review", "manual_review_zone"
 
