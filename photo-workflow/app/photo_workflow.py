@@ -4,9 +4,10 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.9.9
+# VERSION:     1.9.10
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
+#   2026-09-14 | 1.9.10 | F12: AUTO-VALIDATE warnt bei fehlenden Predictions (Hinweis auf Ordner-Umbenennung, Evidenz-Verlust).
 #   2026-09-13 | 1.9.9 | S1-Kalibrierung: smile_detection tag_threshold 0.65 -> 0.45 (policy-neutral, nur Keyword).
 #   2026-09-13 | 1.9.8 | S1: smile_score als 5. Komponente (Tiebreak 0.05), CSV-Spalte, Smile-Keyword-Verdrahtung.
 #   2026-09-13 | 1.9.7 | S2: Synology-Photos-SSH-Kurzanleitung im Abschlussbericht.
@@ -3194,7 +3195,7 @@ def run_phase2(cfg: dict, folder: str | None = None) -> None:
                             f"agreement={av_report['overall_agreement']}",
                         )
                     else:
-                        log(cfg, f"[AUTO-VALIDATE] batch={dir_path.name} uebersprungen: keine Predictions")
+                        log(cfg, f"[AUTO-VALIDATE] batch={dir_path.name} uebersprungen: keine Predictions gefunden (Ordner nach Verarbeitung umbenannt? Evidenz-Verlust: Batch-Ordnernamen nach dem Cull nicht mehr aendern)")
                 except Exception as exc:
                     log(cfg, f"[AUTO-VALIDATE] blockiert: {exc}", error=True)
 
