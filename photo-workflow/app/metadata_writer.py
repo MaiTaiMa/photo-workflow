@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-08-29
-# VERSION:     1.1.0
+# VERSION:     1.1.1
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-13 | 1.1.1 | S1-Kalibrierung: tag_threshold-Fallback an Pipeline-Default 0.45 angeglichen.
 #   2026-09-13 | 1.1.0 | S1: Keyword 'smile:found:true' ab smile_score >= tag_threshold.
 #   Initial version
 # =============================================================================
@@ -106,7 +107,7 @@ def build_culling_keywords(row: dict, cfg: dict) -> list[str]:
     smile_raw = row.get('smile_score')
     if smile_raw not in (None, ''):
         smile_threshold = float(
-            cfg.get('culling', {}).get('smile_detection', {}).get('tag_threshold', 0.65)
+            cfg.get('culling', {}).get('smile_detection', {}).get('tag_threshold', 0.45)
         )
         if float(smile_raw) >= smile_threshold:
             keywords.append('smile:found:true')
