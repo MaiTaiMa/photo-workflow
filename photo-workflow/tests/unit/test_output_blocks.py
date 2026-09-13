@@ -231,3 +231,25 @@ def test_face_proposal_summary_status_live_fallback(tmp_path, monkeypatch) -> No
     status = pw._face_proposal_summary_status(cfg)
     assert status["pending_review"] == 2
     assert status["registered_count"] == 5
+
+
+def test_abschlussbericht_zeigt_synology_ssh_hinweis(capsys) -> None:
+    """S2: SSH-Kurzanleitung wird immer im Abschlussbericht ausgegeben."""
+    from app.photo_workflow import print_scheduler_summary
+
+    payload = {
+        "status": "success",
+        "command": "pipeline",
+        "counts": {"found_temp_sd": 0, "found_temp_done": 0, "processed": 0,
+                   "moved_merged": 0, "finalized": 0, "skipped": 0,
+                   "errors": 0},
+        "paths": {"log_file": "l", "error_log": "e"},
+        "learning": {},
+        "started_at": "x",
+        "finished_at": "y",
+    }
+    print_scheduler_summary({}, payload)
+    out = capsys.readouterr().out
+    assert "SYNOLOGY PHOTOS" in out
+    assert "synoindex -A /volume1/photo/<ORDNER>" in out
+    assert "ssh <user>@<nas-ip>" in out

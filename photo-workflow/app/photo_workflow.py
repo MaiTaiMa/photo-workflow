@@ -4,9 +4,11 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.9.6
+# VERSION:     1.9.8
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
+#   2026-09-13 | 1.9.8 | S1: smile_score als 5. Komponente (Tiebreak 0.05), CSV-Spalte, Smile-Keyword-Verdrahtung.
+#   2026-09-13 | 1.9.7 | S2: Synology-Photos-SSH-Kurzanleitung im Abschlussbericht.
 #   2026-09-13 | 1.9.6 | F10: Face-Pool-Sync vor Limit-Berechnung verdrahtet.
 #   2026-09-13 | 1.9.5 | F9: Abschlussbericht liest pending_review live aus dem Pool.
 #   2026-09-13 | 1.9.4 | A1.3: policy_version fail-closed via _require_policy_version.
@@ -265,9 +267,10 @@ def load_config(path: str | Path) -> dict:
     cull.setdefault('keep_threshold', 0.65)
     cull.setdefault('reject_threshold', 0.35)
     cull.setdefault('weights', {'generic': 0.55, 'personal': 0.45})
-    cull.setdefault('component_weights', {'base_score': 0.55, 'eye_score': 0.10, 'personal_score': 0.20, 'family_score': 0.15})
+    cull.setdefault('component_weights', {'base_score': 0.50, 'eye_score': 0.10, 'personal_score': 0.20, 'family_score': 0.15, 'smile_score': 0.05})
     cull.setdefault('base_weights', {'sharp': 0.36, 'aesth': 0.36, 'exposure': 0.18, 'reference': 0.10})
     cull.setdefault('eye_detection', {'enabled': True})
+    cull.setdefault('smile_detection', {'enabled': True, 'tag_threshold': 0.65})
     cull.setdefault('reference_scoring', {'enabled': False, 'folder': str(Path(cfg['paths']['base_dir']) / 'reference_images'), 'recursive': False, 'preview_size': 32, 'cache_enabled': True, 'cache_dir': str(Path(cfg['paths']['base_dir']) / 'models' / 'reference_scoring'), 'force_cache_rebuild': False})
     cull.setdefault('star_rating_bands', {5: 0.90, 4: 0.75, 3: 0.60, 2: 0.40, 1: 0.20, 0: 0.00})
 
@@ -753,6 +756,16 @@ def print_scheduler_summary(cfg: dict, payload: dict) -> None:
     print("📝 NAECHSTE SCHRITTE:")
     print(f"  1. Neue Gesichter prüfen: {'Ausstehend' if has_warnings else 'Keine ausstehend'}")
     print("  2. Validierung:   automatisch am Batch-Ende (AUTO-VALIDATE)")
+    print()
+    print("\U0001F5C2  SYNOLOGY PHOTOS - Ordner manuell einlesen (via SSH)")
+    print("-" * 72)
+    print("  1. Finalisierten Ordner auf die NAS nach /volume1/photo/ kopieren")
+    print("  2. Per SSH anmelden und die Indexierung anstossen:")
+    print("       ssh <user>@<nas-ip>")
+    print("       sudo synoindex -A /volume1/photo/<ORDNER>   # neu hinzufuegen")
+    print("       sudo synoindex -R /volume1/photo/<ORDNER>   # neu einlesen")
+    print("  Hinweis: kein Slash am Ende des Pfads. Im NAS-Docker laeuft die")
+    print("  Indexierung automatisch (synofoto-bin-index-tool, s. USER_MANUAL).")
     print("=" * 72)
 
 
@@ -1451,11 +1464,12 @@ def score_image(
         'aesth_score': components.get('aesth'),
         'exposure_score': components.get('exposure'),
         'eye_score': components.get('eyes'),
+        'smile_score': components.get('smile'),
         'reference_score': components.get('reference'),
     }
 
 
-def combine_scores(base_score: float, eye_score: float | None, personal_score: float | None, family_score: float | None, cfg: dict) -> float:
+def combine_scores(base_score: float, eye_score: float | None, personal_score: float | None, family_score: float | None, cfg: dict, smile_score: float | None = None) -> float:
     """Kombiniert alle Score-Komponenten zu einem Gesamtscore."""
     weights = cfg.get('culling', {}).get('component_weights', {})
 
@@ -1464,6 +1478,7 @@ def combine_scores(base_score: float, eye_score: float | None, personal_score: f
         'eye_score': eye_score,
         'personal_score': personal_score,
         'family_score': family_score,
+        'smile_score': smile_score,
     }
 
     weighted = {
@@ -1733,6 +1748,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
                 'file': jpg.name,
                 'generic_score': round(scored['generic_score'], 4),
                 'base_score': round(scored['base_score'], 4),
+                'smile_score': round(scored['smile_score'], 4) if scored.get('smile_score') is not None else None,
                 'sharp_score': (
                     ''
                     if scored.get('sharp_score') is None
@@ -1829,6 +1845,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             scored.get('personal_score'),
             family_score,
             cfg,
+            smile_score=scored.get('smile_score'),
         )
 
         # Shadow-Prognose: verändert weder decision noch decision_reason.
@@ -1879,6 +1896,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
             'file': jpg.name,
             'generic_score': round(scored['generic_score'], 4),
             'base_score': round(scored['base_score'], 4),
+            'smile_score': round(scored['smile_score'], 4) if scored.get('smile_score') is not None else None,
             'sharp_score': (
                 ''
                 if scored.get('sharp_score') is None
@@ -2095,6 +2113,7 @@ def cull_folder(workdir: Path, cfg: dict) -> dict:
         'aesth_score',
         'exposure_score',
         'eye_score',
+        'smile_score',
         'reference_score',
         'personal_score',
         'clip_personal_score',

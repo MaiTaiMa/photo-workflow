@@ -4,9 +4,10 @@
 # PURPOSE:     Photo Workflow Module
 # AUTHOR:      Matzethias
 # DATE:        2026-08-29
-# VERSION:     1.0.0
+# VERSION:     1.1.0
 # REQUIRES:    Python 3.11+
 # CHANGES:
+#   2026-09-13 | 1.1.0 | S1: smile_component (Landmark-Laecheln) + 'smile' in base_score_components.
 #   Initial version
 # =============================================================================
 
@@ -342,6 +343,44 @@ def eye_open_component(image_path: str | Path, cfg: dict) -> Optional[float]:
     return clip01(sum(scores) / len(scores))
 
 
+def smile_component(image_path: str | Path, cfg: dict) -> Optional[float]:
+    """Schaetzt die Laechel-Intensitaet: Mundbreite relativ zum Augenabstand.
+
+    Heuristik: neutral ~0.8-0.9, Laecheln ~1.0-1.2 -> clip01((ratio - 0.80) / 0.40).
+    None bei keinem Gesicht, fehlenden Landmarks oder deaktivierter Config.
+    """
+    smile_cfg = cfg.get('culling', {}).get('smile_detection', {})
+    if not bool(smile_cfg.get('enabled', True)):
+        return None
+    if face_recognition is None:
+        return None
+    try:
+        image = face_recognition.load_image_file(str(image_path))
+        faces = face_recognition.face_landmarks(image)
+    except Exception:
+        return None
+    if not faces:
+        return None
+    ratios = []
+    for face in faces:
+        top_lip = face.get('top_lip')
+        left = face.get('left_eye')
+        right = face.get('right_eye')
+        if not top_lip or len(top_lip) < 7 or not left or not right:
+            continue
+        lip = np.asarray(top_lip, dtype=np.float32)
+        mouth_width = float(np.linalg.norm(lip[0] - lip[6]))
+        eye_dist = float(np.linalg.norm(
+            np.asarray(left, dtype=np.float32).mean(axis=0)
+            - np.asarray(right, dtype=np.float32).mean(axis=0)
+        ))
+        if eye_dist <= 0:
+            continue
+        ratios.append(clip01((mouth_width / (eye_dist + 1e-6) - 0.80) / 0.40))
+    if not ratios:
+        return None
+    return clip01(sum(ratios) / len(ratios))
+
 def _normalized_active_weights(weight_map: dict[str, float], active: dict[str, Optional[float]]) -> dict[str, float]:
     valid = {k: float(weight_map.get(k, 0.0)) for k, v in active.items() if v is not None and float(weight_map.get(k, 0.0)) > 0}
     total = sum(valid.values()) or 1.0
@@ -354,6 +393,7 @@ def base_score_components(image_path: str | Path, cfg: dict) -> Dict[str, Option
         'aesth': classic_aesthetic_component(image_path),
         'exposure': exposure_component(image_path),
         'eyes': eye_open_component(image_path, cfg),
+        'smile': smile_component(image_path, cfg),
         'reference': reference_score_component(image_path, cfg),
     }
 
