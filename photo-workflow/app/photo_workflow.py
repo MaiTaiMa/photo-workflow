@@ -4,9 +4,10 @@
 # PURPOSE:     Haupt-Entry-Point für Photo Workflow mit AI Culling, Face-Erkennung und MANUAL_KEEP.
 # AUTHOR:      Matzethias
 # DATE:        2026-08-09
-# VERSION:     1.9.8
+# VERSION:     1.9.9
 # REQUIRES:    Python 3.11, OpenCV-Contrib, NumPy, PyYAML, ExifTool
 # CHANGES:
+#   2026-09-13 | 1.9.9 | S1-Kalibrierung: smile_detection tag_threshold 0.65 -> 0.45 (policy-neutral, nur Keyword).
 #   2026-09-13 | 1.9.8 | S1: smile_score als 5. Komponente (Tiebreak 0.05), CSV-Spalte, Smile-Keyword-Verdrahtung.
 #   2026-09-13 | 1.9.7 | S2: Synology-Photos-SSH-Kurzanleitung im Abschlussbericht.
 #   2026-09-13 | 1.9.6 | F10: Face-Pool-Sync vor Limit-Berechnung verdrahtet.
@@ -270,7 +271,7 @@ def load_config(path: str | Path) -> dict:
     cull.setdefault('component_weights', {'base_score': 0.50, 'eye_score': 0.10, 'personal_score': 0.20, 'family_score': 0.15, 'smile_score': 0.05})
     cull.setdefault('base_weights', {'sharp': 0.36, 'aesth': 0.36, 'exposure': 0.18, 'reference': 0.10})
     cull.setdefault('eye_detection', {'enabled': True})
-    cull.setdefault('smile_detection', {'enabled': True, 'tag_threshold': 0.65})
+    cull.setdefault('smile_detection', {'enabled': True, 'tag_threshold': 0.45})
     cull.setdefault('reference_scoring', {'enabled': False, 'folder': str(Path(cfg['paths']['base_dir']) / 'reference_images'), 'recursive': False, 'preview_size': 32, 'cache_enabled': True, 'cache_dir': str(Path(cfg['paths']['base_dir']) / 'models' / 'reference_scoring'), 'force_cache_rebuild': False})
     cull.setdefault('star_rating_bands', {5: 0.90, 4: 0.75, 3: 0.60, 2: 0.40, 1: 0.20, 0: 0.00})
 

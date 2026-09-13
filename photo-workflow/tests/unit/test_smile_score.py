@@ -82,3 +82,13 @@ def test_smile_score_csv_contract():
     src = Path('app/photo_workflow.py').read_text(encoding='utf-8')
     assert "'smile_score',\n        'reference_score'," in src
     assert "'smile_score': components.get('smile')," in src
+
+
+def test_smile_keyword_default_threshold_045():
+    """Default-Schwelle 0.45 greift ohne explizite Config (policy-neutral)."""
+    cfg = {'metadata_culling': {'write_score_bands': False}}
+    row = {'decision': 'keep', 'decision_reason': 'r', 'star_rating': 4,
+           'smile_score': 0.5}
+    assert 'smile:found:true' in build_culling_keywords(row, cfg)
+    row['smile_score'] = 0.44
+    assert 'smile:found:true' not in build_culling_keywords(row, cfg)
