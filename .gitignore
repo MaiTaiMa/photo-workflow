@@ -28,6 +28,9 @@ NAS_EXAMPLE/
 #faces/
 #**/faces/
 
+# Lokales Wiederherstellungs-Backup (Image-Archiv, zu gross fuer Git)
+recovery/
+
 # Modell-Gewichte und safetensors
 *.safetensors
 *.onnx
