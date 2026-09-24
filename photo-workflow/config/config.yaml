@@ -22,32 +22,32 @@ paths:
   # base_dir: Obergrenze aller produktiven Workflow-Daten.
   # Mögliche Werte: Existierender NAS-Datenordner.
   # Auswirkung: Pfade außerhalb dieser Grenze werden sicherheitsbedingt blockiert.
-  base_dir: ../NAS_EXAMPLE
+  base_dir: ../
 
   # temp_error: Quarantäne für fehlerhafte oder unsichere Batch-Zustände.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Fehler-Batches werden isoliert; keine Folgeaktion wird ausgeführt.
-  temp_error: ../NAS_EXAMPLE/00_TEMP_ERROR
+  temp_error: ../00_TEMP_ERROR
 
   # temp_sd: Eingangsbereich für neue Kamera- oder SD-Karten-Batches.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Phase 1 liest ausschließlich aus diesem Verzeichnis.
-  temp_sd: ../NAS_EXAMPLE/01_TEMP_SD
+  temp_sd: ../01_TEMP_SD
 
   # temp_images: Arbeitsbereich nach erfolgreicher Eingangsprüfung.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Verarbeitete Batches werden von temp_sd hierher überführt.
-  temp_images: ../NAS_EXAMPLE/02_TEMP_IMAGES
+  temp_images: ../02_TEMP_IMAGES
 
   # temp_done: Manuell freigegebener Übergabebereich.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Nur freigegebene Batches dürfen die nächste Phase erreichen.
-  temp_done: ../NAS_EXAMPLE/03_TEMP_DONE
+  temp_done: ../03_TEMP_DONE
 
   # temp_final: Optionaler Bereich für lokale Endprüfung.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: true/false gibt es hier nicht; ein gesetzter Pfad aktiviert nur den Zielort.
-  temp_final: ../NAS_EXAMPLE/04_TEMP_FINAL
+  temp_final: ../04_TEMP_FINAL
 
   # publish_root: Separat validierte Wurzel fuer die Veroeffentlichung.
   # Moegliche Werte: Lokaler NAS-Pfad, der von Synology Photos indexiert wird.
@@ -58,37 +58,37 @@ paths:
   # manual_keep_inbox: Eingang für manuell geschützte Bilder.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Dateien hier erzwingen später eine Keep-Entscheidung.
-  manual_keep_inbox: ../NAS_EXAMPLE/MANUAL_KEEP/inbox
+  manual_keep_inbox: ../MANUAL_KEEP/inbox
 
   # manual_keep_used: Bereits idempotent zugeordnete Manual-Keep-Quellen.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Verhindert eine zweite Zuordnung derselben Quelle.
-  manual_keep_used: ../NAS_EXAMPLE/MANUAL_KEEP/used
+  manual_keep_used: ../MANUAL_KEEP/used
 
   # workflow_data_dir: Wurzel für Modelle, Referenzpools, Runtime und Reports.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
   # Auswirkung: Technische Daten bleiben von Batch-Dateien getrennt.
-  workflow_data_dir: ../NAS_EXAMPLE/WORKFLOW_DATA
+  workflow_data_dir: ../WORKFLOW_DATA
 
   # personal_model: Legacy-Kompatibilität für app/photo_workflow.py.
   # Mögliche Werte: JSON-Datei innerhalb von workflow_data_dir/models/taste.
   # Auswirkung: Der aktuelle CLI-Entry-Point legt den Elternordner dieses Pfads an.
-  personal_model: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste/user_taste_model.json
+  personal_model: ../WORKFLOW_DATA/models/taste/user_taste_model.json
 
   # lock_file: Legacy-Kompatibilität für app/photo_workflow.py.
   # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/locks.
   # Auswirkung: Verhindert parallele produktive CLI-Läufe.
-  lock_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/.script.lock
+  lock_file: ../WORKFLOW_DATA/runtime/locks/.script.lock
 
   # log_file: Legacy-Kompatibilität für app/photo_workflow.py.
   # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
   # Auswirkung: Der aktuelle CLI-Entry-Point schreibt normale Laufereignisse hierhin.
-  log_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/process.log
+  log_file: ../WORKFLOW_DATA/runtime/logs/process.log
 
   # error_log: Legacy-Kompatibilität für app/photo_workflow.py.
   # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
   # Auswirkung: Der aktuelle CLI-Entry-Point schreibt Fehler und Blockierungen hierhin.
-  error_log: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/error.log
+  error_log: ../WORKFLOW_DATA/runtime/logs/error.log
 
 # -----------------------------------------------------------------------------
 # runtime
@@ -99,37 +99,37 @@ runtime:
   # lock_file: Globaler Lock für produktive Runs.
   # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/locks.
   # Auswirkung: Ein vorhandener gültiger Lock blockiert einen parallelen Run.
-  lock_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/locks/.script.lock
+  lock_file: ../WORKFLOW_DATA/runtime/locks/.script.lock
 
   # state_dir: Atomare Batch-Zustandsdateien.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
   # Auswirkung: Ermöglicht Resume und Recovery mit Hash-Kette.
-  state_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/state
+  state_dir: ../WORKFLOW_DATA/runtime/state
 
   # quarantine_dir: Technische Quarantäne für unsichere Artefakte.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
   # Auswirkung: Quarantänedaten werden nicht weiterverarbeitet.
-  quarantine_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/quarantine
+  quarantine_dir: ../WORKFLOW_DATA/runtime/quarantine
 
   # log_file: Laufprotokoll.
   # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
   # Auswirkung: Protokolliert normale Ereignisse.
-  log_file: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/process.log
+  log_file: ../WORKFLOW_DATA/runtime/logs/process.log
 
   # error_log: Fehlerprotokoll.
   # Mögliche Werte: Datei innerhalb von workflow_data_dir/runtime/logs.
   # Auswirkung: Protokolliert Fehler getrennt vom normalen Lauf.
-  error_log: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/logs/error.log
+  error_log: ../WORKFLOW_DATA/runtime/logs/error.log
 
   # run_summaries_dir: Nicht-binäre Laufzusammenfassungen.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime.
   # Auswirkung: JSON- und CSV-Reports werden hier abgelegt.
-  run_summaries_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/run_summaries
+  run_summaries_dir: ../WORKFLOW_DATA/runtime/run_summaries
 
   # calibration_batches_dir: Revisionsfähige Kalibrierungsentscheidungen.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir/runtime/calibration.
   # Auswirkung: Menschliche Entscheidungen bleiben nachvollziehbar.
-  calibration_batches_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/calibration/batches
+  calibration_batches_dir: ../WORKFLOW_DATA/runtime/calibration/batches
 
 # -----------------------------------------------------------------------------
 # safety
@@ -493,7 +493,7 @@ culling:
     # folder: Wurzel des aktiven Stilreferenzpools.
     # Mögliche Werte: Ordner innerhalb von base_dir.
     # Auswirkung: Der aktuelle CLI-Entry-Point liest Bilder aus reference/.
-    folder: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference/reference
+    folder: ../WORKFLOW_DATA/samples/aesthetic_reference/reference
 
     # recursive: Unterordner des Referenzordners durchsuchen.
     # Mögliche Werte: true oder false.
@@ -513,7 +513,7 @@ culling:
     # cache_dir: Speicherort nicht-sensitiver Cache-Metadaten.
     # Mögliche Werte: Ordner innerhalb von workflow_data_dir/models/reference_scoring.
     # Auswirkung: Änderungen der Referenzen invalidieren diesen Cache.
-    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/reference_scoring
+    cache_dir: ../WORKFLOW_DATA/models/reference_scoring
 
     # force_cache_rebuild: Rebuild beim nächsten Run erzwingen.
     # Mögliche Werte: true oder false.
@@ -580,7 +580,7 @@ reference_pools:
     # Mögliche Werte: true oder false.
     # Auswirkung: true erlaubt Stilscore und Vorschläge; false pausiert nur diesen Adapter.
     enabled: true
-    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference
+    root_dir: ../WORKFLOW_DATA/samples/aesthetic_reference
     reference_dirname: reference
     new_dirname: new_refs
     selection_filename: selection.json
@@ -588,7 +588,7 @@ reference_pools:
     max_redundancy: 0.90
     preview_size: 32
     cache_enabled: true
-    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/reference_scoring
+    cache_dir: ../WORKFLOW_DATA/models/reference_scoring
     auto_rebuild_on_active_change: true
     force_cache_rebuild: false
 
@@ -598,14 +598,14 @@ reference_pools:
     # Mögliche Werte: true oder false.
     # Auswirkung: true erlaubt persönlichen Score und Trainingsvorschläge.
     enabled: true
-    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training
+    root_dir: ../WORKFLOW_DATA/samples/personal_training
     reference_dirname: reference
     new_dirname: new_refs
     selection_filename: selection.json
     min_quality_score: 0.70
     max_redundancy: 0.90
     cache_enabled: true
-    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste
+    cache_dir: ../WORKFLOW_DATA/models/taste
     auto_rebuild_on_active_change: true
     force_cache_rebuild: false
 
@@ -615,7 +615,7 @@ reference_pools:
     # Mögliche Werte: true oder false.
     # Auswirkung: true erlaubt Face-Vorschläge; eine leere reference/-Map pausiert nur die Person.
     enabled: true
-    root_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/faces
+    root_dir: ../WORKFLOW_DATA/faces
     reference_dirname: reference
     new_dirname: new_faces
     selection_filename: selection.json
@@ -624,7 +624,7 @@ reference_pools:
     crop_size: 256
     min_face_size: 128
     cache_enabled: true
-    cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
+    cache_dir: ../WORKFLOW_DATA/models/family_faces
     auto_rebuild_on_active_change: true
     force_cache_rebuild: false
 
@@ -641,13 +641,13 @@ family_recognition:
   # reference_dir: Wurzel aller Personenslugs.
   # Mögliche Werte: Ordner innerhalb von base_dir.
   # Auswirkung: Fehlt dieser Pfad, meldet Phase 1 reference_dir_missing.
-  reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/faces
+  reference_dir: ../WORKFLOW_DATA/faces
 
   # cache_dir: Speicherort ausschließlich für nicht-sensitive Cache-Metadaten.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir/models/family_faces.
   # Auswirkung: Referenz-Fingerprints und Laufstatus dürfen persistieren,
   #             Embeddings dürfen dort niemals gespeichert werden.
-  cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/family_faces
+  cache_dir: ../WORKFLOW_DATA/models/family_faces
 
   # cache_enabled: Cache-Metadaten verwenden.
   # Mögliche Werte: true oder false.
@@ -764,17 +764,17 @@ personal_scoring:
   # source_dir: Aktiver persönlicher Referenzordner.
   # Mögliche Werte: Ordner innerhalb von base_dir.
   # Auswirkung: Fehlt oder ist er leer, pausiert nur personal_score.
-  source_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training/reference
+  source_dir: ../WORKFLOW_DATA/samples/personal_training/reference
 
   # model_path: Modellartefakt für persönlichen Score.
   # Mögliche Werte: Datei innerhalb von workflow_data_dir/models/taste.
   # Auswirkung: Kann beim ersten Training erzeugt werden; keine Secrets enthalten.
-  model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste/user_taste_model.json
+  model_path: ../WORKFLOW_DATA/models/taste/user_taste_model.json
 
   # cache_dir: Cache-Metadaten des persönlichen Adapters.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir/models/taste.
   # Auswirkung: Änderungen aktiver Referenzen invalidieren den Cache.
-  cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/taste
+  cache_dir: ../WORKFLOW_DATA/models/taste
 
   # cache_enabled: Cache-Metadaten verwenden.
   # Mögliche Werte: true oder false.
@@ -812,13 +812,13 @@ models:
     # Auswirkung: true benötigt einen vollständigen lokalen Modellordner; false hält CLIP im Shadow/Off-Modus.
     enabled: false
     backend: transformers
-    model_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/clip
+    model_dir: ../WORKFLOW_DATA/models/clip
     local_files_only: true
     device: auto
 
   face_detection:
     backend: opencv
-    model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_detection_yunet_2023mar.onnx
+    model_path: ../WORKFLOW_DATA/models/face/face_detection_yunet_2023mar.onnx
     confidence_threshold: 0.65
     max_input_side: 1600
     nms_threshold: 0.30
@@ -827,7 +827,7 @@ models:
 
   face_recognition:
     backend: opencv
-    model_path: ../NAS_EXAMPLE/WORKFLOW_DATA/models/face/face_recognition_sface_2021dec.onnx
+    model_path: ../WORKFLOW_DATA/models/face/face_recognition_sface_2021dec.onnx
     distance_metric: cosine
     match_tolerance: 0.60
 
@@ -875,17 +875,17 @@ training:
   # sample_images_dir: Kompatibilitätspfad für train-personal.
   # Mögliche Werte: Ordner innerhalb von base_dir.
   # Auswirkung: Der CLI-Trainingslauf verwendet diesen Pfad bei fehlendem Argument.
-  sample_images_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training/reference
+  sample_images_dir: ../WORKFLOW_DATA/samples/personal_training/reference
 
   # exported_labels_dir: Zielordner für exportierte Trainingslabels.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir.
   # Auswirkung: Labels werden revisionsfähig getrennt von Bilddateien abgelegt.
-  exported_labels_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/training/exported_labels
+  exported_labels_dir: ../WORKFLOW_DATA/training/exported_labels
 
   # runs_dir: Zielordner für Trainingslauf-Artefakte.
   # Mögliche Werte: Ordner innerhalb von workflow_data_dir.
   # Auswirkung: Technische Trainingsergebnisse bleiben im erlaubten Datenbereich.
-  runs_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/training/runs
+  runs_dir: ../WORKFLOW_DATA/training/runs
 
   # min_labeled_images: Mindestzahl gelabelter Bilder für einen Trainingslauf.
   # Mögliche Werte: Positive Ganzzahl.
@@ -955,28 +955,28 @@ manual_keep:
   # Auswirkung: Bilder, deren Dateinamen in diesem Ordner liegen, werden zwingend als KEEP markiert.
   #           Der Ordner muss existieren; bei Fehlen wird MANUAL_KEEP still ubersprungen.
   # Voraussetzung: Ordnerstruktur MANUAL_KEEP/inbox/BATCH_NAME/ oder MANUAL_KEEP/inbox/IMAGE.JPG
-  inbox_dir: ../NAS_EXAMPLE/MANUAL_KEEP/inbox
+  inbox_dir: ../MANUAL_KEEP/inbox
 
   # used_dir: Bereits idempotent zugeordnete Manual-Keep-Quellen.
   # Mögliche Werte: Ordner innerhalb von base_dir.
   # Auswirkung: Nach erfolgreicher Phase-1-Verarbeitung werden inbox-Bilder hierhin verschoben.
   #           Verhindert doppelte Zuordnung derselben Quelle bei wiederholten Läufen.
   # Hinweis: Der Ordner wird bei Bedarf automatisch erstellt.
-  used_dir: ../NAS_EXAMPLE/MANUAL_KEEP/used
+  used_dir: ../MANUAL_KEEP/used
 
   # locks_dir: Lock-Verzeichnis für AP8-Idempotenz.
   # Mögliche Werte: Ordner innerhalb von MANUAL_KEEP.
   # Auswirkung: Verhindert parallele Zuordnungen desselben Bildes.
   #           Jede Zuordnung erhält einen zeitlich begrenzten Lock.
   # Hinweis: Wird intern verwendet; manuelle Eingriffe sind nicht erforderlich.
-  locks_dir: ../NAS_EXAMPLE/MANUAL_KEEP/.locks
+  locks_dir: ../MANUAL_KEEP/.locks
 
   # recovery_log: Recovery-Log für MANUAL_KEEP-Zuordnungen.
   # Mögliche Werte: Datei innerhalb von MANUAL_KEEP.
   # Auswirkung: Protokolliert Zuordnungen und ermöglicht Wiederherstellung nach Fehlern.
   #           Enthalt Assignment-IDs, Zeitstempel und User-Informationen.
   # Hinweis: Wird intern verwendet; Format ist JSON.
-  recovery_log: ../NAS_EXAMPLE/MANUAL_KEEP/.recovery_info.json
+  recovery_log: ../MANUAL_KEEP/.recovery_info.json
 
   # similarity_threshold: Minimale Ähnlichkeit für MANUAL_KEEP-Match.
   # Mögliche Werte: Fließkommazahl von 0.0 bis 1.0.
@@ -1010,7 +1010,7 @@ reporting:
   # Auswirkung: true bei write_json_summary schreibt Reports nur in diesen Ordner.
   #           Der Ordner wird bei Bedarf automatisch erstellt.
   # Hinweis: Reports sind revisionsfä·¨hig und enthalten Config-Fingerprint, Hashes und Zeitstempel.
-  json_summary_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/run_summaries
+  json_summary_dir: ../WORKFLOW_DATA/runtime/run_summaries
 
   # stdout_mode: Ausgabeformat für Scheduler/Administration.
   # Mögliche Werte: scheduler_mail.
@@ -1039,20 +1039,20 @@ clip_scoring:
 
   # Lokaler Pfad eines vollständig vorhandenen Transformers-CLIP-Modells.
   # Der Workflow lädt nur lokal und führt keinen Modell-Download durch.
-  model_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/models/clip
+  model_dir: ../WORKFLOW_DATA/models/clip
 
   # Referenzordner für optionale ästhetische CLIP-Analysen.
   # Fehlt oder ist er leer, bleibt clip_aesthetic_score nicht verfügbar.
-  aesthetic_reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/aesthetic_reference
+  aesthetic_reference_dir: ../WORKFLOW_DATA/samples/aesthetic_reference
 
   # Aktive persönliche CLIP-Referenzbilder.
   # Inhalts-, Pfad-, Hinzufügungs- und Entfernungsänderungen invalidieren
   # den Referenz-Embedding-Cache automatisch.
-  personal_reference_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/samples/personal_training/reference
+  personal_reference_dir: ../WORKFLOW_DATA/samples/personal_training/reference
 
   # Kontrollierter Runtime-Ordner für den Referenz-Embedding-Cache.
   # Der Cache liegt nicht im Repository und verändert keine Bilddateien.
-  cache_dir: ../NAS_EXAMPLE/WORKFLOW_DATA/runtime/scoring
+  cache_dir: ../WORKFLOW_DATA/runtime/scoring
 
   # true: Keine reale CLIP-Inferenz; Scores bleiben None.
   # false: Das lokale CLIP-Modell erzeugt reale Bild-Embeddings.
