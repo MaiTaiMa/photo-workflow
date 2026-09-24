@@ -384,7 +384,6 @@ phase2:
   # Auswirkung: true aktiviert den Transfer nach temp_final (Pfad in paths.temp_final).
   move_to_temp_final: true
 
-  dry_run: false
   # dry_run: Nur simulieren, keine Dateioperationen.
   # Mögliche Werte: true oder false.
   # Auswirkung: true protokolliert nur, false führt Moves tatsächlich aus.
