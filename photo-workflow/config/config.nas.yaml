@@ -53,7 +53,7 @@ paths:
   # Moegliche Werte: Lokaler NAS-Pfad, der von Synology Photos indexiert wird.
   # Auswirkung: finalization.publish_to_synology_photos.target_folder muss
   #             innerhalb dieser Wurzel liegen (validate_publish_target).
-  publish_root: /volume1/photo
+  publish_root: /volume1/photo/wirser
 
   # manual_keep_inbox: Eingang für manuell geschützte Bilder.
   # Mögliche Werte: Unterordner innerhalb von base_dir.
