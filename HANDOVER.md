@@ -1,99 +1,134 @@
-# Handover — photo-workflow — Neustart 2026-09-24 (v7.0)
+# Handover — photo-workflow — Neustart 2026-09-24 (v7.1)
 
 ## 🎯 NÄCHSTER GROSSER AUFTRAG: Phase 3 implementieren
 
-**Das ist ab sofort der wichtigste offene Punkt, vor allen anderen unten
-gelisteten Themen.**
+**Das ist weiterhin der wichtigste offene Punkt.** Heute (2026-09-24) wurde
+Phase 3 erstmals live auf dem NAS getestet — die Sicherheitslage ist jetzt
+mit echtem Output belegt, nicht mehr nur Code-Lektüre.
 
-### Ausgangslage (belegt am 2026-09-24, NAS-Testlauf)
+### Heutige Testreihe (2026-09-24, 15:26–15:35 Uhr, alle mit `--dry-run`)
 
-Phase 3 ist im aktuellen Code (v1.4) nur ein Stub. Jeder Pipeline-Lauf zeigt:
+| # | Befehl (`--folder` / `--target`) | Ergebnis |
+|---|---|---|
+| 1 | `--folder BATCHNAME` (Platzhalter-Test) | `Batch-Ordner existiert nicht: BATCHNAME` — Docker-Syntax bestätigt korrekt |
+| 2 | `--folder 2025-11-01` (nur Batch-Name) | `Batch-Ordner existiert nicht: 2025-11-01` — bare Name wird NICHT mit `TEMP_DONE` verknüpft |
+| 3 | `--folder /volume1/TEMP/03_TEMP_DONE/2025-11-01` (voller Pfad) | weiterhin „existiert nicht" — Batch lag nicht mehr dort |
+| 4 | `--folder /volume1/TEMP/04_TEMP_FINAL/2025-11-01` (voller Pfad, korrekter Ort) | **`[PHASE3] Ergebnis: finalization_disabled`** — Ordner gefunden, aber sauber gestoppt |
 
-```
-[PIPELINE] Phase phase3 noch nicht implementiert
-```
+### Ergebnis: Phase 3 ist heute dreifach als sicher verifiziert
 
-Kein Datei-Transfer, kein Metadaten-Handoff findet statt — unabhängig davon,
-was in der Config steht.
+1. **Pipeline-Dispatcher:** `run_phase3(cfg, folder)` ist im `pipeline`-Befehl
+   fest auskommentiert (`app/photo_workflow.py`) — der tägliche Task-
+   Scheduler-Lauf kann Phase 3 nie real auslösen.
+2. **Config-Schalter:** `publish_to_synology_photos.enabled: false` in
+   `config.nas.yaml` — Kommentar im Original: „false beendet PHASE3 ohne
+   Datei- oder API-Aktion". Genau das trat heute ein.
+3. **Live-Test mit echtem Batch:** Direkter `phase3`-Subbefehl mit realem,
+   existierendem Batch (`2025-11-01`) endete nachweislich bei
+   `{'status': 'finalization_disabled', 'batch_id': '2025-11-01'}` —
+   `Moved/Merged: 0`, `Finalized: 0`, `Errors: 0`. Kein `synoindex`-Aufruf,
+   kein API-Call, keine Dateibewegung.
 
-### Ziel
+**Damit ist die ursprüngliche Sorge des Nutzers („hat die NAS von sich aus
+einen Init-Befehl gesendet, der die Synology-Indexierung ausgelöst hat")
+für den heutigen Tag mit echtem Output widerlegt.** Die hohe NAS-Last vom
+Nachmittag kam von unabhängigen Synology-Diensten (Photos-Indexierung,
+Drive-Sync, Thumbnail-Erzeugung — siehe `top`-Output), nicht vom Workflow.
+Der einzige zusätzliche Lauf um 16:17 Uhr wurde vom Nutzer selbst bewusst
+über die DSM-Weboberfläche ausgelöst.
 
-Phase 3 so implementieren, dass sie zwei Dinge leistet:
+### Zwei Dokumentations-Lücken, live gefunden (zu korrigieren)
 
-1. **Datei-Transfer:** Freigegebene Batches aus `03_TEMP_DONE` nach
-   `publish_root` (`/volume1/photo/<person>`) verschieben, gesteuert über
-   `faces.target_folder` (Beispiel: Person „wirser" → bereits konfiguriert
-   auf `/volume1/photo/wirser`).
-2. **Metadaten-Handoff an Synology Photos:** Möglichst viele der in Phase 1/2
-   erzeugten Metadaten (Tags, Rating/Keep-Score, erkannte Personen,
-   Serien-Zugehörigkeit) sollen für Synology Photos sichtbar/nutzbar werden —
-   nicht nur die reine Bilddatei.
+1. **`--folder`-Argument erwartet einen vollen Pfad**, nicht nur den
+   Batch-Namen. `run_phase3()` führt bei explizit übergebenem `--folder`
+   lediglich `Path(folder)` aus, **ohne** Verknüpfung mit
+   `paths.temp_done`/`temp_final` — anders als der automatische Modus ohne
+   `--folder` (der intern bereits den vollen Pfad aus der Batch-Liste holt).
+   Das README-Beispiel (`phase3 --folder 2025-11-01 --target ...`) ist damit
+   irreführend. Fix-Kandidat: entweder Doku korrigieren (vollen Pfad
+   verlangen) oder Code so anpassen, dass ein bare Name automatisch mit
+   `temp_final` verknüpft wird — Entscheidung für den nächsten
+   Implementierungsschritt offen.
+2. **Abgeschlossene Batches liegen nach Phase 2 in `04_TEMP_FINAL`**, nicht
+   wie in `docs/spec_v1-2/00_Geltungsbereich_und_Zielbild.md` beschrieben in
+   `03_TEMP_DONE`. Die Spezifikation nennt `03_TEMP_DONE` explizit als
+   PHASE3-Quelle — das widerspricht dem live beobachteten Zustand. Vor dem
+   nächsten Implementierungsschritt klären, ob die Spezifikation veraltet
+   ist oder ob `04_TEMP_FINAL` versehentlich zum Endpunkt wurde, wo eigentlich
+   PHASE3 selbst hätte greifen sollen.
 
-### Nicht-Ziel (für den ersten Entwicklungsschritt)
+### Empfohlener nächster Schritt (noch nicht ausgeführt)
 
-- Keine Änderung an Phase 1/2-Scoring-Logik.
-- Keine Aktivierung von `write_known_persons` oder `album_upsert` ohne
-  erfolgreichen Pilotlauf (siehe Config-Kommentare — beide Flags sind
-  explizit „nur nach erfolgreichem Pilotlauf auf true setzen").
+Ein **kontrollierter Pilotlauf mit `enabled: true` + `--dry-run`**, um zu
+sehen, ob der eigentliche Transfer-Pfad (`[PHASE3] Dry-Run: <source> ->
+<target>`) korrekt greift, wenn der Schalter kurzzeitig aktiviert wird:
 
-### Relevante Config-Sektion (`config.nas.yaml`)
+1. In `config.nas.yaml` temporär `publish_to_synology_photos.enabled: true`
+   setzen (nur lokal auf dem NAS, nicht committen).
+2. Denselben Befehl wie Testreihe #4 erneut mit `--dry-run` ausführen.
+3. Erwartung: `[PHASE3] Dry-Run: /volume1/TEMP/04_TEMP_FINAL/2025-11-01 ->
+   /volume1/photo/wirser` — weiterhin keine echte Dateibewegung, aber jetzt
+   sichtbar, ob der Transfer-Pfad grundsätzlich funktioniert.
+4. Schalter danach sofort wieder auf `false` zurücksetzen.
+5. Erst danach über einen echten (nicht-Dry-Run) Piloten mit einem kleinen
+   Testbatch nachdenken — inklusive Metadaten-Handoff-Weg (XMP/EXIF
+   empfohlen, siehe unten).
+
+### Ziel (unverändert)
+
+Phase 3 so implementieren, dass sie zwei Dinge leistet: Datei-Transfer
+`04_TEMP_FINAL` (korrigierter Ort, siehe oben) → `publish_root`, und
+Metadaten-Handoff an Synology Photos (Tags, Rating, erkannte Personen,
+Serien-Zugehörigkeit).
+
+### Relevante Config-Sektion (`config.nas.yaml`, bestätigt am 2026-09-24)
 
 ```
 publish_root: /volume1/photo
-faces.target_folder (Beispiel "wirser"): /volume1/photo/wirser
-publish_to_synology_photos.enabled: <klären, aktuell unklar ob false>
+faces.target_folder (Person "wirser"): /volume1/photo/wirser
+finalization.enabled: true
+finalization.mode: copy          # "move/copy, verify, source removal — copy erhält die Quelle"
+publish_to_synology_photos.enabled: false   # Hauptschalter — aktuell AUS
+album_upsert: false               # "nur nach erfolgreichem Pilotlauf auf true setzen"
 synology_api:
   protocol: http
   write_rating: true
   write_tags: true
-  # Endpunkt ohne Pilotlauf-Nachweis — siehe docs/spec_v1-2/06_SynologyPhotosAPI.md
-max_active: 100   # weitere Aktivierung wird blockiert
+  # Endpunkt ohne Pilotlauf-Nachweis — siehe docs/spec_v1-2/06_Synology_Photos_API.md
 ```
 
-**Wichtiger Bestandsschutz:** `docs/spec_v1-2/...` nicht verändern — nur
-lesen. Die Spezifikation `06_SynologyPhotosAPI.md` beschreibt den
-vorgesehenen Endpunkt/Ansatz, ist aber laut eigenem Kommentar **noch nicht
-pilotiert**. Erster Schritt sollte ein kleiner, isolierter Pilotlauf sein
-(ein einzelnes Testbild, kein Produktionsbatch), bevor die Funktion an echten
-Batches aktiv wird.
+### Zwei mögliche technische Wege für den Metadaten-Handoff (unverändert, zu bewerten)
 
-### Zwei mögliche technische Wege für den Metadaten-Handoff (zu bewerten)
-
-1. **XMP/EXIF-Sidecar-Schreiben** vor dem Datei-Move: Tags, Rating und
-   Personennamen direkt in die Bilddatei bzw. `.xmp`-Sidecar schreiben
-   (ExifTool ist im Container bereits installiert —
-   `libimage-exiftool-perl`, siehe Dockerfile). Synology Photos liest EXIF/XMP
-   beim Indexieren automatisch mit ein — kein API-Call nötig, robuster gegen
-   API-Änderungen.
-2. **Synology Photos API direkt ansprechen** (`synology_api`-Sektion,
-   `write_rating`/`write_tags`): setzt Rating/Tags nach der Indexierung
-   gezielt per API — genauer steuerbar, aber abhängig vom nicht pilotierten
-   Endpunkt und ggf. von Login-Session-Handling.
-
-**Empfehlung für den ersten Wurf:** Weg 1 (XMP/EXIF) zuerst, weil er ohne
-zusätzliche Authentifizierung funktioniert und mit dem vorhandenen
-`synoindex -A`/`synoindex -R`-Mechanismus (bereits im Abschlussbericht der
-Pipeline als Hinweis dokumentiert) zusammenspielt. Weg 2 danach als Ergänzung
-für Rating/Tags, die EXIF/XMP nicht abdeckt.
+1. **XMP/EXIF-Sidecar-Schreiben** vor dem Datei-Move (ExifTool bereits im
+   Container installiert — `libimage-exiftool-perl`). Synology Photos liest
+   EXIF/XMP beim Indexieren automatisch mit ein. **Empfehlung: zuerst
+   diesen Weg verfolgen.**
+2. **Synology Photos API direkt ansprechen** (`synology_api`-Sektion) —
+   laut Spezifikation „Adapter ist vorbereitet, aber `apply_metadata()`
+   noch nicht vollständig implementiert". Genauer steuerbar, aber
+   abhängig vom nicht pilotierten Endpunkt.
 
 ### Akzeptanzkriterien (bevor „implementiert" behauptet wird)
 
-- Ein Testbatch mit 3–5 Bildern läuft vollständig durch `pipeline` und landet
-  nachweislich unter `/volume1/photo/<person>/`.
-- `ls -la` auf dem Zielordner zeigt die Dateien mit korrektem Eigentümer
-  (matthias, dank `user: "1029:100"` in der Compose-Datei).
-- Mindestens Tags oder Rating sind nach dem Move in den Dateien nachweisbar
-  (`exiftool <datei>` zeigt die geschriebenen Felder).
-- `sudo synoindex -A /volume1/photo/<ORDNER>` angestoßen, danach in der
-  Synology Photos Weboberfläche geprüft, ob Tag/Rating sichtbar sind.
-- Kein bestehender Test (`pytest tests/unit/`) wird durch die Änderung rot.
+- Pilotlauf mit `enabled: true` + `--dry-run` zeigt korrekte
+  Dry-Run-Zeile mit Quelle/Ziel (siehe „Empfohlener nächster Schritt").
+- Ein Testbatch mit 3–5 Bildern läuft vollständig durch und landet
+  nachweislich unter `/volume1/photo/<person>/` mit korrektem Eigentümer.
+- Mindestens Tags oder Rating sind nach dem Move in den Dateien
+  nachweisbar (`exiftool <datei>`).
+- `sudo synoindex -A /volume1/photo/<ORDNER>` angestoßen, Sichtprüfung in
+  der Synology Photos Weboberfläche.
+- Kein bestehender Test (`pytest tests/unit/`) wird rot.
+- Die beiden Dokumentations-Lücken (Pfad-Erwartung `--folder`,
+  `03_TEMP_DONE` vs. `04_TEMP_FINAL`) sind vor dem Implementierungsschritt
+  bewusst aufgelöst (Entscheidung dokumentiert, nicht nur übersehen).
 
 ---
 
 ## Startanweisung für den neuen Chat (unverändert gültig)
 
-Arbeite lokal-first, kleinpaketig und token-effizient. Behaupte niemals, dass
-eine Änderung implementiert oder verifiziert ist, bevor der Nutzer den
+Arbeite lokal-first, kleinpaketig und token-effizient. Behaupte niemals,
+dass eine Änderung implementiert oder verifiziert ist, bevor der Nutzer den
 lokalen Output von Ausführung und Tests geliefert hat. GitHub dient nur
 lesend zur Orientierung; Änderungen entstehen lokal über `paste.txt`. Kein
 Commit oder Push ohne ausdrückliche Anweisung.
@@ -127,8 +162,7 @@ Schutzmechanismus angeben.
   doppelt prüfen. Umlaute in Ankern als `\uXXXX`-Escapes schreiben.
 - `paste.txt` niemals zweimal ausführen: Der Anker-Schutz bricht den
   Zweitlauf saubar ab; bei unklarem Zwischenstand zuerst die Markierungen
-  prüfen, dann nur die fehlenden Teile als Reparaturpaket liefern. Danach
-  immer den Ist-Zustand read-only verifizieren, bevor weitere Pakete folgen.
+  prüfen, dann nur die fehlenden Teile als Reparaturpaket liefern.
 - Alte `paste.txt`-Reste vergiften Folgepakete: vor der Ausführung `head -3
   paste.txt` prüfen.
 - Bei Mehrfachtreffern bewusst `count=N` im Schutzmechanismus verwenden.
@@ -140,14 +174,22 @@ Schutzmechanismus angeben.
 - Grep-Falle: exakte Funktionsnamen verwenden; bei Negativbefunden
   zusätzlich die Dateiebene und vorhandene Artefakte prüfen.
 - Verifikation von Pfadangaben in der Dokumentation: lokaler `ls`-Output
-  statt Annahme.
+  statt Annahme — bewahrheitet sich erneut am 2026-09-24 (Phase-3-Pfadtest).
+- **Neu (2026-09-24): Shell-Syntax in Testbefehlen prüfen.** Platzhalter
+  wie `<NAME>` werden von `sh` als Ein-/Ausgabe-Umleitung interpretiert
+  (`-sh: NAME: No such file or directory`). In Beispielbefehlen nie
+  spitze Klammern für Platzhalter verwenden.
+- **Neu (2026-09-24): CLI-Argumente nicht ungeprüft aus README übernehmen.**
+  `--folder <name>` ohne vollen Pfad funktioniert bei Phase 3 nicht wie
+  dokumentiert — vor jedem CLI-Test kurz im Code gegenprüfen, was der
+  Parameter wirklich erwartet.
 
 ---
 
 ## Lokaler Arbeitsort
 
 - Repository: `MaiTaiMa/photo-workflow`; im Repository liegt der Code unter
-  `photo-workflow/` (verschachtelte Wurzel).
+  `photo-workflow/` (verschachtelte Wurzel). Default-Branch: `main`.
 - Lokaler Projektordner: `~/Programme/photo-workflow/photo-workflow/`
 - Ausführung: `.venv/bin/python paste.txt` (venv über
   `source .venv/bin/activate` aktivieren).
@@ -162,16 +204,38 @@ Schutzmechanismus angeben.
 
 - Lokal: Podman 4.9.3 mit CLI-Emulation.
 - Zielplattform: Synology-NAS (Intel/amd64) mit Container Manager.
-- **NAS-Deployment ist seit 2026-09-24 produktiv aufgesetzt** — siehe
-  eigenständige Referenzdatei `NAS_DOCKER_DEPLOYMENT_REFERENCE_2026-09-24_v2.md`
-  für alle Details (Pfade, Compose-Datei, Task Scheduler, Rechte-Fallstricke).
-  Kurzfassung:
-  - Projekt liegt unter `/volume2/docker/photo-workflow/`.
-  - Aktive Config: `/volume1/TEMP/WORKFLOW_DATA/config/config.nas.yaml`.
-  - Container läuft als `user: "1029:100"` (matthias), nicht mehr als root.
-  - Task Scheduler eingerichtet und erfolgreich getestet (täglicher Lauf via
-    `run_daily.sh`, Uhrzeit noch final festzulegen).
-  - Image-Backup vorhanden: `/volume1/TEMP/99_BACKUP/photo-workflow-image_2026-09-24.tar`.
+- **NAS-Deployment seit 2026-09-24 produktiv**, inklusive erfolgreichem
+  Phase-3-Sicherheitstest (siehe oben). Details zu Pfaden, Compose-Datei,
+  Task Scheduler, Rechte-Fallstricken: separate Referenzdatei
+  `NAS_DOCKER_DEPLOYMENT_REFERENCE_2026-09-24_v2.md`.
+- Projekt liegt unter `/volume2/docker/photo-workflow/`.
+- Aktive Config: `/app/config/config.nas.yaml` (im Container gemountet aus
+  `./config` relativ zur `docker-compose.yml`).
+- Container läuft als `user: "1029:100"` (matthias) für den regulären
+  `pipeline`-Befehl; Ad-hoc-Testbefehle mit `sudo docker compose run`
+  laufen unter dem aufrufenden Systembenutzer.
+- Docker-Compose-Kern:
+  ```yaml
+  services:
+    photo_workflow:
+      build: .
+      container_name: synology_photo_workflow
+      volumes:
+        - /volume1/TEMP:/volume1/TEMP
+        - ./config:/app/config
+      working_dir: /app
+      command: ["--config", "/app/config/config.yaml", "pipeline"]
+      restart: "no"
+  ```
+- Manueller Phase-3-Testaufruf-Muster (siehe Testreihe oben):
+  ```bash
+  sudo docker compose run --rm photo_workflow --config /app/config/config.nas.yaml phase3 --folder <VOLLER_PFAD> --target /volume1/photo/<PERSON> --dry-run
+  ```
+- Diagnose „was sieht der Container wirklich" (Mount-/Namensprüfung ohne
+  Workflow-Logik):
+  ```bash
+  sudo docker compose run --rm --entrypoint sh photo_workflow -c "ls -la /volume1/TEMP/04_TEMP_FINAL/"
+  ```
 
 ---
 
@@ -184,6 +248,8 @@ Schutzmechanismus angeben.
   (Paket 9a + 7/7b + X2), `468a383` (vor 9a), `acaa970` (Basis).
 - Rollback: `git reset --hard <sha>`; vor jedem Reset `git status --short`
   ausführen und relevante JSON- bzw. Face-Pool-Dateien sichern.
+- Am 2026-09-24 wurden **keine Code-Änderungen committet** — die gesamte
+  Session war Diagnose/Test auf dem NAS, kein Push.
 
 ---
 
@@ -192,21 +258,21 @@ Schutzmechanismus angeben.
 Suite: `tests/` läuft mit 432/432 grün (Stand 2026-09-16, unverändert seit
 F12).
 
-**NAS-Deployment (neu, 2026-09-24):** Build erfolgreich (12/12 Schritte,
-Image ~468 MB), Smoke-Test mit echten Produktionsdaten bestanden
-(`readiness-report` lieferte reale Werte), Task-Scheduler-Testlauf
-erfolgreich (Exit-Code 0). Details siehe NAS-Referenzdatei.
+**NAS-Deployment (2026-09-24):** Build erfolgreich, Smoke-Test bestanden,
+Task-Scheduler-Testlauf erfolgreich (drei manuelle Läufe: 15:47, 15:49,
+16:17 Uhr — letzterer bewusst über die DSM-Weboberfläche ausgelöst).
+**Phase-3-Sicherheitstest (2026-09-24, neu):** Vier `--dry-run`-Aufrufe,
+letzter mit echtem Batch endet korrekt bei `finalization_disabled` — siehe
+Abschnitt ganz oben für die volle Testreihe und Beweislage.
 
 ### Session 2026-09-16 (Altbestand, weiterhin gültig)
 
-- Erste Policy-1.3-Validierung gezählt: Batch vom 2026-04-24, Zählerstand
-  1 von 3 benötigten 1.3-Batches.
+- Erste Policy-1.3-Validierung gezählt: Zählerstand 1 von 3 benötigten
+  1.3-Batches.
 - Haltelinien funktionieren (`readiness_not_ready` korrekt gestoppt am
-  2026-04-25, 2026-09-05 **und erneut bestätigt am 2026-09-24** beim
-  NAS-Testlauf, Batch `2025-11-01`, `full_auto`-Modus, Gate korrekt
-  verweigert).
-- Face-Review abgeschlossen, `new_faces` überall leer (Altbestand); am
-  2026-09-24 erneut 20 neue Face-Vorschläge aus dem NAS-Testlauf offen
+  2026-04-25, 2026-09-05 und erneut am 2026-09-24 bei Batch `2025-11-01`,
+  `full_auto`-Modus).
+- Face-Review: 20 neue Vorschläge aus dem heutigen NAS-Testlauf offen
   (Lilly, Chris, Michele, Nelly, Finn).
 - A2 abgeschlossen und gepusht (`b1e9a0a`).
 
@@ -214,60 +280,58 @@ erfolgreich (Exit-Code 0). Details siehe NAS-Referenzdatei.
 
 ## Offene Punkte (bewusst vertagt, mit Beleg)
 
-Schweregrad-Logik: **hoch** = größter aktueller Baustein (Phase 3, siehe
-oben). **Mittel** = blockiert das Zielbild, ist aber sicher. **Niedrig** =
-Hygiene, Dokumentation, Aufräumarbeiten.
+Schweregrad-Logik: **hoch** = größter aktueller Baustein. **Mittel** =
+blockiert das Zielbild, ist aber sicher. **Niedrig** = Hygiene/Doku.
 
-0. **[hoch] Phase 3 implementieren** — siehe Abschnitt ganz oben. Alle
-   anderen Punkte sind nachrangig.
-1. **[mittel] Evidenz unter Policy 1.3 sammeln (1/3):** Mindestens zwei
-   weitere Batches reviewen → `03_TEMP_DONE` → AUTO-VALIDATE.
-2. **[mittel] Evidenz-Qualität bewerten:** Nach etwa drei validierten
-   1.3-Batches Übereinstimmung, `keep_precision`, `reject_precision` gegen
-   Ziel ≥ 95 % prüfen. Aktuell (Stand 2026-09-24, NAS-Readiness-Report):
-   `agreement 89,3–95,8 %`, `keep_precision 57–66,7 %` (Ziel verfehlt),
+0. **[hoch] Phase 3 implementieren** — siehe Abschnitt ganz oben.
+   Sicherheitslage heute dreifach verifiziert; nächster Schritt ist der
+   Pilotlauf mit `enabled: true` + `--dry-run` (noch nicht ausgeführt).
+0b. **[hoch, neu] Zwei Doku/Code-Diskrepanzen aus dem heutigen Test
+    klären**, bevor an der echten Implementierung weitergearbeitet wird:
+    `--folder`-Pfaderwartung und `03_TEMP_DONE` vs. `04_TEMP_FINAL` als
+    PHASE3-Quelle (Details oben).
+1. **[mittel] Evidenz unter Policy 1.3 sammeln (1/3):** unverändert.
+2. **[mittel] Evidenz-Qualität bewerten:** Stand 2026-09-24:
+   `agreement 89,3–95,8 %`, `keep_precision 57–66,7 %` (Ziel ≥95 % verfehlt),
    `reject_precision 100 %`.
-3. **[mittel] F10-Sync-Funktionstest:** `pending_review` muss beim nächsten
-   Cull-Lauf auf null fallen.
-4. **[mittel] `publish_to_synology_photos`-Schalter klären**, sobald an
-   Phase 3 gearbeitet wird — Kommentar in der Config deutet an, dass `false`
-   die komplette Phase 3 (nicht nur die API-Anbindung) beendet. Vor
-   Implementierungsbeginn per `grep` mit korrektem YAML-Kontext gegenprüfen.
-5. **[niedrig] `personal_score` diskriminiert kaum (M0):** unverändert.
-6. **[niedrig] Zwei Fingerprint-Algorithmen** dokumentiert.
-7. **[niedrig] `torch`/`transformers` im Container** bewusst nicht enthalten.
-8. **[niedrig] Altes Image lokal:** `docker rmi 666ec969446e` — Status
+3. **[mittel] F10-Sync-Funktionstest:** unverändert.
+4. **[niedrig] `personal_score` diskriminiert kaum (M0):** unverändert.
+5. **[niedrig] Zwei Fingerprint-Algorithmen** dokumentiert.
+6. **[niedrig] `torch`/`transformers` im Container** bewusst nicht enthalten.
+7. **[niedrig] Altes Image lokal:** `docker rmi 666ec969446e` — Status
    unbestätigt.
-9. **[niedrig] Beleg der Pool-Regel** aus `family_recognition`.
-10. **[niedrig] Task-Scheduler-Uhrzeit** final festlegen, E-Mail-Option
-    bestätigen (Details: NAS-Referenzdatei).
-11. **[niedrig] Hyper-Backup-Aufgabe** für `/volume1/TEMP` und
-    `/volume1/photo` — Status unbestätigt.
-12. **[niedrig] matthias ohne `sudo`/root laufen lassen** — zurückgestellt
-    auf ausdrücklichen Wunsch.
+8. **[niedrig] Beleg der Pool-Regel** aus `family_recognition`.
+9. **[niedrig] Task-Scheduler-Uhrzeit** final festlegen.
+10. **[niedrig] Hyper-Backup-Aufgabe** — Status unbestätigt.
+11. **[niedrig] matthias ohne `sudo`/root laufen lassen** — zurückgestellt.
 
 ---
 
 ## Verbleibende Arbeitspakete
 
-### Phase 3 — siehe Abschnitt ganz oben (jetzt höchste Priorität)
+### Phase 3 — höchste Priorität (siehe ganz oben)
+
+Nächster konkreter Schritt: Pilotlauf mit `enabled: true` + `--dry-run`,
+danach Entscheidung zu den zwei Doku/Code-Diskrepanzen, danach erster
+kleiner `paste.txt`-Baustein für den Metadaten-Handoff (XMP/EXIF-Weg
+empfohlen).
 
 ### A3 — USER_MANUAL und Spezifikation abgrenzen
 
-`USER_MANUAL` nicht kürzen; nur nachgewiesene sachliche Fehler korrigieren.
-`docs/spec_v1-2/...` weder prüfen noch verändern (nur lesen, z. B. für die
-Phase-3-API-Spezifikation).
+`USER_MANUAL` nicht kürzen. `docs/spec_v1-2/...` weder prüfen noch
+verändern außer für die heute gefundene `03_TEMP_DONE`/`04_TEMP_FINAL`-
+Diskrepanz, die explizit zur Klärung vorgemerkt ist.
 
-### A4 — Implementierungsregeln, Header, Kommentare (optional, letzter Schritt)
+### A4 — Implementierungsregeln, Header, Kommentare (optional)
 
 Nur auf ausdrückliche Nutzeranweisung.
 
 ### Abschlussziel
 
-Ein sauberes Repository: getesteter Code ✅, kompakte README ✅, erhaltenes
-USER_MANUAL, unveränderte Spezifikation, funktionsfähiger Container ✅
-(NAS-Deployment seit 2026-09-24 produktiv), **Phase 3 real implementiert
-inkl. Metadaten-Handoff an Synology Photos** ⏳ (neuer Schwerpunkt).
+Getesteter Code ✅, kompakte README ✅, erhaltenes USER_MANUAL,
+funktionsfähiger Container ✅, **Phase 3 real implementiert inkl.
+Metadaten-Handoff an Synology Photos** ⏳ — Sicherheitslage heute
+verifiziert, Implementierung selbst steht noch aus.
 
 ---
 
@@ -278,35 +342,33 @@ liefert.
 
 - Dateiänderung: `git diff --check` ohne Ausgabe.
 - Syntax: `.venv/bin/python -m py_compile ...` mit Rückgabewert 0.
-- Funktion: gezielter Unit-Test grün. Regression: `pytest tests/unit/` grün;
-  vor Code-Commits `pytest tests/ -q`.
-- Container: erfolgreicher Build plus dokumentierter, datenfreier
-  Smoke-Test ✅ (erledigt 2026-09-24).
-- **Phase 3 speziell:** zusätzlich zum Unit-Test ein realer Testbatch mit
-  3–5 Bildern, der nachweislich im Zielordner landet UND lesbare
-  Metadaten (Tags/Rating per `exiftool`) enthält, bevor „implementiert"
-  behauptet wird.
+- Funktion: gezielter Unit-Test grün. Regression: `pytest tests/unit/`
+  grün; vor Code-Commits `pytest tests/ -q`.
+- Container: erfolgreicher Build plus datenfreier Smoke-Test ✅.
+- **Phase 3 speziell:** zusätzlich ein realer Testbatch mit 3–5 Bildern,
+  der nachweislich im Zielordner landet UND lesbare Metadaten enthält,
+  bevor „implementiert" behauptet wird. Vorstufe (Pilotlauf mit
+  `enabled: true` + `--dry-run`) noch offen.
 - Aussagen über reale Dateien oder Pfade: lokaler Diagnose-Output, keine
-  Annahme.
+  Annahme (heute mehrfach bestätigt als richtige Vorgehensweise).
 - Datenlöschungen: nur mit exakter Stückzahl, Verteilungsprüfung,
   Prefix-Allowlist und Manifest.
-
-Bei einem Testfehlschlag nur einen kleinen Korrekturschritt anbieten; keine
-parallelen Funktionserweiterungen.
 
 ---
 
 ## Unmittelbare nächste Schritte
 
-1. **Phase 3 planen:** `docs/spec_v1-2/06_SynologyPhotosAPI.md` lesen (nicht
-   verändern), `publish_to_synology_photos`-Schalter im Code gegenprüfen,
-   Entscheidung XMP/EXIF vs. API-Weg treffen (Empfehlung: XMP/EXIF zuerst).
-2. Stand prüfen: `git log --oneline -8` und `git status --short` (HEAD
+1. **Pilotlauf:** `publish_to_synology_photos.enabled` temporär auf `true`
+   setzen, denselben `phase3`-Befehl mit `--dry-run` und dem Pfad
+   `/volume1/TEMP/04_TEMP_FINAL/2025-11-01` erneut ausführen, Ausgabe
+   prüfen (`[PHASE3] Dry-Run: ... -> ...` erwartet). Schalter danach sofort
+   zurück auf `false`.
+2. Die zwei Doku/Code-Diskrepanzen entscheiden: `--folder`-Pfaderwartung
+   und `03_TEMP_DONE` vs. `04_TEMP_FINAL`.
+3. Stand prüfen: `git log --oneline -8` und `git status --short` (HEAD
    `b1e9a0a` erwartet; Push nur auf ausdrückliche Anweisung).
-3. Ersten kleinen Phase-3-Baustein umsetzen (z. B. reiner Datei-Move
-   `03_TEMP_DONE` → `publish_root`, noch ohne Metadaten), mit
-   `paste.txt`-Paket und lokalem Testbatch verifizieren.
-4. Danach Metadaten-Schreiben (XMP/EXIF) ergänzen, erneut mit `exiftool`
+4. Ersten kleinen Phase-3-Baustein umsetzen (Datei-Move, danach
+   Metadaten-Schreiben), mit `paste.txt`-Paket und lokalem Testbatch
    verifizieren.
-5. Erst danach zu den bestehenden Punkten 1–4 der „Offenen Punkte"
+5. Erst danach zu den bestehenden Punkten 1–3 der „Offenen Punkte"
    zurückkehren (Policy-1.3-Evidenz, F10-Sync-Test).
